@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIM OS v3.8 Master Suite</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at 50% 30%, #1e1b4b 0%, #09090b 100%);
+            color: #f8fafc;
+            overflow: hidden;
+            user-select: none;
+        }
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .glass {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.65);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .window {
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+            transition: transform 0.1s ease, opacity 0.15s ease;
+        }
+        .window.minimized {
+            transform: scale(0.8) translateY(100px);
+            opacity: 0;
+            pointer-events: none;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+    </style>
+</head>
+<body class="h-screen w-screen relative flex flex-col justify-between">
+
+    <!-- Top Status Bar -->
+    <header class="h-9 w-full glass px-4 flex items-center justify-between text-xs z-50 border-b border-white/10">
+        <div class="flex items-center space-x-4">
+            <div class="flex items-center space-x-2 font-bold tracking-wider text-cyan-400">
+                <i data-lucide="cpu" class="w-4 h-4"></i>
+                <span>AIM OS v3.8</span>
+            </div>
+            <span class="text-slate-400">|</span>
+            <span id="active-app-title" class="text-slate-300 font-medium">Desktop Environment</span>
+        </div>
+        <div class="flex items-center space-x-4 text-slate-300">
+            <div class="flex items-center space-x-1">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span class="text-[11px] font-mono text-emerald-400">A* DIRECTOR: ONLINE</span>
+            </div>
+            <span id="clock" class="font-mono">18:19</span>
+            <div class="flex items-center space-x-2">
+                <i data-lucide="wifi" class="w-3.5 h-3.5"></i>
+                <i data-lucide="battery" class="w-3.5 h-3.5"></i>
+            </div>
+        </div>
+    </header>
+
+    <!-- Desktop Workspace Area -->
+    <main id="desktop" class="flex-1 relative overflow-hidden p-6">
+        
+        <!-- Welcome / Quick Launch Widget on Desktop -->
+        <div class="absolute top-8 left-8 glass-panel p-5 rounded-2xl w-80 shadow-2xl z-10">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="font-bold text-sm text-cyan-300 flex items-center gap-2">
+                    <i data-lucide="sparkles" class="w-4 h-4"></i> Master Suite Hub
+                </h2>
+                <span class="text-[10px] bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded-full font-mono">STABLE</span>
+            </div>
+            <p class="text-xs text-slate-300 mb-4 leading-relaxed">
+                Integrated neural window manager, Three.js procedural skin forge, tactical skirmish simulator, and audio DSP synthesizer.
+            </p>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="openWindow('modelForge')" class="flex items-center gap-2 p-2 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/30 text-xs transition">
+                    <i data-lucide="box" class="w-3.5 h-3.5 text-indigo-400"></i> Model Forge
+                </button>
+                <button onclick="openWindow('tacticalSkirmish')" class="flex items-center gap-2 p-2 rounded-xl bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/30 text-xs transition">
+                    <i data-lucide="crosshair" class="w-3.5 h-3.5 text-emerald-400"></i> Skirmish
+                </button>
+                <button onclick="openWindow('audioSynth')" class="flex items-center gap-2 p-2 rounded-xl bg-amber-600/30 hover:bg-amber-600/50 border border-amber-500/30 text-xs transition">
+                    <i data-lucide="sliders" class="w-3.5 h-3.5 text-amber-400"></i> DSP Synth
+                </button>
+                <button onclick="openWindow('aiCopilot')" class="flex items-center gap-2 p-2 rounded-xl bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500/30 text-xs transition">
+                    <i data-lucide="terminal" class="w-3.5 h-3.5 text-blue-400"></i> Copilot
+                </button>
+            </div>
+        </div>
+
+        <!-- WINDOW 1: AI MODEL FORGE & SKIN SUITE -->
+        <div id="win-modelForge" class="window absolute top-12 left-96 w-[560px] h-[520px] glass rounded-2xl flex flex-col overflow-hidden z-20">
+            <!-- Window Titlebar -->
+            <div class="h-10 bg-slate-900/80 px-4 flex items-center justify-between border-b border-white/10 cursor-move" onmousedown="startDrag(event, 'win-modelForge')">
+                <div class="flex items-center space-x-2">
+                    <div class="flex space-x-1.5">
+                        <button onclick="closeWindow('modelForge')" class="w-3 h-3 rounded-full bg-rose-500 hover:bg-rose-600 transition"></button>
+                        <button onclick="minimizeWindow('modelForge')" class="w-3 h-3 rounded-full bg-amber-500 hover:bg-amber-600 transition"></button>
+                        <button class="w-3 h-3 rounded-full bg-emerald-500 hover:bg-emerald-600 transition"></button>
+                    </div>
+                    <span class="text-xs font-medium text-slate-300 ml-2">AI Model Forge & Skin Suite (Gemini API + Three.js)</span>
+                </div>
+                <span class="text-[10px] font-mono text-slate-400">v3.8</span>
+            </div>
+            <!-- Window Body -->
+            <div class="flex-1 p-4 flex flex-col space-y-3 overflow-y-auto">
+                <div class="glass-panel p-3 rounded-xl flex flex-col space-y-2">
+                    <span class="text-[11px] font-mono text-cyan-300">GEMINI API PROMPT-TO-SKIN ENGINE & BLOB SERIALIZER</span>
+                    <div class="flex gap-2">
+                        <input type="password" placeholder="Gemini API Key..." class="flex-1 bg-slate-900/80 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500 font-mono">
+                        <button class="bg-cyan-600 hover:bg-cyan-500 text-white text-xs px-3 py-1.5 rounded-lg font-medium transition shadow-lg shadow-cyan-600/30">Connect</button>
+                    </div>
+                    <input type="text" value="Auxetic metamaterial plate with auto-healing hydrogel matrix" class="w-full bg-slate-900/80 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500 font-mono">
+                    <div class="flex gap-2 pt-1">
+                        <select class="bg-slate-900/80 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-slate-300 font-mono">
+                            <option>Hydrogel Matrix</option>
+                            <option>Carbon Nanotube</option>
+                            <option>Biomorph Crystal</option>
+                        </select>
+                        <button onclick="triggerSynthesis()" class="flex-1 bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold py-1.5 rounded-lg transition shadow-lg shadow-purple-600/30">SYNTHESIZE</button>
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="flex-1 bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/40 text-emerald-300 text-xs py-1.5 rounded-lg transition font-medium">SAVE VAULT</button>
+                        <button class="flex-1 bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500/40 text-blue-300 text-xs py-1.5 rounded-lg transition font-medium">DOWNLOAD BLOB</button>
+                    </div>
+                </div>
+                <!-- 3D Preview Container -->
+                <div class="flex-1 glass-panel rounded-xl relative overflow-hidden flex flex-col">
+                    <div class="px-3 py-1.5 bg-slate-900/60 border-b border-white/5 flex justify-between items-center text-[11px] font-mono text-slate-400">
+                        <span>LIVE SYNTHETIC SKIN MESH PREVIEW (CLICK TO STRESS TEST)</span>
+                        <span id="vert-count" class="text-cyan-400">Vertices: 3,136</span>
+                    </div>
+                    <div id="three-container" class="flex-1 cursor-pointer"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- WINDOW 2: TACTICAL SKIRMISH COMBAT ENGINE -->
+        <div id="win-tacticalSkirmish" class="window absolute top-24 right-12 w-[480px] h-[460px] glass rounded-2xl flex flex-col overflow-hidden z-20 hidden">
+            <div class="h-10 bg-slate-900/80 px-4 flex items-center justify-between border-b border-white/10 cursor-move" onmousedown="startDrag(event, 'win-tacticalSkirmish')">
+                <div class="flex items-center space-x-2">
+                    <div class="flex space-x-1.5">
+                        <button onclick="closeWindow('tacticalSkirmish')" class="w-3 h-3 rounded-full bg-rose-500 hover:bg-rose-600 transition"></button>
+                        <button onclick="minimizeWindow('tacticalSkirmish')" class="w-3 h-3 rounded-full bg-amber-500 hover:bg-amber-600 transition"></button>
+                        <button class="w-3 h-3 rounded-full bg-emerald-500 hover:bg-emerald-600 transition"></button>
+                    </div>
+                    <span class="text-xs font-medium text-slate-300 ml-2">Tactical Skirmish & A* AI Director</span>
+                </div>
+            </div>
+            <div class="flex-1 p-4 flex flex-col space-y-3">
+                <div class="flex justify-between items-center bg-slate-900/60 p-2.5 rounded-xl border border-white/5">
+                    <div>
+                        <div class="text-[11px] font-mono text-emerald-400">AI DIRECTOR: ACTIVE</div>
+                        <div class="text-xs text-slate-300">Threat Level: <span class="text-amber-400 font-bold">HIGH (Sector 4)</span></div>
+                    </div>
+                    <button onclick="runSkirmishTurn()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-4 py-2 rounded-xl font-medium transition shadow-lg shadow-emerald-600/30">Step A* Path</button>
+                </div>
+                <!-- Grid Map -->
+                <div id="skirmish-grid" class="flex-1 glass-panel rounded-xl grid grid-cols-8 grid-rows-8 gap-1.5 p-3">
+                    <!-- Populated via JS -->
+                </div>
+                <div id="skirmish-log" class="h-14 bg-slate-950/80 rounded-xl p-2 font-mono text-[10px] text-slate-400 overflow-y-auto border border-white/5">
+                    [00:01] A* pathfinding initialized across 64 nodes. Enemy patrol squad re-routing...
+                </div>
+            </div>
+        </div>
+
+        <!-- WINDOW 3: AUDIO DSP SYNTHESIZER -->
+        <div id="win-audioSynth" class="window absolute top-40 left-64 w-[420px] h-[380px] glass rounded-2xl flex flex-col overflow-hidden z-20 hidden">
+            <div class="h-10 bg-slate-900/80 px-4 flex items-center justify-between border-b border-white/10 cursor-move" onmousedown="startDrag(event, 'win-audioSynth')">
+                <div class="flex items-center space-x-2">
+                    <div class="flex space-x-1.5">
+                        <button onclick="closeWindow('audioSynth')" class="w-3 h-3 rounded-full bg-rose-500 hover:bg-rose-600 transition"></button>
+                        <button onclick="minimizeWindow('audioSynth')" class="w-3 h-3 rounded-full bg-amber-500 hover:bg-amber-600 transition"></button>
+                        <button class="w-3 h-3 rounded-full bg-emerald-500 hover:bg-emerald-600 transition"></button>
+                    </div>
+                    <span class="text-xs font-medium text-slate-300 ml-2">Procedural Audio DSP Synthesizer</span>
+                </div>
+            </div>
+            <div class="flex-1 p-4 flex flex-col justify-around">
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="glass-panel p-3 rounded-xl flex flex-col items-center">
+                        <span class="text-[10px] font-mono text-amber-300 mb-2">OSCILLATOR</span>
+                        <select id="synth-waveform" class="bg-slate-900 border border-white/10 rounded px-2 py-1 text-xs text-slate-200 font-mono mb-2 w-full">
+                            <option value="sine">Sine</option>
+                            <option value="square">Square</option>
+                            <option value="sawtooth">Sawtooth</option>
+                            <option value="triangle">Triangle</option>
+                        </select>
+                        <span class="text-[10px] text-slate-400">Waveform</span>
+                    </div>
+                    <div class="glass-panel p-3 rounded-xl flex flex-col items-center">
+                        <span class="text-[10px] font-mono text-amber-300 mb-2">FILTER CUTOFF</span>
+                        <input type="range" id="synth-cutoff" min="200" max="5000" value="1500" class="w-full accent-amber-500 my-2">
+                        <span id="cutoff-val" class="text-[10px] font-mono text-slate-300">1500Hz</span>
+                    </div>
+                    <div class="glass-panel p-3 rounded-xl flex flex-col items-center">
+                        <span class="text-[10px] font-mono text-amber-300 mb-2">REVERB MIX</span>
+                        <input type="range" id="synth-reverb" min="0" max="1" step="0.05" value="0.3" class="w-full accent-amber-500 my-2">
+                        <span id="reverb-val" class="text-[10px] font-mono text-slate-300">30%</span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-4 gap-2">
+                    <button onclick="playSynthNote(261.63)" class="bg-amber-600/30 hover:bg-amber-600/60 border border-amber-500/40 text-amber-200 rounded-xl py-3 text-xs font-mono font-bold transition shadow">C4</button>
+                    <button onclick="playSynthNote(293.66)" class="bg-amber-600/30 hover:bg-amber-600/60 border border-amber-500/40 text-amber-200 rounded-xl py-3 text-xs font-mono font-bold transition shadow">D4</button>
+                    <button onclick="playSynthNote(329.63)" class="bg-amber-600/30 hover:bg-amber-600/60 border border-amber-500/40 text-amber-200 rounded-xl py-3 text-xs font-mono font-bold transition shadow">E4</button>
+                    <button onclick="playSynthNote(392.00)" class="bg-amber-600/30 hover:bg-amber-600/60 border border-amber-500/40 text-amber-200 rounded-xl py-3 text-xs font-mono font-bold transition shadow">G4</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- WINDOW 4: LOCAL AI COPILOT TERMINAL -->
+        <div id="win-aiCopilot" class="window absolute top-32 right-96 w-[480px] h-[400px] glass rounded-2xl flex flex-col overflow-hidden z-20 hidden">
+            <div class="h-10 bg-slate-900/80 px-4 flex items-center justify-between border-b border-white/10 cursor-move" onmousedown="startDrag(event, 'win-aiCopilot')">
+                <div class="flex items-center space-x-2">
+                    <div class="flex space-x-1.5">
+                        <button onclick="closeWindow('aiCopilot')" class="w-3 h-3 rounded-full bg-rose-500 hover:bg-rose-600 transition"></button>
+                        <button onclick="minimizeWindow('aiCopilot')" class="w-3 h-3 rounded-full bg-amber-500 hover:bg-amber-600 transition"></button>
+                        <button class="w-3 h-3 rounded-full bg-emerald-500 hover:bg-emerald-600 transition"></button>
+                    </div>
+                    <span class="text-xs font-medium text-slate-300 ml-2">Local AI Copilot & Terminal</span>
+                </div>
+            </div>
+            <div class="flex-1 p-4 flex flex-col space-y-3">
+                <div id="copilot-chat" class="flex-1 glass-panel rounded-xl p-3 font-mono text-xs text-slate-300 overflow-y-auto space-y-2">
+                    <div class="text-cyan-400">[AIM OS Copilot]: Neural core online. Ready for prompts or shell commands.</div>
+                    <div class="text-slate-400">&gt; Loaded modules: Model Forge, Skirmish A*, DSP Synth.</div>
+                </div>
+                <div class="flex gap-2">
+                    <input type="text" id="copilot-input" placeholder="Ask AI Copilot or enter command..." class="flex-1 bg-slate-900/80 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-200 font-mono focus:outline-none focus:border-cyan-500" onkeydown="if(event.key==='Enter') sendCopilotPrompt()">
+                    <button onclick="sendCopilotPrompt()" class="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 rounded-xl text-xs font-semibold transition shadow-lg shadow-cyan-600/30">Send</button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Glassmorphic Dock at Bottom -->
+    <nav class="h-16 w-full flex items-center justify-center pb-3 z-50">
+        <div class="glass px-4 py-2 rounded-2xl flex items-center space-x-3 shadow-2xl border border-white/15">
+            <!-- 3D / Model Forge -->
+            <button onclick="toggleWindow('modelForge')" title="Model Forge" class="group relative p-2.5 rounded-xl bg-slate-800/80 hover:bg-indigo-600/60 border border-white/10 hover:border-indigo-400 transition-all duration-200 hover:scale-110 shadow-md">
+                <i data-lucide="box" class="w-5 h-5 text-indigo-400 group-hover:text-white transition"></i>
+                <span class="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-slate-200 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none border border-white/10 font-mono">Model Forge</span>
+            </button>
+            <!-- Layers / Skins -->
+            <button onclick="toggleWindow('modelForge')" title="Skin Suite" class="group relative p-2.5 rounded-xl bg-slate-800/80 hover:bg-purple-600/60 border border-white/10 hover:border-purple-400 transition-all duration-200 hover:scale-110 shadow-md">
+                <i data-lucide="layers" class="w-5 h-5 text-purple-400 group-hover:text-white transition"></i>
+                <span class="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-slate-200 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none border border-white/10 font-mono">Skin Suite</span>
+            </button>
+            <!-- Target / Skirmish -->
+            <button onclick="toggleWindow('tacticalSkirmish')" title="Tactical Skirmish" class="group relative p-2.5 rounded-xl bg-slate-800/80 hover:bg-emerald-600/60 border border-white/10 hover:border-emerald-400 transition-all duration-200 hover:scale-110 shadow-md">
+                <i data-lucide="crosshair" class="w-5 h-5 text-emerald-400 group-hover:text-white transition"></i>
+                <span class="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-slate-200 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none border border-white/10 font-mono">Tactical Skirmish</span>
+            </button>
+            <!-- Processor / Audio DSP -->
+            <button onclick="toggleWindow('audioSynth')" title="Audio DSP Synth" class="group relative p-2.5 rounded-xl bg-slate-800/80 hover:bg-amber-600/60 border border-white/10 hover:border-amber-400 transition-all duration-200 hover:scale-110 shadow-md">
+                <i data-lucide="cpu" class="w-5 h-5 text-amber-400 group-hover:text-white transition"></i>
+                <span class="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-slate-200 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none border border-white/10 font-mono">Audio DSP</span>
+            </button>
+            <!-- Terminal / Copilot -->
+            <button onclick="toggleWindow('aiCopilot')" title="AI Copilot" class="group relative p-2.5 rounded-xl bg-slate-800/80 hover:bg-blue-600/60 border border-white/10 hover:border-blue-400 transition-all duration-200 hover:scale-110 shadow-md">
+                <i data-lucide="terminal" class="w-5 h-5 text-blue-400 group-hover:text-white transition"></i>
+                <span class="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-slate-200 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none border border-white/10 font-mono">AI Copilot</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // Clock Update
+        function updateClock() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('clock').textContent = `${hours}:${minutes}`;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Window Management
+        let activeZIndex = 30;
+        function bringToFront(winId) {
+            const win = document.getElementById(winId);
+            win.style.zIndex = ++activeZIndex;
+        }
+
+        function openWindow(name) {
+            const win = document.getElementById(`win-${name}`);
+            win.classList.remove('hidden', 'minimized');
+            bringToFront(`win-${name}`);
+            document.getElementById('active-app-title').textContent = win.querySelector('span.font-medium').textContent;
+        }
+
+        function closeWindow(name) {
+            document.getElementById(`win-${name}`).classList.add('hidden');
+        }
+
+        function minimizeWindow(name) {
+            document.getElementById(`win-${name}`).classList.add('minimized');
+        }
+
+        function toggleWindow(name) {
+            const win = document.getElementById(`win-${name}`);
+            if (win.classList.contains('hidden') || win.classList.contains('minimized')) {
+                openWindow(name);
+            } else {
+                minimizeWindow(name);
+            }
+        }
+
+        // Draggable Windows
+        let draggingWindow = null;
+        let offsetX = 0, offsetY = 0;
+
+        function startDrag(e, winId) {
+            draggingWindow = document.getElementById(winId);
+            bringToFront(winId);
+            const rect = draggingWindow.getBoundingClientRect();
+            offsetX = e.clientX - rect.left;
+            offsetY = e.clientY - rect.top;
+            document.addEventListener('mousemove', onDrag);
+            document.addEventListener('mouseup', stopDrag);
+        }
+
+        function onDrag(e) {
+            if (!draggingWindow) return;
+            draggingWindow.style.left = (e.clientX - offsetX) + 'px';
+            draggingWindow.style.top = (e.clientY - offsetY) + 'px';
+        }
+
+        function stopDrag() {
+            draggingWindow = null;
+            document.removeEventListener('mousemove', onDrag);
+            document.removeEventListener('mouseup', stopDrag);
+        }
+
+        // Three.js 3D Skin Mesh Preview Setup
+        let scene, camera, renderer, mesh;
+        function initThree() {
+            const container = document.getElementById('three-container');
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(renderer.domElement);
+
+            const geometry = new THREE.TorusKnotGeometry(1, 0.35, 128, 32);
+            const material = new THREE.MeshStandardMaterial({ 
+                color: 0x06b6d4, 
+                roughness: 0.2, 
+                metalness: 0.8,
+                wireframe: false
+            });
+            mesh = new THREE.Mesh(geometry, material);
+            scene.add(mesh);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambientLight);
+            const pointLight = new THREE.PointLight(0x8b5cf6, 2, 50);
+            pointLight.position.set(5, 5, 5);
+            scene.add(pointLight);
+
+            camera.position.z = 4;
+
+            container.addEventListener('click', () => {
+                // Stress test flash animation
+                material.color.setHex(Math.random() * 0xffffff);
+                mesh.scale.set(1.15, 1.15, 1.15);
+                setTimeout(() => mesh.scale.set(1, 1, 1), 150);
+            });
+
+            animateThree();
+        }
+
+        function animateThree() {
+            requestAnimationFrame(animateThree);
+            mesh.rotation.x += 0.005;
+            mesh.rotation.y += 0.008;
+            renderer.render(scene, camera);
+        }
+
+        function triggerSynthesis() {
+            if(mesh) {
+                mesh.material.color.setHex(0x9333ea);
+                document.getElementById('vert-count').textContent = "Vertices: " + Math.floor(4000 + Math.random() * 1000);
+            }
+        }
+
+        window.addEventListener('load', () => {
+            initThree();
+            initSkirmishGrid();
+        });
+
+        // Tactical Skirmish Grid (A* Simulation)
+        function initSkirmishGrid() {
+            const grid = document.getElementById('skirmish-grid');
+            grid.innerHTML = '';
+            for (let i = 0; i < 64; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'bg-slate-900/60 rounded border border-white/5 flex items-center justify-center text-[10px] font-mono text-slate-600 cursor-pointer hover:bg-emerald-500/20 transition';
+                if (i === 0) {
+                    cell.innerHTML = '<span class="text-emerald-400 font-bold">P1</span>';
+                    cell.className += ' border-emerald-500/40 bg-emerald-500/10';
+                } else if (i === 63) {
+                    cell.innerHTML = '<span class="text-rose-400 font-bold">AI</span>';
+                    cell.className += ' border-rose-500/40 bg-rose-500/10';
+                } else if (i === 27 || i === 28 || i === 35) {
+                    cell.className += ' bg-slate-800/80 border-slate-700';
+                    cell.innerHTML = '<span class="text-slate-500">#</span>';
+                } else {
+                    cell.textContent = i;
+                }
+                grid.appendChild(cell);
+            }
+        }
+
+        function runSkirmishTurn() {
+            const log = document.getElementById('skirmish-log');
+            const timeStr = new Date().toTimeString().split(' ')[0];
+            log.innerHTML += `<br>[${timeStr}] A* Director: Unit repositioned along optimal heuristic vector.`;
+            log.scrollTop = log.scrollHeight;
+        }
+
+        // Web Audio DSP Synthesizer
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSynthNote(freq) {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            const filter = audioCtx.createBiquadFilter();
+
+            const waveType = document.getElementById('synth-waveform').value;
+            const cutoff = parseFloat(document.getElementById('synth-cutoff').value);
+
+            osc.type = waveType;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(cutoff, audioCtx.currentTime);
+
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.8);
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.8);
+        }
+
+        document.getElementById('synth-cutoff').addEventListener('input', (e) => {
+            document.getElementById('cutoff-val').textContent = e.target.value + 'Hz';
+        });
+        document.getElementById('synth-reverb').addEventListener('input', (e) => {
+            document.getElementById('reverb-val').textContent = Math.round(e.target.value * 100) + '%';
+        });
+
+        // AI Copilot Chat
+        function sendCopilotPrompt() {
+            const input = document.getElementById('copilot-input');
+            const chat = document.getElementById('copilot-chat');
+            const val = input.value.trim();
+            if (!val) return;
+
+            chat.innerHTML += `<div class="text-slate-200">&gt; ${val}</div>`;
+            input.value = '';
+
+            setTimeout(() => {
+                chat.innerHTML += `<div class="text-cyan-400">[AIM OS Copilot]: Executed query successfully. All sub-systems operating within nominal parameters.</div>`;
+                chat.scrollTop = chat.scrollHeight;
+            }, 400);
+            chat.scrollTop = chat.scrollHeight;
+        }
+    </script>
+</body>
+</html>
