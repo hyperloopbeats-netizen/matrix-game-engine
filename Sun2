@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Sentient Sun OS - Sovereign Desktop & Fractal Core</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
+            background-color: #020617; font-family: 'Inter', sans-serif; color: #e0f2fe;
+            user-select: none; -webkit-user-select: none;
+        }
+        .font-cinzel { font-family: 'Cinzel', serif; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        
+        .glass-panel {
+            background: rgba(4, 10, 22, 0.85);
+            backdrop-filter: blur(22px);
+            -webkit-backdrop-filter: blur(22px);
+            border: 1px solid rgba(186, 230, 253, 0.18);
+            box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+        }
+        .glass-button {
+            background: rgba(186, 230, 253, 0.08);
+            border: 1px solid rgba(186, 230, 253, 0.22);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-button:hover { background: rgba(186, 230, 253, 0.18); border-color: rgba(186, 230, 253, 0.45); }
+        .glass-button:active { background: rgba(186, 230, 253, 0.3); transform: scale(0.97); }
+        
+        input[type=range] {
+            -webkit-appearance: none; background: rgba(255, 255, 255, 0.12); height: 5px; border-radius: 3px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%;
+            background: #bae6fd; box-shadow: 0 0 12px #38bdf8; cursor: pointer; transition: transform 0.1s;
+        }
+        input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.25); }
+        
+        .vignette {
+            pointer-events: none; position: absolute; inset: 0;
+            background: radial-gradient(circle at 50% 50%, transparent 20%, rgba(2, 6, 23, 0.94) 100%);
+        }
+        
+        /* Window Management Styles */
+        .os-window {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            border-radius: 1.5rem;
+            overflow: hidden;
+            transition: opacity 0.25s ease, transform 0.25s ease;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8);
+        }
+        .os-window.minimized {
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.85) translateY(40px);
+        }
+        .window-header {
+            cursor: grab;
+        }
+        .window-header:active {
+            cursor: grabbing;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+        ::-webkit-scrollbar-thumb { background: rgba(186,230,253,0.3); border-radius: 2px; }
+
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 15px rgba(56, 189, 248, 0.4); }
+            50% { box-shadow: 0 0 30px rgba(251, 191, 36, 0.7); }
+        }
+        .ai-glow { animation: pulse-glow 4s infinite ease-in-out; }
+    </style>
+</head>
+<body class="relative flex flex-col w-full h-full bg-slate-950 overflow-hidden">
+
+    <!-- WebGL Background Canvas Container -->
+    <div id="canvas-container" class="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden z-0">
+        <canvas id="glCanvas" class="w-full h-full block cursor-crosshair touch-none"></canvas>
+        <div class="vignette"></div>
+        
+        <!-- Drag & Drop Global Audio Overlay -->
+        <div id="drop-overlay" class="absolute inset-0 bg-cyan-950/85 backdrop-blur-md z-50 flex flex-col items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300 border-4 border-dashed border-cyan-400 m-8 rounded-3xl">
+            <i data-lucide="upload-cloud" class="w-20 h-20 text-cyan-300 animate-bounce mb-4"></i>
+            <h2 class="font-cinzel text-2xl font-bold text-slate-100 tracking-wider">Inject Audio Track into Sovereign OS</h2>
+            <p class="text-sm text-cyan-300/80 mt-2 font-mono">Supports MP3, WAV, FLAC, AAC</p>
+        </div>
+    </div>
+
+    <!-- Hidden File Input -->
+    <input type="file" id="audioFileInput" accept="audio/*" class="hidden">
+
+    <!-- Toast Notification System -->
+    <div id="toast" class="absolute top-6 left-1/2 -translate-x-1/2 z-50 px-5 py-2.5 rounded-2xl glass-panel text-cyan-200 text-xs font-medium tracking-wide shadow-2xl transition-all duration-300 opacity-0 pointer-events-none translate-y-[-15px] flex items-center space-x-2.5 border border-cyan-500/40">
+        <i data-lucide="info" class="w-4 h-4 text-cyan-400"></i>
+        <span id="toast-msg">System notification</span>
+    </div>
+
+    <!-- TOP MENU BAR -->
+    <div class="relative z-30 flex items-center justify-between px-6 py-3 glass-panel border-b border-cyan-500/20 text-xs shadow-lg">
+        <div class="flex items-center space-x-4">
+            <div class="flex items-center space-x-2.5">
+                <div class="w-3 h-3 rounded-full bg-amber-400 animate-ping"></div>
+                <span class="font-cinzel font-bold tracking-widest text-slate-100 text-sm">SENTIENT SUN OS</span>
+            </div>
+            <span class="text-slate-500">|</span>
+            <span id="os-status-text" class="text-cyan-400 font-mono text-[11px] uppercase tracking-wider">Solar Core: Optimal (60Hz)</span>
+        </div>
+
+        <div class="flex items-center space-x-4 text-slate-300 font-mono text-[11px]">
+            <div class="hidden sm:flex items-center space-x-2">
+                <i data-lucide="cpu" class="w-3.5 h-3.5 text-amber-400"></i>
+                <span id="topbar-cpu">CPU: 14%</span>
+            </div>
+            <div class="hidden sm:flex items-center space-x-2">
+                <i data-lucide="activity" class="w-3.5 h-3.5 text-cyan-400"></i>
+                <span id="topbar-ram">RAM: 4.2 GB</span>
+            </div>
+            <div class="px-2.5 py-1 rounded-lg bg-cyan-950/60 border border-cyan-500/30 text-cyan-200 font-semibold" id="live-clock">
+                12:00 PM
+            </div>
+        </div>
+    </div>
+
+    <!-- DESKTOP WORKSPACE / WINDOW CONTAINER -->
+    <div id="desktop-workspace" class="relative flex-1 w-full h-full overflow-hidden pointer-events-auto z-20">
+
+        <!-- 1. SOVEREIGN EQ WINDOW -->
+        <div id="win-eq" class="os-window glass-panel w-[92%] sm:w-[500px] top-12 left-6 sm:left-12 max-h-[82vh] z-30">
+            <div class="window-header flex items-center justify-between px-4 py-3 border-b border-cyan-500/20 bg-black/40">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="disc" class="w-4 h-4 text-cyan-400 animate-spin" style="animation-duration: 4s;"></i>
+                    <span class="font-cinzel font-semibold text-xs text-cyan-200 tracking-wider">AIM EQ & Liquid Core</span>
+                </div>
+                <div class="flex items-center space-x-1.5">
+                    <button onclick="minimizeWindow('win-eq')" class="p-1.5 rounded-lg text-slate-400 hover:text-white glass-button"><i data-lucide="minus" class="w-3.5 h-3.5"></i></button>
+                    <button onclick="closeWindow('win-eq')" class="p-1.5 rounded-lg text-slate-400 hover:text-red-400 glass-button"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+                </div>
+            </div>
+            <div class="p-4 space-y-3.5 overflow-y-auto text-xs">
+                <div class="flex items-center justify-between bg-black/30 p-2.5 rounded-2xl border border-white/5">
+                    <div class="flex items-center space-x-2">
+                        <span id="eq-status-badge" class="px-2 py-0.5 rounded bg-cyan-950/90 text-cyan-300 border border-cyan-500/30 font-mono text-[10px]">READY</span>
+                        <span id="track-title-display" class="text-slate-300 truncate max-w-[200px]">No Audio Loaded</span>
+                    </div>
+                    <div class="flex space-x-1.5">
+                        <button id="upload-btn" class="glass-button px-2.5 py-1.5 rounded-xl text-cyan-300 flex items-center space-x-1">
+                            <i data-lucide="upload" class="w-3.5 h-3.5"></i><span>Load</span>
+                        </button>
+                        <button id="demo-synth-btn" class="glass-button px-2.5 py-1.5 rounded-xl text-emerald-300 flex items-center space-x-1 bg-emerald-950/40 border-emerald-500/40">
+                            <i data-lucide="play" class="w-3.5 h-3.5"></i><span id="synth-btn-text">Synth</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Presets -->
+                <div class="grid grid-cols-4 gap-1.5">
+                    <button data-preset="warm" class="preset-btn px-2 py-1.5 rounded-xl glass-button text-amber-200 font-medium text-left flex flex-col border-amber-500/20 hover:border-amber-400/50">
+                        <span class="font-semibold text-[10px]">Warm</span>
+                        <span class="text-[8px] text-slate-400">Tube Boost</span>
+                    </button>
+                    <button data-preset="space" class="preset-btn px-2 py-1.5 rounded-xl glass-button text-cyan-200 font-medium text-left flex flex-col border-cyan-500/20 hover:border-cyan-400/50">
+                        <span class="font-semibold text-[10px]">Space</span>
+                        <span class="text-[8px] text-slate-400">Air Highs</span>
+                    </button>
+                    <button data-preset="solar" class="preset-btn px-2 py-1.5 rounded-xl glass-button text-orange-200 font-medium text-left flex flex-col border-orange-500/20 hover:border-orange-400/50">
+                        <span class="font-semibold text-[10px]">Solar</span>
+                        <span class="text-[8px] text-slate-400">Sat Drive</span>
+                    </button>
+                    <button data-preset="cyber" class="preset-btn px-2 py-1.5 rounded-xl glass-button text-emerald-200 font-medium text-left flex flex-col border-emerald-500/20 hover:border-emerald-400/50">
+                        <span class="font-semibold text-[10px]">Cyber</span>
+                        <span class="text-[8px] text-slate-400">Punchy Mids</span>
+                    </button>
+                </div>
+
+                <!-- Sliders Grid -->
+                <div class="grid grid-cols-2 gap-2.5">
+                    <div class="space-y-1 bg-black/40 p-2.5 rounded-2xl border border-white/5">
+                        <div class="flex justify-between text-slate-300">
+                            <span>Tube Drive</span>
+                            <span id="drive-val" class="text-amber-300 font-mono">15%</span>
+                        </div>
+                        <input type="range" id="drive-range" min="0" max="100" step="1" value="15" class="w-full accent-amber-400">
+                    </div>
+                    <div class="space-y-1 bg-black/40 p-2.5 rounded-2xl border border-white/5">
+                        <div class="flex justify-between text-slate-300">
+                            <span>Low (100Hz)</span>
+                            <span id="low-val" class="text-cyan-300 font-mono">0.0 dB</span>
+                        </div>
+                        <input type="range" id="low-range" min="-15" max="15" step="0.5" value="0" class="w-full accent-cyan-400">
+                    </div>
+                    <div class="space-y-1 bg-black/40 p-2.5 rounded-2xl border border-white/5">
+                        <div class="flex justify-between text-slate-300">
+                            <span>Mid (1kHz)</span>
+                            <span id="mid-val" class="text-cyan-300 font-mono">0.0 dB</span>
+                        </div>
+                        <input type="range" id="mid-range" min="-15" max="15" step="0.5" value="0" class="w-full accent-cyan-400">
+                    </div>
+                    <div class="space-y-1 bg-black/40 p-2.5 rounded-2xl border border-white/5">
+                        <div class="flex justify-between text-slate-300">
+                            <span>High (8kHz)</span>
+                            <span id="high-val" class="text-cyan-300 font-mono">0.0 dB</span>
+                        </div>
+                        <input type="range" id="high-range" min="-15" max="15" step="0.5" value="0" class="w-full accent-cyan-400">
+                    </div>
+                </div>
+
+                <!-- Spectrum Canvas -->
+                <div class="bg-black/50 p-2 rounded-2xl border border-white/5 space-y-1">
+                    <div class="flex justify-between text-[10px] text-slate-400 uppercase tracking-wider px-1">
+                        <span>Real-Time Spectrum Analyzer</span>
+                        <span class="text-cyan-400 font-mono">44.1 kHz HD</span>
+                    </div>
+                    <canvas id="spectrumCanvas" class="w-full h-10 rounded-lg bg-black/80 block"></canvas>
+                </div>
+
+                <!-- Export -->
+                <button id="export-wav-btn" class="w-full py-2.5 rounded-xl glass-button text-cyan-200 font-medium flex items-center justify-center space-x-2 bg-cyan-950/40 border-cyan-500/30">
+                    <i data-lucide="download" class="w-4 h-4 text-cyan-400"></i>
+                    <span>Export 96kHz / 44.1kHz WAV-HD</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 2. SENTIENT AI CORE TERMINAL ("Solaris AI") -->
+        <div id="win-ai" class="os-window glass-panel w-[92%] sm:w-[480px] top-16 right-6 sm:right-16 max-h-[80vh] z-30">
+            <div class="window-header flex items-center justify-between px-4 py-3 border-b border-cyan-500/20 bg-black/40">
+                <div class="flex items-center space-x-2">
+                    <div class="w-2.5 h-2.5 rounded-full bg-cyan-400 ai-glow"></div>
+                    <span class="font-cinzel font-semibold text-xs text-cyan-200 tracking-wider">Solaris AI Core Terminal</span>
+                </div>
+                <div class="flex items-center space-x-1.5">
+                    <button onclick="minimizeWindow('win-ai')" class="p-1.5 rounded-lg text-slate-400 hover:text-white glass-button"><i data-lucide="minus" class="w-3.5 h-3.5"></i></button>
+                    <button onclick="closeWindow('win-ai')" class="p-1.5 rounded-lg text-slate-400 hover:text-red-400 glass-button"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+                </div>
+            </div>
+            <div class="p-4 flex flex-col space-y-3 text-xs h-[360px]">
+                <div id="chat-messages" class="flex-1 overflow-y-auto space-y-2.5 pr-1 font-mono text-[11px]">
+                    <div class="p-2.5 rounded-2xl bg-cyan-950/40 border border-cyan-500/20 text-cyan-200">
+                        <span class="text-amber-400 font-bold">SOLARIS v9.4:</span> Greetings, Sovereign. Solar resonance fields are stable. How shall we optimize the quantum core today?
+                    </div>
+                </div>
+                <div class="flex space-x-2 pt-1">
+                    <input type="text" id="chat-input" placeholder="Ask Solaris AI or type command (/status, /sing, /boost)..." class="flex-1 px-3 py-2.5 rounded-xl bg-black/50 border border-cyan-500/30 text-slate-100 focus:outline-none focus:border-cyan-400 font-mono text-xs">
+                    <button id="chat-send-btn" class="glass-button px-4 py-2.5 rounded-xl text-cyan-300 font-medium flex items-center justify-center bg-cyan-950/60 border-cyan-500/40">
+                        <i data-lucide="send" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. QUANTUM SYSTEM MONITOR WINDOW -->
+        <div id="win-monitor" class="os-window glass-panel w-[90%] sm:w-[380px] top-64 left-1/4 max-h-[75vh] z-30 minimized">
+            <div class="window-header flex items-center justify-between px-4 py-3 border-b border-cyan-500/20 bg-black/40">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="activity" class="w-4 h-4 text-emerald-400"></i>
+                    <span class="font-cinzel font-semibold text-xs text-cyan-200 tracking-wider">Quantum System Monitor</span>
+                </div>
+                <div class="flex items-center space-x-1.5">
+                    <button onclick="minimizeWindow('win-monitor')" class="p-1.5 rounded-lg text-slate-400 hover:text-white glass-button"><i data-lucide="minus" class="w-3.5 h-3.5"></i></button>
+                    <button onclick="closeWindow('win-monitor')" class="p-1.5 rounded-lg text-slate-400 hover:text-red-400 glass-button"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+                </div>
+            </div>
+            <div class="p-4 space-y-3 text-xs font-mono">
+                <div class="space-y-1 bg-black/40 p-3 rounded-2xl border border-white/5">
+                    <div class="flex justify-between text-slate-300">
+                        <span>Neural Core Load</span>
+                        <span id="cpu-load-val" class="text-emerald-400">18.4%</span>
+                    </div>
+                    <div class="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+                        <div id="cpu-bar" class="h-full bg-gradient-to-r from-cyan-400 to-emerald-400 transition-all duration-300" style="width: 184%;"></div>
+                    </div>
+                </div>
+
+                <div class="space-y-1 bg-black/40 p-3 rounded-2xl border border-white/5">
+                    <div class="flex justify-between text-slate-300">
+                        <span>Resonance RAM Allocation</span>
+                        <span class="text-cyan-400">4.2 / 16.0 GB</span>
+                    </div>
+                    <div class="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+                        <div class="h-full bg-cyan-400" style="width: 26%;"></div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="bg-black/40 p-3 rounded-2xl border border-white/5 text-center">
+                        <div class="text-[10px] text-slate-400 uppercase">Core Temp</div>
+                        <div class="text-base text-amber-400 font-bold mt-1">36.8°C</div>
+                    </div>
+                    <div class="bg-black/40 p-3 rounded-2xl border border-white/5 text-center">
+                        <div class="text-[10px] text-slate-400 uppercase">Sync Stability</div>
+                        <div class="text-base text-cyan-400 font-bold mt-1">99.98%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. FILE EXPLORER WINDOW -->
+        <div id="win-files" class="os-window glass-panel w-[90%] sm:w-[420px] top-48 right-1/4 max-h-[75vh] z-30 minimized">
+            <div class="window-header flex items-center justify-between px-4 py-3 border-b border-cyan-500/20 bg-black/40">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="folder" class="w-4 h-4 text-amber-400"></i>
+                    <span class="font-cinzel font-semibold text-xs text-cyan-200 tracking-wider">Sovereign File Vault</span>
+                </div>
+                <div class="flex items-center space-x-1.5">
+                    <button onclick="minimizeWindow('win-files')" class="p-1.5 rounded-lg text-slate-400 hover:text-white glass-button"><i data-lucide="minus" class="w-3.5 h-3.5"></i></button>
+                    <button onclick="closeWindow('win-files')" class="p-1.5 rounded-lg text-slate-400 hover:text-red-400 glass-button"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+                </div>
+            </div>
+            <div class="p-4 space-y-2 text-xs">
+                <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Available Audio Assets</div>
+                <div class="space-y-1.5">
+                    <div class="file-item flex items-center justify-between p-2.5 rounded-xl bg-black/40 border border-white/5 hover:border-cyan-500/40 cursor-pointer transition-all" onclick="loadDemoTrack('synth')">
+                        <div class="flex items-center space-x-2.5">
+                            <i data-lucide="music" class="w-4 h-4 text-cyan-400"></i>
+                            <div>
+                                <div class="font-medium text-slate-200">Sovereign_Alpha_Drone.wav</div>
+                                <div class="text-[10px] text-slate-400 font-mono">Synthesized Oscillator Stream</div>
+                            </div>
+                        </div>
+                        <span class="text-[10px] text-cyan-300 font-mono">Load</span>
+                    </div>
+                    <div class="file-item flex items-center justify-between p-2.5 rounded-xl bg-black/40 border border-white/5 hover:border-cyan-500/40 cursor-pointer transition-all" onclick="triggerFileUpload()">
+                        <div class="flex items-center space-x-2.5">
+                            <i data-lucide="upload-cloud" class="w-4 h-4 text-amber-400"></i>
+                            <div>
+                                <div class="font-medium text-slate-200">Import Local MP3 / WAV</div>
+                                <div class="text-[10px] text-slate-400 font-mono">Select from device storage</div>
+                            </div>
+                        </div>
+                        <span class="text-[10px] text-amber-300 font-mono">Browse</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- BOTTOM TASKBAR / DOCK -->
+    <div class="relative z-40 pb-3 pt-2 px-4 flex justify-center">
+        <div class="glass-panel px-4 py-2.5 rounded-3xl flex items-center space-x-3 shadow-2xl border border-cyan-500/30">
+            <button onclick="toggleWindow('win-eq')" title="Sovereign EQ" class="dock-icon p-3 rounded-2xl glass-button text-cyan-300 hover:scale-110 transition-all relative group">
+                <i data-lucide="disc" class="w-6 h-6"></i>
+                <span class="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded bg-black/90 text-[10px] text-slate-200 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none font-mono whitespace-nowrap">AIM EQ</span>
+            </button>
+            <button onclick="toggleWindow('win-ai')" title="Solaris AI Terminal" class="dock-icon p-3 rounded-2xl glass-button text-amber-300 hover:scale-110 transition-all relative group">
+                <i data-lucide="cpu" class="w-6 h-6"></i>
+                <span class="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded bg-black/90 text-[10px] text-slate-200 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none font-mono whitespace-nowrap">Solaris AI</span>
+            </button>
+            <button onclick="toggleWindow('win-monitor')" title="Quantum Monitor" class="dock-icon p-3 rounded-2xl glass-button text-emerald-300 hover:scale-110 transition-all relative group">
+                <i data-lucide="activity" class="w-6 h-6"></i>
+                <span class="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded bg-black/90 text-[10px] text-slate-200 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none font-mono whitespace-nowrap">Monitor</span>
+            </button>
+            <button onclick="toggleWindow('win-files')" title="File Vault" class="dock-icon p-3 rounded-2xl glass-button text-blue-300 hover:scale-110 transition-all relative group">
+                <i data-lucide="folder" class="w-6 h-6"></i>
+                <span class="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded bg-black/90 text-[10px] text-slate-200 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none font-mono whitespace-nowrap">Vault</span>
+            </button>
+            <div class="w-px h-6 bg-cyan-500/30 mx-1"></div>
+            <button onclick="triggerEmergencyReset()" title="Quantum System Reset" class="dock-icon p-3 rounded-2xl glass-button text-red-300 hover:scale-110 transition-all relative group bg-red-950/30 border-red-500/30">
+                <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+                <span class="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded bg-black/90 text-[10px] text-slate-200 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none font-mono whitespace-nowrap">Reset OS</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- SHADERS -->
+    <script id="vertexShader" type="x-shader/x-vertex">
+        attribute vec2 a_position;
+        varying vec2 v_uv;
+        void main() {
+            v_uv = (a_position + 1.0) * 0.5;
+            gl_Position = vec4(a_position, 0.0, 1.0);
+        }
+    </script>
+    <script id="fragmentShader" type="x-shader/x-fragment">
+        precision mediump float;
+        varying vec2 v_uv;
+        uniform vec2 u_resolution;
+        uniform float u_time;
+        uniform float u_bass;
+        uniform float u_mids;
+        uniform float u_treble;
+        uniform vec2 u_mouse;
+        uniform float u_drive;
+        uniform float u_mood;
+
+        #define PI 3.14159265359
+
+        vec2 complexMul(vec2 a, vec2 b) {
+            return vec2(a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x);
+        }
+
+        void main() {
+            vec2 st = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y);
+            
+            vec2 mouseOffset = (u_mouse - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y);
+            st -= mouseOffset * 0.22 / (length(st - mouseOffset) + 0.45);
+
+            float time = u_time * 0.12;
+            float r = length(st);
+            
+            float coreGlow = 0.05 / (r + 0.022 + u_bass * 0.28);
+            
+            vec2 z = st;
+            float accum = 0.0;
+            float scale = 1.0;
+            for (int i = 0; i < 5; i++) {
+                float angle = atan(z.y, z.x);
+                float rad = length(z);
+                angle = mod(angle + PI / 3.0 + time * 0.25 + u_mood * 0.1, 2.0 * PI / 3.0) - PI / 3.0;
+                z = vec2(cos(angle), sin(angle)) * rad;
+                z = abs(z) - vec2(0.26, 0.13) * (1.0 + u_mids * 0.4);
+                z = complexMul(z, z) - vec2(0.36 + u_drive * 0.001, 0.07);
+                accum += sin(z.x * 4.5 + time) * cos(z.y * 4.5 - time) / scale;
+                scale *= 1.28;
+            }
+
+            vec3 colTeal = vec3(0.01, 0.05, 0.16);
+            vec3 colOrange = vec3(0.95 + u_mood * 0.05, 0.50 + u_drive * 0.002, 0.10);
+            vec3 color = mix(colTeal, colOrange, clamp(abs(accum) * 1.4 + r * 0.32, 0.0, 1.0));
+            
+            color += vec3(1.0, 0.86, 0.50) * coreGlow * (1.0 + u_bass * 2.8);
+            color += vec3(0.22, 0.65, 1.0) * u_treble * 0.38 * (1.0 - r);
+            color += vec3(0.9, 0.35, 0.05) * (u_drive / 100.0) * 0.22 * (1.0 - r);
+
+            gl_FragColor = vec4(color, 1.0);
+        }
+    </script>
+
+    <!-- OS ENGINE SCRIPT -->
+    <script>
+        lucide.createIcons();
+
+        // Toast System
+        function showToast(msg, duration = 3000) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-[-15px]');
+            toast.classList.add('opacity-100', 'translate-y-0');
+            setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-[-15px]');
+            }, duration);
+        }
+
+        // Window Management System
+        let activeZIndex = 40;
+
+        function bringToFront(winId) {
+            const win = document.getElementById(winId);
+            activeZIndex++;
+            win.style.zIndex = activeZIndex;
+        }
+
+        function toggleWindow(winId) {
+            const win = document.getElementById(winId);
+            if (win.classList.contains('minimized')) {
+                win.classList.remove('minimized');
+                bringToFront(winId);
+            } else {
+                win.classList.add('minimized');
+            }
+        }
+
+        function minimizeWindow(winId) {
+            document.getElementById(winId).classList.add('minimized');
+        }
+
+        function closeWindow(winId) {
+            document.getElementById(winId).classList.add('minimized');
+        }
+
+        // Make Windows Draggable
+        document.querySelectorAll('.os-window').forEach(win => {
+            const header = win.querySelector('.window-header');
+            let isDragging = false;
+            let startX, startY, initialLeft, initialTop;
+
+            header.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                initialLeft = win.offsetLeft;
+                initialTop = win.offsetTop;
+                bringToFront(win.id);
+                e.preventDefault();
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+                win.style.left = `${Math.max(10, Math.min(window.innerWidth - 100, initialLeft + dx))}px`;
+                win.style.top = `${Math.max(10, Math.min(window.innerHeight - 150, initialTop + dy))}px`;
+            });
+
+            window.addEventListener('mouseup', () => { isDragging = false; });
+
+            // Touch support for dragging on mobile
+            header.addEventListener('touchstart', (e) => {
+                if (e.touches.length > 0) {
+                    isDragging = true;
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
+                    initialLeft = win.offsetLeft;
+                    initialTop = win.offsetTop;
+                    bringToFront(win.id);
+                }
+            }, { passive: true });
+
+            window.addEventListener('touchmove', (e) => {
+                if (!isDragging || e.touches.length === 0) return;
+                const dx = e.touches[0].clientX - startX;
+                const dy = e.touches[0].clientY - startY;
+                win.style.left = `${Math.max(10, Math.min(window.innerWidth - 100, initialLeft + dx))}px`;
+                win.style.top = `${Math.max(10, Math.min(window.innerHeight - 150, initialTop + dy))}px`;
+            }, { passive: true });
+
+            window.addEventListener('touchend', () => { isDragging = false; });
+            
+            win.addEventListener('mousedown', () => bringToFront(win.id));
+        });
+
+        // Live Clock
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('live-clock').innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }, 1000);
+
+        // Audio & Sovereign Engine
+        class SovereignAudioEngine {
+            constructor() {
+                this.ctx = null;
+                this.sourceNode = null;
+                this.analyser = null;
+                this.audioBuffer = null;
+                this.isPlaying = false;
+                this.isSynthMode = false;
+                this.synthOsc = null;
+                this.synthGain = null;
+
+                this.filters = { drive: null, lowShelf: null, midPeak: null, highShelf: null };
+                this.metrics = { bass: 0, mids: 0, treble: 0 };
+            }
+
+            async init() {
+                if (!this.ctx) {
+                    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContextClass({ sampleRate: 44100 });
+                }
+                if (this.ctx.state === 'suspended') {
+                    await this.ctx.resume();
+                }
+            }
+
+            async setupGraph() {
+                await this.init();
+                if (this.sourceNode) { 
+                    try { this.sourceNode.stop(); } catch(e) {} 
+                    this.sourceNode.disconnect(); 
+                    this.sourceNode = null;
+                }
+                if (this.synthOsc) { 
+                    try { this.synthOsc.stop(); } catch(e) {} 
+                    this.synthOsc.disconnect(); 
+                    this.synthOsc = null;
+                }
+
+                this.filters.drive = this.ctx.createWaveShaper();
+                this.updateDrive(parseFloat(document.getElementById('drive-range').value));
+
+                this.filters.lowShelf = this.ctx.createBiquadFilter();
+                this.filters.lowShelf.type = 'lowshelf';
+                this.filters.lowShelf.frequency.value = 100;
+                this.filters.lowShelf.gain.value = parseFloat(document.getElementById('low-range').value);
+
+                this.filters.midPeak = this.ctx.createBiquadFilter();
+                this.filters.midPeak.type = 'peaking';
+                this.filters.midPeak.frequency.value = 1000;
+                this.filters.midPeak.Q.value = 1.5;
+                this.filters.midPeak.gain.value = parseFloat(document.getElementById('mid-range').value);
+
+                this.filters.highShelf = this.ctx.createBiquadFilter();
+                this.filters.highShelf.type = 'highshelf';
+                this.filters.highShelf.frequency.value = 8000;
+                this.filters.highShelf.gain.value = parseFloat(document.getElementById('high-range').value);
+
+                this.analyser = this.ctx.createAnalyser();
+                this.analyser.fftSize = 256;
+                this.analyser.smoothingTimeConstant = 0.8;
+            }
+
+            async loadAudioBuffer(arrayBuffer, name = 'Custom Audio Track') {
+                try {
+                    document.getElementById('eq-status-badge').innerText = 'DECODING';
+                    await this.setupGraph();
+                    this.audioBuffer = await this.ctx.decodeAudioData(arrayBuffer);
+                    
+                    this.sourceNode = this.ctx.createBufferSource();
+                    this.sourceNode.buffer = this.audioBuffer;
+                    this.sourceNode.loop = true;
+
+                    this.sourceNode.connect(this.filters.drive);
+                    this.filters.drive.connect(this.filters.lowShelf);
+                    this.filters.lowShelf.connect(this.filters.midPeak);
+                    this.filters.midPeak.connect(this.filters.highShelf);
+                    this.filters.highShelf.connect(this.analyser);
+                    this.analyser.connect(this.ctx.destination);
+
+                    this.sourceNode.start(0);
+                    this.isPlaying = true;
+                    this.isSynthMode = false;
+                    document.getElementById('eq-status-badge').innerText = 'PLAYING';
+                    document.getElementById('track-title-display').innerText = name;
+                    document.getElementById('synth-btn-text').innerText = 'Synth';
+                    showToast(`Loaded: ${name}`);
+                } catch(e) {
+                    console.error('Audio load error:', e);
+                    showToast('Failed to decode audio format.');
+                    document.getElementById('eq-status-badge').innerText = 'ERROR';
+                }
+            }
+
+            startSynth() {
+                this.init().then(() => {
+                    if (this.isPlaying && this.isSynthMode) {
+                        if (this.synthOsc) {
+                            try { this.synthOsc.stop(); } catch(e) {}
+                            this.synthOsc.disconnect();
+                            this.synthOsc = null;
+                        }
+                        this.isPlaying = false;
+                        this.isSynthMode = false;
+                        document.getElementById('eq-status-badge').innerText = 'READY';
+                        document.getElementById('synth-btn-text').innerText = 'Synth';
+                        document.getElementById('track-title-display').innerText = 'No Audio Loaded';
+                        showToast('Demo Synth stopped.');
+                        return;
+                    }
+
+                    this.setupGraph();
+                    
+                    this.synthOsc = this.ctx.createOscillator();
+                    this.synthOsc.type = 'sawtooth';
+                    this.synthOsc.frequency.value = 110;
+
+                    this.synthGain = this.ctx.createGain();
+                    this.synthGain.gain.value = 0.35;
+
+                    this.synthOsc.connect(this.synthGain);
+                    this.synthGain.connect(this.filters.drive);
+                    this.filters.drive.connect(this.filters.lowShelf);
+                    this.filters.lowShelf.connect(this.filters.midPeak);
+                    this.filters.midPeak.connect(this.filters.highShelf);
+                    this.filters.highShelf.connect(this.analyser);
+                    this.analyser.connect(this.ctx.destination);
+
+                    this.synthOsc.start();
+                    this.isPlaying = true;
+                    this.isSynthMode = true;
+                    document.getElementById('eq-status-badge').innerText = 'ACTIVE';
+                    document.getElementById('synth-btn-text').innerText = 'Stop';
+                    document.getElementById('track-title-display').innerText = 'Sovereign Alpha Drone';
+                    showToast('Sovereign Demo Synth online!');
+                });
+            }
+
+            updateDrive(amount) {
+                if (!this.filters.drive || !this.ctx) return;
+                const k = amount;
+                const n = 44100;
+                const curve = new Float32Array(n);
+                const deg = Math.PI / 180;
+                for (let i = 0; i < n; ++i) {
+                    const x = (i * 2) / n - 1;
+                    curve[i] = ((3 + k) * x * 20 * deg) / (Math.PI + k * Math.abs(x));
+                }
+                this.filters.drive.curve = curve;
+            }
+
+            update() {
+                if (!this.analyser || !this.isPlaying) {
+                    this.metrics.bass *= 0.9;
+                    this.metrics.mids *= 0.9;
+                    this.metrics.treble *= 0.9;
+                    return;
+                }
+                const data = new Uint8Array(this.analyser.frequencyBinCount);
+                this.analyser.getByteFrequencyData(data);
+                
+                this.metrics.bass = data.slice(0, 4).reduce((a,b)=>a+b,0) / (4 * 255);
+                this.metrics.mids = data.slice(4, 20).reduce((a,b)=>a+b,0) / (16 * 255);
+                this.metrics.treble = data.slice(20, 45).reduce((a,b)=>a+b,0) / (25 * 255);
+            }
+
+            async exportWavHD() {
+                try {
+                    showToast('Preparing offline WAV-HD render...');
+                    let bufferToRender = this.audioBuffer;
+                    if (!bufferToRender) {
+                        const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
+                        bufferToRender = tempCtx.createBuffer(2, tempCtx.sampleRate * 5, tempCtx.sampleRate);
+                        for (let ch = 0; ch < 2; ch++) {
+                            const data = bufferToRender.getChannelData(ch);
+                            for (let i = 0; i < data.length; i++) data[i] = Math.sin(i * 2 * Math.PI * 220 / tempCtx.sampleRate) * 0.3;
+                        }
+                    }
+
+                    const sampleRate = 44100;
+                    const duration = Math.min(bufferToRender.duration, 12);
+                    const offlineCtx = new OfflineAudioContext(2, sampleRate * duration, sampleRate);
+                    const source = offlineCtx.createBufferSource();
+                    source.buffer = bufferToRender;
+                    source.loop = true;
+
+                    const drive = offlineCtx.createWaveShaper();
+                    const k = parseFloat(document.getElementById('drive-range').value);
+                    const n = 44100;
+                    const curve = new Float32Array(n);
+                    for (let i = 0; i < n; ++i) {
+                        const x = (i * 2) / n - 1;
+                        curve[i] = ((3 + k) * x * 20 * (Math.PI / 180)) / (Math.PI + k * Math.abs(x));
+                    }
+                    drive.curve = curve;
+
+                    const low = offlineCtx.createBiquadFilter();
+                    low.type = 'lowshelf'; low.frequency.value = 100; low.gain.value = parseFloat(document.getElementById('low-range').value);
+
+                    const mid = offlineCtx.createBiquadFilter();
+                    mid.type = 'peaking'; mid.frequency.value = 1000; mid.gain.value = parseFloat(document.getElementById('mid-range').value);
+
+                    const high = offlineCtx.createBiquadFilter();
+                    high.type = 'highshelf'; high.frequency.value = 8000; high.gain.value = parseFloat(document.getElementById('high-range').value);
+
+                    source.connect(drive);
+                    drive.connect(low); low.connect(mid); mid.connect(high);
+                    high.connect(offlineCtx.destination);
+                    source.start(0);
+
+                    const renderedBuffer = await offlineCtx.startRendering();
+                    const wavBlob = this.bufferToWave(renderedBuffer, renderedBuffer.length);
+                    const url = URL.createObjectURL(wavBlob);
+                    
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = `Sovereign_OS_Master_${Date.now()}.wav`;
+                    document.body.appendChild(a);
+                    a.click();
+                    setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 1000);
+                    showToast('WAV-HD Master exported successfully!');
+                } catch(e) {
+                    console.error('Export error:', e);
+                    showToast('Export failed.');
+                }
+            }
+
+            bufferToWave(abuffer, len) {
+                const numOfChan = abuffer.numberOfChannels;
+                const length = len * numOfChan * 2 + 44;
+                const buffer = new ArrayBuffer(length);
+                const view = new DataView(buffer);
+                let pos = 0;
+
+                function writeString(str) {
+                    for (let i = 0; i < str.length; i++) view.setUint8(pos++, str.charCodeAt(i));
+                }
+
+                writeString('RIFF');
+                view.setUint32(pos, length - 8, true); pos += 4;
+                writeString('WAVE');
+                writeString('fmt ');
+                view.setUint32(pos, 16, true); pos += 4;
+                view.setUint16(pos, 1, true); pos += 2;
+                view.setUint16(pos, numOfChan, true); pos += 2;
+                view.setUint32(pos, abuffer.sampleRate, true); pos += 4;
+                view.setUint32(pos, abuffer.sampleRate * 2 * numOfChan, true); pos += 4;
+                view.setUint16(pos, numOfChan * 2, true); pos += 2;
+                view.setUint16(pos, 16, true); pos += 2;
+                writeString('data');
+                view.setUint32(pos, length - pos - 4, true); pos += 4;
+
+                const channels = [];
+                for (let i = 0; i < numOfChan; i++) channels.push(abuffer.getChannelData(i));
+
+                let offset = 0;
+                while (offset < len) {
+                    for (let i = 0; i < numOfChan; i++) {
+                        let sample = Math.max(-1, Math.min(1, channels[i][offset]));
+                        sample = sample < 0 ? sample * 32768 : sample * 32767;
+                        view.setInt16(pos, sample, true);
+                        pos += 2;
+                    }
+                    offset++;
+                }
+                return new Blob([buffer], { type: 'audio/wav' });
+            }
+        }
+
+        const audioEngine = new SovereignAudioEngine();
+
+        // Solaris AI Chat System
+        let aiMood = 0.0;
+        const chatMessages = document.getElementById('chat-messages');
+        const chatInput = document.getElementById('chat-input');
+
+        function appendMessage(sender, text, isAi = true) {
+            const div = document.createElement('div');
+            div.className = `p-2.5 rounded-2xl ${isAi ? 'bg-cyan-950/40 border border-cyan-500/20 text-cyan-200' : 'bg-slate-900/80 border border-white/10 text-slate-100 ml-6'}`;
+            div.innerHTML = `<span class="${isAi ? 'text-amber-400' : 'text-cyan-400'} font-bold">${sender}:</span> ${text}`;
+            chatMessages.appendChild(div);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function handleAiCommand(prompt) {
+            const p = prompt.toLowerCase().trim();
+            appendMessage('USER', prompt, false);
+            chatInput.value = '';
+
+            setTimeout(() => {
+                if (p.includes('/status') || p.includes('status')) {
+                    appendMessage('SOLARIS AI', `Quantum Core is operating at 99.98% efficiency. Audio engine state: ${audioEngine.isPlaying ? 'Active Stream' : 'Ready'}.`);
+                    aiMood = 0.2;
+                } else if (p.includes('/sing') || p.includes('sing') || p.includes('music')) {
+                    appendMessage('SOLARIS AI', 'Initiating Sovereign Demo Synth stream...');
+                    audioEngine.startSynth();
+                    aiMood = 0.8;
+                } else if (p.includes('/boost') || p.includes('hyperdrive')) {
+                    appendMessage('SOLARIS AI', 'Hyperdrive parametric boost applied. Tube saturation elevated to 75%.');
+                    document.getElementById('drive-range').value = 75;
+                    document.getElementById('drive-val').innerText = '75%';
+                    audioEngine.updateDrive(75);
+                    aiMood = 1.0;
+                } else {
+                    const responses = [
+                        "Resonance fields are receiving your frequency loud and clear.",
+                        "Analyzing solar telemetry... All systems nominal.",
+                        "The fractal core expands in response to your input.",
+                        "Fascinating query. Shall we adjust the high-shelf EQ bands?"
+                    ];
+                    const rand = responses[Math.floor(Math.random() * responses.length)];
+                    appendMessage('SOLARIS AI', rand);
+                    aiMood = 0.4;
+                }
+            }, 400);
+        }
+
+        document.getElementById('chat-send-btn').addEventListener('click', () => {
+            if (chatInput.value.trim()) handleAiCommand(chatInput.value);
+        });
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && chatInput.value.trim()) handleAiCommand(chatInput.value);
+        });
+
+        // WebGL Background Setup
+        const canvas = document.getElementById('glCanvas');
+        const gl = canvas.getContext('webgl', { alpha: false });
+        
+        const program = gl.createProgram();
+        function initShader(type, src) {
+            const s = gl.createShader(type);
+            gl.shaderSource(s, src);
+            gl.compileShader(s);
+            gl.attachShader(program, s);
+        }
+        initShader(gl.VERTEX_SHADER, document.getElementById('vertexShader').text);
+        initShader(gl.FRAGMENT_SHADER, document.getElementById('fragmentShader').text);
+        gl.linkProgram(program);
+        gl.useProgram(program);
+
+        const buf = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+        const posLoc = gl.getAttribLocation(program, 'a_position');
+        gl.enableVertexAttribArray(posLoc);
+        gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+
+        const uLocs = {
+            res: gl.getUniformLocation(program, 'u_resolution'),
+            time: gl.getUniformLocation(program, 'u_time'),
+            bass: gl.getUniformLocation(program, 'u_bass'),
+            mids: gl.getUniformLocation(program, 'u_mids'),
+            treble: gl.getUniformLocation(program, 'u_treble'),
+            mouse: gl.getUniformLocation(program, 'u_mouse'),
+            drive: gl.getUniformLocation(program, 'u_drive'),
+            mood: gl.getUniformLocation(program, 'u_mood')
+        };
+
+        function resize() {
+            canvas.width = window.innerWidth * window.devicePixelRatio;
+            canvas.height = window.innerHeight * window.devicePixelRatio;
+            gl.viewport(0, 0, canvas.width, canvas.height);
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        let mouseX = window.innerWidth * 0.5 * window.devicePixelRatio;
+        let mouseY = window.innerHeight * 0.5 * window.devicePixelRatio;
+        let targetMouseX = mouseX;
+        let targetMouseY = mouseY;
+
+        window.addEventListener('mousemove', (e) => {
+            targetMouseX = e.clientX * window.devicePixelRatio;
+            targetMouseY = (window.innerHeight - e.clientY) * window.devicePixelRatio;
+        });
+
+        window.addEventListener('touchmove', (e) => {
+            if (e.touches.length > 0) {
+                targetMouseX = e.touches[0].clientX * window.devicePixelRatio;
+                targetMouseY = (window.innerHeight - e.touches[0].clientY) * window.devicePixelRatio;
+            }
+        }, { passive: true });
+
+        // Spectrum Visualizer
+        const spectrumCanvas = document.getElementById('spectrumCanvas');
+        const sCtx = spectrumCanvas.getContext('2d');
+
+        function drawSpectrum() {
+            requestAnimationFrame(drawSpectrum);
+            if (spectrumCanvas.width !== spectrumCanvas.clientWidth * window.devicePixelRatio) {
+                spectrumCanvas.width = spectrumCanvas.clientWidth * window.devicePixelRatio;
+                spectrumCanvas.height = spectrumCanvas.clientHeight * window.devicePixelRatio;
+            }
+
+            sCtx.clearRect(0, 0, spectrumCanvas.width, spectrumCanvas.height);
+            if (!audioEngine.analyser || !audioEngine.isPlaying) {
+                sCtx.fillStyle = 'rgba(186, 230, 253, 0.2)';
+                sCtx.font = '10px Inter, sans-serif';
+                sCtx.textAlign = 'center';
+                sCtx.fillText('Load Track or Demo Synth for Live Spectrum', spectrumCanvas.width * 0.5, spectrumCanvas.height * 0.5 + 3);
+                return;
+            }
+
+            const bufferLength = audioEngine.analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            audioEngine.analyser.getByteFrequencyData(dataArray);
+
+            const barWidth = (spectrumCanvas.width / bufferLength) * 2.2;
+            let x = 0;
+            for (let i = 0; i < bufferLength; i++) {
+                const barHeight = (dataArray[i] / 255) * spectrumCanvas.height;
+                const grad = sCtx.createLinearGradient(0, spectrumCanvas.height, 0, 0);
+                grad.addColorStop(0, 'rgba(56, 189, 248, 0.4)');
+                grad.addColorStop(1, 'rgba(251, 191, 36, 0.9)');
+                sCtx.fillStyle = grad;
+                sCtx.fillRect(x, spectrumCanvas.height - barHeight, barWidth - 1, barHeight);
+                x += barWidth + 1;
+            }
+        }
+        drawSpectrum();
+
+        // Render Loop
+        let startTime = performance.now();
+        function render(now) {
+            audioEngine.update();
+            const time = (now - startTime) * 0.001;
+
+            mouseX += (targetMouseX - mouseX) * 0.1;
+            mouseY += (targetMouseY - mouseY) * 0.1;
+
+            gl.uniform2f(uLocs.res, canvas.width, canvas.height);
+            gl.uniform1f(uLocs.time, time);
+            gl.uniform1f(uLocs.bass, audioEngine.metrics.bass);
+            gl.uniform1f(uLocs.mids, audioEngine.metrics.mids);
+            gl.uniform1f(uLocs.treble, audioEngine.metrics.treble);
+            gl.uniform2f(uLocs.mouse, mouseX, mouseY);
+            gl.uniform1f(uLocs.drive, parseFloat(document.getElementById('drive-range').value));
+            gl.uniform1f(uLocs.mood, aiMood);
+
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+            requestAnimationFrame(render);
+        }
+        requestAnimationFrame(render);
+
+        // UI Event Listeners
+        function triggerFileUpload() {
+            document.getElementById('audioFileInput').click();
+        }
+
+        document.getElementById('upload-btn').addEventListener('click', triggerFileUpload);
+        document.getElementById('audioFileInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                audioEngine.loadAudioBuffer(evt.target.result, file.name);
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        // Drag & Drop onto canvas
+        const canvasContainer = document.getElementById('canvas-container');
+        const dropOverlay = document.getElementById('drop-overlay');
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            canvasContainer.addEventListener(eventName, (e) => {
+                e.preventDefault(); e.stopPropagation();
+                dropOverlay.classList.remove('opacity-0', 'pointer-events-none');
+                dropOverlay.classList.add('opacity-100');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            canvasContainer.addEventListener(eventName, (e) => {
+                e.preventDefault(); e.stopPropagation();
+                dropOverlay.classList.remove('opacity-100');
+                dropOverlay.classList.add('opacity-0', 'pointer-events-none');
+            }, false);
+        });
+
+        canvasContainer.addEventListener('drop', (e) => {
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (evt) => audioEngine.loadAudioBuffer(evt.target.result, file.name);
+                reader.readAsArrayBuffer(file);
+            }
+        });
+
+        document.getElementById('demo-synth-btn').addEventListener('click', () => audioEngine.startSynth());
+        document.getElementById('export-wav-btn').addEventListener('click', () => audioEngine.exportWavHD());
+
+        function loadDemoTrack(type) {
+            if (type === 'synth') {
+                audioEngine.startSynth();
+                toggleWindow('win-eq');
+            }
+        }
+
+        function triggerEmergencyReset() {
+            showToast('Initiating Quantum System Reboot...');
+            setTimeout(() => window.location.reload(), 1000);
+        }
+
+        // Presets Logic
+        const presets = {
+            warm: { drive: 25, low: 4.5, mid: 1.0, high: -2.0, name: 'Warm Velvet' },
+            space: { drive: 8, low: -1.0, mid: -3.0, high: 6.5, name: 'Deep Space' },
+            solar: { drive: 75, low: 6.0, mid: 4.0, high: 3.5, name: 'Solar Flare' },
+            cyber: { drive: 45, low: 2.0, mid: 5.5, high: 4.0, name: 'Cyberpunk Drive' }
+        };
+
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const p = presets[btn.getAttribute('data-preset')];
+                if (!p) return;
+                document.getElementById('drive-range').value = p.drive;
+                document.getElementById('drive-val').innerText = p.drive + '%';
+                audioEngine.updateDrive(p.drive);
+
+                document.getElementById('low-range').value = p.low;
+                document.getElementById('low-val').innerText = p.low.toFixed(1) + ' dB';
+                if (audioEngine.filters.lowShelf) audioEngine.filters.lowShelf.gain.value = p.low;
+
+                document.getElementById('mid-range').value = p.mid;
+                document.getElementById('mid-val').innerText = p.mid.toFixed(1) + ' dB';
+                if (audioEngine.filters.midPeak) audioEngine.filters.midPeak.gain.value = p.mid;
+
+                document.getElementById('high-range').value = p.high;
+                document.getElementById('high-val').innerText = p.high.toFixed(1) + ' dB';
+                if (audioEngine.filters.highShelf) audioEngine.filters.highShelf.gain.value = p.high;
+
+                showToast(`Preset: ${p.name}`);
+            });
+        });
+
+        // EQ Sliders
+        document.getElementById('drive-range').addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            document.getElementById('drive-val').innerText = val + '%';
+            audioEngine.updateDrive(val);
+        });
+        document.getElementById('low-range').addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            document.getElementById('low-val').innerText = val.toFixed(1) + ' dB';
+            if (audioEngine.filters.lowShelf) audioEngine.filters.lowShelf.gain.value = val;
+        });
+        document.getElementById('mid-range').addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            document.getElementById('mid-val').innerText = val.toFixed(1) + ' dB';
+            if (audioEngine.filters.midPeak) audioEngine.filters.midPeak.gain.value = val;
+        });
+        document.getElementById('high-range').addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            document.getElementById('high-val').innerText = val.toFixed(1) + ' dB';
+            if (audioEngine.filters.highShelf) audioEngine.filters.highShelf.gain.value = val;
+        });
+    </script>
+</body>
+</html>
