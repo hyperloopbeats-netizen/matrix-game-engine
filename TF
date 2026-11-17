@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TF2 VScript Visual Node Studio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    },
+                    colors: {
+                        tf2: {
+                            orange: '#f2a900',
+                            amber: '#ea580c',
+                            dark: '#090c10',
+                            panel: 'rgba(13, 17, 23, 0.78)',
+                            card: 'rgba(22, 27, 34, 0.85)',
+                            border: 'rgba(255, 255, 255, 0.08)'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #090c10;
+            color: #e6edf3;
+            overflow: hidden;
+            user-select: none;
+        }
+        .glass-panel {
+            background: rgba(13, 17, 23, 0.78);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border-color: rgba(255, 255, 255, 0.08);
+        }
+        .glass-card {
+            background: rgba(22, 27, 34, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .canvas-grid {
+            background-color: #070a0e;
+            background-size: 32px 32px;
+            background-image: 
+                linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+        }
+        .node-shadow {
+            box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.07);
+        }
+        .node-selected {
+            box-shadow: 0 0 0 2px #f2a900, 0 12px 36px rgba(242, 169, 0, 0.22);
+        }
+        .port-dot {
+            transition: transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .port-dot:hover {
+            transform: scale(1.35);
+            box-shadow: 0 0 10px currentColor;
+        }
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(9, 12, 16, 0.6); }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(242, 169, 0, 0.5); }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col">
+
+    <!-- Top Telemetry HUD Header -->
+    <header class="h-16 glass-panel border-b flex items-center justify-between px-4 md:px-6 z-30 shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/25 border border-amber-300/20">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                </svg>
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 class="font-bold text-base md:text-lg tracking-tight text-white">TF2 VScript Studio</h1>
+                    <span class="hidden sm:inline-block text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">Squirrel 3 AST</span>
+                </div>
+                <p class="text-[11px] text-slate-400 hidden sm:block">Visual Node Graph &bull; ModularVScriptCompiler Manifest Builder</p>
+            </div>
+        </div>
+
+        <!-- Preset & Action Toolbar -->
+        <div class="flex items-center gap-2 md:gap-3">
+            <!-- Preset Selector -->
+            <div class="hidden lg:flex items-center bg-slate-900/90 border border-slate-800 rounded-xl p-1">
+                <span class="text-[11px] text-slate-400 px-2.5 font-medium">Presets:</span>
+                <button onclick="loadPreset('combat')" class="px-2.5 py-1 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition">Combat</button>
+                <button onclick="loadPreset('movement')" class="px-2.5 py-1 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition">Low-Grav</button>
+                <button onclick="loadPreset('hazard')" class="px-2.5 py-1 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition">Hazard Zone</button>
+            </div>
+
+            <button onclick="clearWorkspace()" class="px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white glass-card hover:bg-slate-800 transition" title="Clear Canvas">
+                Clear
+            </button>
+
+            <button onclick="openPreviewModal('nut')" class="px-3.5 py-2 rounded-xl text-xs font-semibold text-amber-300 hover:text-amber-200 glass-card border-amber-500/30 hover:bg-amber-500/10 transition flex items-center gap-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+                <span class="hidden sm:inline">Live .NUT</span>
+            </button>
+
+            <button onclick="openPreviewModal('json')" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 shadow-lg shadow-orange-500/25 transition flex items-center gap-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                <span>Export JSON</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main 3-Column Studio Layout -->
+    <div class="flex-1 flex overflow-hidden relative">
+
+        <!-- Left Sidebar: Node Palette & Plugin Config -->
+        <aside class="w-64 md:w-72 glass-panel border-r flex flex-col z-20 shrink-0">
+            <div class="p-3.5 border-b border-tf2-border flex items-center justify-between">
+                <div>
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-slate-300">Node Palette</h2>
+                    <p class="text-[11px] text-slate-500">Click to spawn onto canvas</p>
+                </div>
+                <span id="nodeCountBadge" class="text-[11px] font-mono bg-slate-800 text-amber-400 px-2 py-0.5 rounded-md border border-slate-700">0 Nodes</span>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-3.5 space-y-5">
+                <!-- Category 1: Triggers & Events -->
+                <div>
+                    <div class="flex items-center gap-1.5 mb-2">
+                        <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                        <span class="text-[11px] font-bold text-amber-400 uppercase tracking-wider">Triggers &amp; Events</span>
+                    </div>
+                    <div class="space-y-2">
+                        <button onclick="spawnNode('event')" class="w-full text-left glass-card p-2.5 rounded-xl hover:border-amber-500/50 hover:bg-slate-800/90 transition group flex items-center justify-between">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-lg bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center justify-center font-mono font-bold text-xs">EV</div>
+                                <div>
+                                    <div class="text-xs font-semibold text-white group-hover:text-amber-300">Game Event</div>
+                                    <div class="text-[10px] text-slate-400">player_spawn, death, hurt</div>
+                                </div>
+                            </div>
+                            <span class="text-slate-500 group-hover:text-amber-400 font-bold text-sm">+</span>
+                        </button>
+
+                        <button onclick="spawnNode('timer')" class="w-full text-left glass-card p-2.5 rounded-xl hover:border-blue-500/50 hover:bg-slate-800/90 transition group flex items-center justify-between">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-lg bg-blue-500/15 text-blue-400 border border-blue-500/30 flex items-center justify-center font-mono font-bold text-xs">TM</div>
+                                <div>
+                                    <div class="text-xs font-semibold text-white group-hover:text-blue-300">Periodic Timer</div>
+                                    <div class="text-[10px] text-slate-400">Think loop interval</div>
+                                </div>
+                            </div>
+                            <span class="text-slate-500 group-hover:text-blue-400 font-bold text-sm">+</span>
+                        </button>
+
+                        <button onclick="spawnNode('trigger')" class="w-full text-left glass-card p-2.5 rounded-xl hover:border-rose-500/50 hover:bg-slate-800/90 transition group flex items-center justify-between">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-lg bg-rose-500/15 text-rose-400 border border-rose-500/30 flex items-center justify-center font-mono font-bold text-xs">TR</div>
+                                <div>
+                                    <div class="text-xs font-semibold text-white group-hover:text-rose-300">Entity Trigger</div>
+                                    <div class="text-[10px] text-slate-400">OnStartTouch / OnEndTouch</div>
+                                </div>
+                            </div>
+                            <span class="text-slate-500 group-hover:text-rose-400 font-bold text-sm">+</span>
+                        </button>
+
+                        <button onclick="spawnNode('subscribe')" class="w-full text-left glass-card p-2.5 rounded-xl hover:border-purple-500/50 hover:bg-slate-800/90 transition group flex items-center justify-between">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-lg bg-purple-500/15 text-purple-400 border border-purple-500/30 flex items-center justify-center font-mono font-bold text-xs">SB</div>
+                                <div>
+                                    <div class="text-xs font-semibold text-white group-hover:text-purple-300">Bus Subscriber</div>
+                                    <div class="text-[10px] text-slate-400">Listen to custom events</div>
+                                </div>
+                            </div>
+                            <span class="text-slate-500 group-hover:text-purple-400 font-bold text-sm">+</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Category 2: Action Nodes -->
+                <div>
+                    <div class="flex items-center gap-1.5 mb-2">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        <span class="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">VScript Actions</span>
+                    </div>
+                    <div class="space-y-2">
+                        <button onclick="spawnNode('action_health')" class="w-full text-left glass-card p-2.5 rounded-xl hover:border-emerald-500/50 hover:bg-slate-800/90 transition group flex items-center justify-between">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-mono font-bold text-xs">HP</div>
+                                <div>
+                                    <div class="text-xs font-semibold text-white group-hover:text-emerald-300">Set Health</div>
+                                    <div class="text-[10px] text-slate-400">player.SetHealth()</div>
+                                </div>
+                            </div>
+                            <span class="text-slate-500 group-hover:text-emerald-400 font-bold text-sm">+</span>
+                        </button>
+
+                        <button onclick="spawnNode('action_attr')" class="w-full text-left glass-card p-2.5 rounded-xl hover:border-emerald-500/50 hover:bg-slate-800/90 transition group flex items-center justify-between">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-mono font-bold text-xs">AT</div>
+                                <div>
+                                    <div class="text-xs font-semibold text-white group-hover:text-emerald-300">Apply Attribute</div>
+                                    <div class="text-[10px] text-slate-400">AddCustomAttribute()</div>
+                                </div>
+                            </div>
+                            <span class="text-slate-500 group-hover:text-emerald-400 font-bold text-sm">+</span>
+                        </button>
+
+                        <button onclick="spawnNode('action_netprop')" class="w-full text-left glass-card p-2.5 rounded-xl hover:border-emerald-500/50 hover:bg-slate-800/90 transition group flex items-center justify-between">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-mono font-bold text-xs">NP</div>
+                                <div>
+                                    <div class="text-xs font-semibold text-white group-hover:text-emerald-300">Set NetProp</div>
+                                    <div class="text-[10px] text-slate-400">NetProps.SetPropFloat()</div>
+                                </div>
+                            </div>
+                            <span class="text-slate-500 group-hover:text-emerald-400 font-bold text-sm">+</span>
+                        </button>
+
+                        <button onclick="spawnNode('action_print')" class="w-full text-left glass-card p-2.5 rounded-xl hover:border-emerald-500/50 hover:bg-slate-800/90 transition group flex items-center justify-between">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-mono font-bold text-xs">PR</div>
+                                <div>
+                                    <div class="text-xs font-semibold text-white group-hover:text-emerald-300">Client Print</div>
+                                    <div class="text-[10px] text-slate-400">ClientPrint() HUD/Chat</div>
+                                </div>
+                            </div>
+                            <span class="text-slate-500 group-hover:text-emerald-400 font-bold text-sm">+</span>
+                        </button>
+
+                        <button onclick="spawnNode('action_item')" class="w-full text-left glass-card p-2.5 rounded-xl hover:border-emerald-500/50 hover:bg-slate-800/90 transition group flex items-center justify-between">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-mono font-bold text-xs">IT</div>
+                                <div>
+                                    <div class="text-xs font-semibold text-white group-hover:text-emerald-300">Give Item</div>
+                                    <div class="text-[10px] text-slate-400">GiveNamedItem()</div>
+                                </div>
+                            </div>
+                            <span class="text-slate-500 group-hover:text-emerald-400 font-bold text-sm">+</span>
+                        </button>
+
+                        <button onclick="spawnNode('action_pub')" class="w-full text-left glass-card p-2.5 rounded-xl hover:border-purple-500/50 hover:bg-slate-800/90 transition group flex items-center justify-between">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-lg bg-purple-500/15 text-purple-400 border border-purple-500/30 flex items-center justify-center font-mono font-bold text-xs">PB</div>
+                                <div>
+                                    <div class="text-xs font-semibold text-white group-hover:text-purple-300">Publish Event</div>
+                                    <div class="text-[10px] text-slate-400">PublishFrameworkEvent()</div>
+                                </div>
+                            </div>
+                            <span class="text-slate-500 group-hover:text-purple-400 font-bold text-sm">+</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Plugin Manifest Metadata Footer -->
+            <div class="p-3.5 border-t border-tf2-border bg-slate-950/60">
+                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Plugin ID (Output Filename)</label>
+                <div class="flex items-center bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-1.5 focus-within:border-amber-500 transition">
+                    <input type="text" id="pluginIdInput" value="combat_enhancer" oninput="updatePluginId(this.value)" class="w-full bg-transparent text-xs font-mono text-amber-300 focus:outline-none">
+                    <span class="text-[11px] font-mono text-slate-500">.json</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Center Interactive Canvas -->
+        <main id="canvasContainer" class="flex-1 canvas-grid relative overflow-hidden cursor-grab active:cursor-grabbing">
+            <!-- Transformable World Container -->
+            <div id="worldLayer" class="absolute inset-0 origin-top-left pointer-events-none">
+                <!-- SVG Bezier Wires -->
+                <svg id="connectionsLayer" class="w-[4000px] h-[4000px] overflow-visible pointer-events-none"></svg>
+                <!-- Draggable Node Cards -->
+                <div id="nodesLayer" class="absolute inset-0 pointer-events-none"></div>
+            </div>
+
+            <!-- Bottom-Left Telemetry HUD -->
+            <div class="absolute bottom-4 left-4 glass-panel border px-3.5 py-2 rounded-xl text-[11px] text-slate-400 flex flex-wrap items-center gap-4 z-20 pointer-events-none">
+                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span> Drag canvas to pan &bull; Scroll to zoom</span>
+                <span class="hidden md:flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400"></span> Drag Output &rarr; Input port to wire</span>
+                <span class="hidden lg:flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-rose-400"></span> Click wire to sever</span>
+            </div>
+
+            <!-- Bottom-Right Zoom Controls -->
+            <div class="absolute bottom-4 right-4 glass-panel border rounded-xl p-1 flex items-center gap-1 z-20">
+                <button onclick="adjustZoom(-0.1)" class="w-7 h-7 rounded-lg hover:bg-slate-800 text-slate-300 flex items-center justify-center font-bold text-sm" title="Zoom Out">&minus;</button>
+                <span id="zoomLabel" class="text-[11px] font-mono text-slate-300 px-2 min-w-[48px] text-center">100%</span>
+                <button onclick="adjustZoom(0.1)" class="w-7 h-7 rounded-lg hover:bg-slate-800 text-slate-300 flex items-center justify-center font-bold text-sm" title="Zoom In">+</button>
+                <button onclick="resetView()" class="px-2 h-7 rounded-lg hover:bg-slate-800 text-[11px] font-medium text-amber-400" title="Reset View">Reset</button>
+            </div>
+        </main>
+
+        <!-- Right Sidebar: Node Inspector & Live Code Mini-Preview -->
+        <aside class="w-72 md:w-80 glass-panel border-l flex flex-col z-20 shrink-0">
+            <div class="p-3.5 border-b border-tf2-border flex items-center justify-between">
+                <div>
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-slate-300">Node Inspector</h2>
+                    <p class="text-[11px] text-slate-500">Parameters &amp; VScript Bindings</p>
+                </div>
+                <button id="deleteSelectedBtn" onclick="deleteSelectedNode()" class="hidden px-2 py-1 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30 text-[11px] font-semibold transition">
+                    Delete
+                </button>
+            </div>
+
+            <div id="inspectorContent" class="flex-1 overflow-y-auto p-4 space-y-4">
+                <div class="h-full flex flex-col items-center justify-center text-center text-slate-500 p-4">
+                    <svg class="w-10 h-10 mb-2 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"></path></svg>
+                    <p class="text-xs">Click any node on the graph to edit its parameters and inspect bindings.</p>
+                </div>
+            </div>
+
+            <!-- Live Mini Telemetry Footer -->
+            <div class="p-3.5 border-t border-tf2-border bg-slate-950/60 space-y-2">
+                <div class="flex items-center justify-between text-[11px]">
+                    <span class="text-slate-400">Compiled Events:</span>
+                    <span id="statEvents" class="font-mono text-amber-400 font-semibold">0</span>
+                </div>
+                <div class="flex items-center justify-between text-[11px]">
+                    <span class="text-slate-400">Active Timers / Triggers:</span>
+                    <span id="statTimersTriggers" class="font-mono text-blue-400 font-semibold">0 / 0</span>
+                </div>
+                <div class="flex items-center justify-between text-[11px]">
+                    <span class="text-slate-400">Wired Action Hooks:</span>
+                    <span id="statConnections" class="font-mono text-emerald-400 font-semibold">0</span>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Modal: Export JSON / Live Squirrel .NUT Preview -->
+    <div id="previewModal" class="fixed inset-0 bg-black/75 backdrop-blur-md hidden items-center justify-center z-50 p-4 md:p-6">
+        <div class="glass-panel border w-full max-w-3xl rounded-2xl shadow-2xl flex flex-col max-h-[88vh] overflow-hidden">
+            <!-- Modal Header with Tabs -->
+            <div class="px-6 py-4 border-b border-tf2-border flex flex-wrap items-center justify-between gap-3 bg-slate-950/50">
+                <div class="flex items-center gap-2">
+                    <button id="tabJsonBtn" onclick="switchPreviewTab('json')" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition">
+                        JSON Plugin Manifest
+                    </button>
+                    <button id="tabNutBtn" onclick="switchPreviewTab('nut')" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition">
+                        Compiled Squirrel 3 (.nut)
+                    </button>
+                </div>
+                <button onclick="closePreviewModal()" class="w-8 h-8 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition text-lg">&times;</button>
+            </div>
+
+            <!-- Code Viewer Body -->
+            <div class="flex-1 p-4 overflow-hidden flex flex-col bg-[#070a0e]">
+                <div class="flex items-center justify-between mb-2 px-1">
+                    <span id="previewFilenameLabel" class="text-xs font-mono text-slate-400">combat_enhancer.json</span>
+                    <span class="text-[11px] text-slate-500">ModularVScriptCompiler v2.0 Compatible</span>
+                </div>
+                <pre id="codeOutputBox" class="flex-1 w-full bg-slate-950 border border-slate-800/90 rounded-xl p-4 font-mono text-xs text-amber-300 overflow-auto select-all leading-relaxed"></pre>
+            </div>
+
+            <!-- Modal Footer Actions -->
+            <div class="px-6 py-4 border-t border-tf2-border flex items-center justify-between bg-slate-950/50">
+                <span id="copyStatusToast" class="text-xs font-medium text-emerald-400 opacity-0 transition-opacity duration-200">
+                    &#10003; Copied to clipboard!
+                </span>
+                <div class="flex items-center gap-3">
+                    <button onclick="copyCurrentCode()" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-200 glass-card hover:bg-slate-800 transition flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+                        Copy Code
+                    </button>
+                    <button onclick="downloadCurrentFile()" class="px-5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 shadow-lg shadow-orange-500/20 transition flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        Download File
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Notification Banner (Replaces alert) -->
+    <div id="toastBanner" class="fixed top-20 left-1/2 -translate-x-1/2 glass-panel border border-amber-500/40 px-4 py-2.5 rounded-xl shadow-2xl text-xs font-medium text-amber-200 z-50 opacity-0 pointer-events-none transition-opacity duration-300">
+        Notification
+    </div>
+
+    <script>
+        // ==========================================
+        // Application State
+        // ==========================================
+        let nodes = [];
+        let connections = []; // { id, from, to, portType: 'default' | 'start_touch' | 'end_touch' }
+        let selectedNodeId = null;
+        let pluginId = "combat_enhancer";
+        let nextNodeId = 1;
+        let currentPreviewTab = 'json';
+
+        // Pan & Zoom State
+        let panX = 0, panY = 0, scale = 1;
+        let isPanning = false;
+        let panStartX = 0, panStartY = 0;
+
+        // Dragging Node State
+        let draggingNodeId = null;
+        let dragOffsetX = 0, dragOffsetY = 0;
+
+        // Wiring State
+        let activeWire = null; // { fromNodeId, portType, startX, startY, curX, curY }
+
+        const canvasContainer = document.getElementById('canvasContainer');
+        const worldLayer = document.getElementById('worldLayer');
+        const nodesLayer = document.getElementById('nodesLayer');
+        const connectionsLayer = document.getElementById('connectionsLayer');
+
+        // ==========================================
+        // Toast Helper (No alert() allowed)
+        // ==========================================
+        function showToast(msg) {
+            const toast = document.getElementById('toastBanner');
+            toast.textContent = msg;
+            toast.style.opacity = '1';
+            clearTimeout(window._toastTimer);
+            window._toastTimer = setTimeout(() => {
+                toast.style.opacity = '0';
+            }, 2400);
+        }
+
+        // ==========================================
+        // Pan & Zoom Controls
+        // ==========================================
+        function updateWorldTransform() {
+            worldLayer.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+            document.getElementById('zoomLabel').textContent = `${Math.round(scale * 100)}%`;
+        }
+
+        function adjustZoom(delta) {
+            scale = Math.min(2.0, Math.max(0.4, +(scale + delta).toFixed(2)));
+            updateWorldTransform();
+        }
+
+        function resetView() {
+            panX = 0;
+            panY = 0;
+            scale = 1;
+            updateWorldTransform();
+        }
+
+        canvasContainer.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomDelta = e.deltaY < 0 ? 0.08 : -0.08;
+            const newScale = Math.min(2.0, Math.max(0.4, +(scale + zoomDelta).toFixed(2)));
+            
+            // Zoom toward mouse cursor
+            const rect = canvasContainer.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            panX = mouseX - (mouseX - panX) * (newScale / scale);
+            panY = mouseY - (mouseY - panY) * (newScale / scale);
+            scale = newScale;
+            updateWorldTransform();
+        }, { passive: false });
+
+        canvasContainer.addEventListener('mousedown', (e) => {
+            if (e.target === canvasContainer || e.target === worldLayer || e.target === connectionsLayer) {
+                isPanning = true;
+                panStartX = e.clientX - panX;
+                panStartY = e.clientY - panY;
+                selectNode(null);
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (isPanning) {
+                panX = e.clientX - panStartX;
+                panY = e.clientY - panStartY;
+                updateWorldTransform();
+            } else if (draggingNodeId) {
+                const node = nodes.find(n => n.id === draggingNodeId);
+                if (node) {
+                    node.x = (e.clientX - dragOffsetX - panX) / scale;
+                    node.y = (e.clientY - dragOffsetY - panY) / scale;
+                    renderNodes();
+                    renderConnections();
+                }
+            } else if (activeWire) {
+                const rect = canvasContainer.getBoundingClientRect();
+                activeWire.curX = (e.clientX - rect.left - panX) / scale;
+                activeWire.curY = (e.clientY - rect.top - panY) / scale;
+                renderConnections();
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            isPanning = false;
+            draggingNodeId = null;
+            if (activeWire) {
+                activeWire = null;
+                renderConnections();
+            }
+        });
+
+        // ==========================================
+        // Node Definitions & Spawning
+        // ==========================================
+        const NODE_TEMPLATES = {
+            event: {
+                title: "Game Event",
+                category: "trigger",
+                badge: "EV",
+                color: "amber",
+                defaultConfig: { event: "player_spawn" }
+            },
+            timer: {
+                title: "Periodic Timer",
+                category: "trigger",
+                badge: "TM",
+                color: "blue",
+                defaultConfig: { name: "RegenTick", interval: 2.0 }
+            },
+            trigger: {
+                title: "Entity Trigger",
+                category: "trigger",
+                badge: "TR",
+                color: "rose",
+                defaultConfig: { targetname: "hazard_zone_trigger" }
+            },
+            subscribe: {
+                title: "Bus Subscriber",
+                category: "trigger",
+                badge: "SB",
+                color: "purple",
+                defaultConfig: { event: "player_streak_started" }
+            },
+            action_health: {
+                title: "Set Health",
+                category: "action",
+                badge: "HP",
+                color: "emerald",
+                defaultConfig: { type: "set_health", value: 175 }
+            },
+            action_attr: {
+                title: "Apply Attribute",
+                category: "action",
+                badge: "AT",
+                color: "emerald",
+                defaultConfig: { type: "apply_attribute", attribute: "move speed bonus", value: 1.2, duration: -1.0 }
+            },
+            action_netprop: {
+                title: "Set NetProp",
+                category: "action",
+                badge: "NP",
+                color: "emerald",
+                defaultConfig: { type: "set_netprop", prop: "m_flGravity", value: 0.65 }
+            },
+            action_print: {
+                title: "Client Print",
+                category: "action",
+                badge: "PR",
+                color: "emerald",
+                defaultConfig: { type: "client_print", message: "Framework Active!", print_type: 3 }
+            },
+            action_item: {
+                title: "Give Item",
+                category: "action",
+                badge: "IT",
+                color: "emerald",
+                defaultConfig: { type: "give_item", item: "tf_weapon_scattergun" }
+            },
+            action_pub: {
+                title: "Publish Event",
+                category: "action",
+                badge: "PB",
+                color: "purple",
+                defaultConfig: { type: "publish_event", event: "player_streak_started" }
+            }
+        };
+
+        function spawnNode(type, overrideConfig = null, overridePos = null) {
+            const tpl = NODE_TEMPLATES[type];
+            if (!tpl) return null;
+
+            const id = `node_${nextNodeId++}`;
+            const config = { ...tpl.defaultConfig, ...(overrideConfig || {}) };
+            
+            const x = overridePos ? overridePos.x : ((140 + (nodes.length * 36) % 380) - panX) / scale;
+            const y = overridePos ? overridePos.y : ((100 + (nodes.length * 44) % 320) - panY) / scale;
+
+            const node = {
+                id,
+                type,
+                title: tpl.title,
+                category: tpl.category,
+                badge: tpl.badge,
+                color: tpl.color,
+                x,
+                y,
+                config
+            };
+
+            nodes.push(node);
+            renderNodes();
+            renderConnections();
+            updateTelemetryStats();
+            selectNode(id);
+            return node;
+        }
+
+        function updatePluginId(val) {
+            pluginId = val.trim().replace(/[^a-zA-Z0-9_-]/g, '_') || "custom_module";
+        }
+
+        function selectNode(id) {
+            selectedNodeId = id;
+            const delBtn = document.getElementById('deleteSelectedBtn');
+            if (id) delBtn.classList.remove('hidden');
+            else delBtn.classList.add('hidden');
+            
+            renderNodes();
+            renderInspector();
+        }
+
+        function deleteSelectedNode() {
+            if (selectedNodeId) deleteNode(selectedNodeId);
+        }
+
+        function deleteNode(id) {
+            nodes = nodes.filter(n => n.id !== id);
+            connections = connections.filter(c => c.from !== id && c.to !== id);
+            if (selectedNodeId === id) selectNode(null);
+            else {
+                renderNodes();
+                renderConnections();
+            }
+            updateTelemetryStats();
+        }
+
+        // ==========================================
+        // Render Nodes & Ports
+        // ==========================================
+        function getNodeSummary(node) {
+            const c = node.config;
+            switch (node.type) {
+                case 'event': return `Event: <span class="text-amber-300">${c.event}</span>`;
+                case 'timer': return `<span class="text-blue-300">${c.name}</span> @ ${c.interval}s`;
+                case 'trigger': return `Target: <span class="text-rose-300">${c.targetname}</span>`;
+                case 'subscribe': return `Channel: <span class="text-purple-300">${c.event}</span>`;
+                case 'action_health': return `Set HP &rarr; <span class="text-emerald-300">${c.value}</span>`;
+                case 'action_attr': return `<span class="text-emerald-300">${c.attribute}</span> (${c.value}x)`;
+                case 'action_netprop': return `<span class="text-emerald-300">${c.prop}</span> = ${c.value}`;
+                case 'action_print': return `"<span class="text-slate-200">${c.message}</span>"`;
+                case 'action_item': return `Item: <span class="text-emerald-300">${c.item}</span>`;
+                case 'action_pub': return `Emit: <span class="text-purple-300">${c.event}</span>`;
+                default: return '';
+            }
+        }
+
+        function getColorClasses(color) {
+            const map = {
+                amber: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+                blue: "bg-blue-500/15 text-blue-400 border-blue-500/30",
+                rose: "bg-rose-500/15 text-rose-400 border-rose-500/30",
+                purple: "bg-purple-500/15 text-purple-400 border-purple-500/30",
+                emerald: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+            };
+            return map[color] || map.amber;
+        }
+
+        function renderNodes() {
+            nodesLayer.innerHTML = '';
+            nodes.forEach(node => {
+                const isSelected = selectedNodeId === node.id;
+                const el = document.createElement('div');
+                el.className = `absolute glass-card rounded-2xl w-64 pointer-events-auto transition-shadow ${isSelected ? 'node-selected' : 'node-shadow'}`;
+                el.style.left = `${node.x}px`;
+                el.style.top = `${node.y}px`;
+
+                // Port configuration
+                let portsHtml = '';
+                if (node.category === 'action') {
+                    // Action nodes have an Input Port on the left
+                    portsHtml = `
+                        <div class="px-3.5 py-2.5 bg-slate-950/60 border-t border-slate-800/80 rounded-b-2xl flex items-center justify-between text-[11px]">
+                            <div class="flex items-center gap-2 cursor-pointer group" onmouseup="completeWire(event, '${node.id}')">
+                                <span id="port-in-${node.id}" class="port-dot w-3.5 h-3.5 rounded-full bg-emerald-500/30 border-2 border-emerald-400 text-emerald-400 inline-block"></span>
+                                <span class="text-slate-300 group-hover:text-emerald-300 font-medium">Execute Action</span>
+                            </div>
+                            <span class="text-[10px] font-mono text-slate-500">IN</span>
+                        </div>
+                    `;
+                } else if (node.type === 'trigger') {
+                    // Entity trigger has OnStartTouch and OnEndTouch outputs
+                    portsHtml = `
+                        <div class="px-3.5 py-2 bg-slate-950/60 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
+                            <span class="text-[10px] font-mono text-slate-500">OUT 1</span>
+                            <div class="flex items-center gap-2 cursor-pointer group" onmousedown="startWire(event, '${node.id}', 'start_touch')">
+                                <span class="text-slate-300 group-hover:text-rose-300 font-medium">OnStartTouch</span>
+                                <span id="port-out-${node.id}-start_touch" class="port-dot w-3.5 h-3.5 rounded-full bg-rose-500/30 border-2 border-rose-400 text-rose-400 inline-block"></span>
+                            </div>
+                        </div>
+                        <div class="px-3.5 py-2 bg-slate-950/60 border-t border-slate-800/60 rounded-b-2xl flex items-center justify-between text-[11px]">
+                            <span class="text-[10px] font-mono text-slate-500">OUT 2</span>
+                            <div class="flex items-center gap-2 cursor-pointer group" onmousedown="startWire(event, '${node.id}', 'end_touch')">
+                                <span class="text-slate-300 group-hover:text-amber-300 font-medium">OnEndTouch</span>
+                                <span id="port-out-${node.id}-end_touch" class="port-dot w-3.5 h-3.5 rounded-full bg-amber-500/30 border-2 border-amber-400 text-amber-400 inline-block"></span>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    // Event, Timer, Subscribe nodes have standard Output Port on the right
+                    portsHtml = `
+                        <div class="px-3.5 py-2.5 bg-slate-950/60 border-t border-slate-800/80 rounded-b-2xl flex items-center justify-between text-[11px]">
+                            <span class="text-[10px] font-mono text-slate-500">TRIGGER</span>
+                            <div class="flex items-center gap-2 cursor-pointer group" onmousedown="startWire(event, '${node.id}', 'default')">
+                                <span class="text-slate-300 group-hover:text-amber-300 font-medium">Run Actions</span>
+                                <span id="port-out-${node.id}-default" class="port-dot w-3.5 h-3.5 rounded-full bg-amber-500/30 border-2 border-amber-400 text-amber-400 inline-block"></span>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                el.innerHTML = `
+                    <div class="px-3.5 py-2.5 border-b border-slate-800 flex items-center justify-between cursor-move rounded-t-2xl bg-slate-900/50" onmousedown="startDragNode(event, '${node.id}')">
+                        <div class="flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-lg border flex items-center justify-center font-mono font-bold text-[10px] ${getColorClasses(node.color)}">${node.badge}</span>
+                            <span class="font-bold text-xs text-white tracking-tight">${node.title}</span>
+                        </div>
+                        <button onclick="event.stopPropagation(); deleteNode('${node.id}')" class="w-6 h-6 rounded-lg hover:bg-red-500/20 text-slate-500 hover:text-red-400 flex items-center justify-center transition text-sm">&times;</button>
+                    </div>
+                    <div class="px-3.5 py-3 text-xs font-mono text-slate-300 truncate bg-slate-900/20">
+                        ${getNodeSummary(node)}
+                    </div>
+                    ${portsHtml}
+                `;
+
+                el.addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                    selectNode(node.id);
+                });
+
+                nodesLayer.appendChild(el);
+            });
+        }
+
+        function startDragNode(e, id) {
+            e.stopPropagation();
+            selectNode(id);
+            draggingNodeId = id;
+            const node = nodes.find(n => n.id === id);
+            dragOffsetX = e.clientX - (node.x * scale) - panX;
+            dragOffsetY = e.clientY - (node.y * scale) - panY;
+        }
+
+        // ==========================================
+        // Interactive SVG Bezier Wiring
+        // ==========================================
+        function getPortCoordinates(nodeId, isOutput, portType = 'default') {
+            const node = nodes.find(n => n.id === nodeId);
+            if (!node) return { x: 0, y: 0 };
+
+            if (!isOutput) {
+                // Input port is on left side of action node
+                return { x: node.x + 18, y: node.y + 104 };
+            }
+
+            if (node.type === 'trigger') {
+                if (portType === 'end_touch') {
+                    return { x: node.x + 238, y: node.y + 136 };
+                }
+                return { x: node.x + 238, y: node.y + 102 };
+            }
+
+            return { x: node.x + 238, y: node.y + 104 };
+        }
+
+        function startWire(e, fromNodeId, portType) {
+            e.stopPropagation();
+            const pos = getPortCoordinates(fromNodeId, true, portType);
+            activeWire = {
+                fromNodeId,
+                portType,
+                startX: pos.x,
+                startY: pos.y,
+                curX: pos.x,
+                curY: pos.y
+            };
+        }
+
+        function completeWire(e, toNodeId) {
+            e.stopPropagation();
+            if (!activeWire) return;
+            if (activeWire.fromNodeId === toNodeId) {
+                activeWire = null;
+                renderConnections();
+                return;
+            }
+
+            const exists = connections.some(c =>
+                c.from === activeWire.fromNodeId &&
+                c.to === toNodeId &&
+                c.portType === activeWire.portType
+            );
+
+            if (!exists) {
+                connections.push({
+                    id: `conn_${Date.now()}_${Math.random()}`,
+                    from: activeWire.fromNodeId,
+                    to: toNodeId,
+                    portType: activeWire.portType
+                });
+                updateTelemetryStats();
+                showToast("Action hooked to trigger!");
+            }
+
+            activeWire = null;
+            renderConnections();
+        }
+
+        function buildBezierPath(x1, y1, x2, y2) {
+            const dx = Math.max(Math.abs(x2 - x1) * 0.55, 50);
+            return `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+        }
+
+        function renderConnections() {
+            connectionsLayer.innerHTML = '';
+
+            // Render established connections
+            connections.forEach((conn, idx) => {
+                const start = getPortCoordinates(conn.from, true, conn.portType);
+                const end = getPortCoordinates(conn.to, false);
+                const d = buildBezierPath(start.x, start.y, end.x, end.y);
+
+                let strokeColor = "#f2a900";
+                if (conn.portType === 'start_touch') strokeColor = "#fb7185";
+                if (conn.portType === 'end_touch') strokeColor = "#fbbf24";
+
+                // Invisible thick hit-target for easy clicking to delete
+                const hitPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                hitPath.setAttribute('d', d);
+                hitPath.setAttribute('stroke', 'transparent');
+                hitPath.setAttribute('stroke-width', '14');
+                hitPath.setAttribute('fill', 'none');
+                hitPath.style.pointerEvents = 'stroke';
+                hitPath.style.cursor = 'pointer';
+                hitPath.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    connections.splice(idx, 1);
+                    renderConnections();
+                    updateTelemetryStats();
+                    showToast("Connection severed");
+                });
+
+                // Visible glowing Bezier curve
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', d);
+                path.setAttribute('stroke', strokeColor);
+                path.setAttribute('stroke-width', '2.5');
+                path.setAttribute('stroke-opacity', '0.85');
+                path.setAttribute('fill', 'none');
+
+                connectionsLayer.appendChild(path);
+                connectionsLayer.appendChild(hitPath);
+            });
+
+            // Render active dragging wire
+            if (activeWire) {
+                const d = buildBezierPath(activeWire.startX, activeWire.startY, activeWire.curX, activeWire.curY);
+                const tempPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                tempPath.setAttribute('d', d);
+                tempPath.setAttribute('stroke', '#38bdf8');
+                tempPath.setAttribute('stroke-width', '2.5');
+                tempPath.setAttribute('stroke-dasharray', '6 4');
+                tempPath.setAttribute('fill', 'none');
+                connectionsLayer.appendChild(tempPath);
+            }
+        }
+
+        // ==========================================
+        // Right Inspector Panel
+        // ==========================================
+        function renderInspector() {
+            const container = document.getElementById('inspectorContent');
+            if (!selectedNodeId) {
+                container.innerHTML = `
+                    <div class="h-full flex flex-col items-center justify-center text-center text-slate-500 p-4">
+                        <svg class="w-10 h-10 mb-2 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"></path></svg>
+                        <p class="text-xs">Click any node on the graph to edit its parameters and inspect bindings.</p>
+                    </div>`;
+                return;
+            }
+
+            const node = nodes.find(n => n.id === selectedNodeId);
+            if (!node) return;
+
+            let fieldsHtml = `
+                <div class="p-3 rounded-xl bg-slate-900/70 border border-slate-800 flex items-center justify-between">
+                    <span class="text-[11px] font-mono text-slate-400">NODE ID</span>
+                    <span class="text-[11px] font-mono text-amber-400">${node.id}</span>
+                </div>
+                <div>
+                    <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Display Title</label>
+                    <input type="text" value="${escapeHtml(node.title)}" oninput="updateNodeMeta('title', this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500">
+                </div>
+            `;
+
+            const c = node.config;
+            if (node.type === 'event') {
+                const events = ['player_spawn', 'player_death', 'player_hurt', 'teamplay_round_start', 'player_builtobject'];
+                const options = events.map(ev => `<option value="${ev}" ${c.event === ev ? 'selected' : ''}>${ev}</option>`).join('');
+                fieldsHtml += `
+                    <div>
+                        <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">TF2 Game Event</label>
+                        <select onchange="updateNodeConfig('event', this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-amber-300 focus:outline-none focus:border-amber-500">
+                            ${options}
+                        </select>
+                    </div>
+                `;
+            } else if (node.type === 'timer') {
+                fieldsHtml += `
+                    <div>
+                        <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Timer Function Name</label>
+                        <input type="text" value="${escapeHtml(c.name)}" oninput="updateNodeConfig('name', this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-blue-300 focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Tick Interval (Seconds)</label>
+                        <input type="number" step="0.1" min="0.1" value="${c.interval}" oninput="updateNodeConfig('interval', parseFloat(this.value) || 1.0)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                `;
+            } else if (node.type === 'trigger') {
+                fieldsHtml += `
+                    <div>
+                        <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Map Entity Targetname</label>
+                        <input type="text" value="${escapeHtml(c.targetname)}" oninput="updateNodeConfig('targetname', this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-rose-300 focus:outline-none focus:border-amber-500">
+                        <p class="text-[10px] text-slate-500 mt-1.5">Hammer Output: <code class="text-slate-300">Trigger_${pluginId}_${c.targetname}_StartTouch()</code></p>
+                    </div>
+                `;
+            } else if (node.type === 'subscribe') {
+                fieldsHtml += `
+                    <div>
+                        <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Event Bus Channel</label>
+                        <input type="text" value="${escapeHtml(c.event)}" oninput="updateNodeConfig('event', this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-purple-300 focus:outline-none focus:border-amber-500">
+                    </div>
+                `;
+            } else if (node.type === 'action_health') {
+                fieldsHtml += `
+                    <div>
+                        <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Target Health (HP)</label>
+                        <input type="number" value="${c.value}" oninput="updateNodeConfig('value', parseInt(this.value) || 100)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-emerald-300 focus:outline-none focus:border-amber-500">
+                    </div>
+                `;
+            } else if (node.type === 'action_attr') {
+                fieldsHtml += `
+                    <div>
+                        <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">TF2 Item Attribute</label>
+                        <input type="text" value="${escapeHtml(c.attribute)}" oninput="updateNodeConfig('attribute', this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-emerald-300 focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Attribute Value</label>
+                        <input type="number" step="0.05" value="${c.value}" oninput="updateNodeConfig('value', parseFloat(this.value) || 1.0)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Duration (-1 = Permanent)</label>
+                        <input type="number" step="0.5" value="${c.duration}" oninput="updateNodeConfig('duration', parseFloat(this.value))" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                `;
+            } else if (node.type === 'action_netprop') {
+                fieldsHtml += `
+                    <div>
+                        <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">NetProp Property Name</label>
+                        <input type="text" value="${escapeHtml(c.prop)}" oninput="updateNodeConfig('prop', this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-emerald-300 focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Float Value</label>
+                        <input type="number" step="0.05" value="${c.value}" oninput="updateNodeConfig('value', parseFloat(this.value) || 0)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                `;
+            } else if (node.type === 'action_print') {
+                fieldsHtml += `
+                    <div>
+                        <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">HUD / Chat Message</label>
+                        <input type="text" value="${escapeHtml(c.message)}" oninput="updateNodeConfig('message', this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Destination (print_type)</label>
+                        <select onchange="updateNodeConfig('print_type', parseInt(this.value))" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500">
+                            <option value="3" ${c.print_type === 3 ? 'selected' : ''}>3 - Chat Box (HUD_PRINTTALK)</option>
+                            <option value="4" ${c.print_type === 4 ? 'selected' : ''}>4 - Center Screen (HUD_PRINTCENTER)</option>
+                            <option value="2" ${c.print_type === 2 ? 'selected' : ''}>2 - Console (HUD_PRINTCONSOLE)</option>
+                        </select>
+                    </div>
+                `;
+            } else if (node.type === 'action_item') {
+                fieldsHtml += `
+                    <div>
+                        <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">TF2 Weapon / Item Classname</label>
+                        <input type="text" value="${escapeHtml(c.item)}" oninput="updateNodeConfig('item', this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-emerald-300 focus:outline-none focus:border-amber-500">
+                    </div>
+                `;
+            } else if (node.type === 'action_pub') {
+                fieldsHtml += `
+                    <div>
+                        <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Event Channel to Publish</label>
+                        <input type="text" value="${escapeHtml(c.event)}" oninput="updateNodeConfig('event', this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-purple-300 focus:outline-none focus:border-amber-500">
+                    </div>
+                `;
+            }
+
+            container.innerHTML = fieldsHtml;
+        }
+
+        function updateNodeMeta(key, val) {
+            const node = nodes.find(n => n.id === selectedNodeId);
+            if (node) {
+                node[key] = val;
+                renderNodes();
+            }
+        }
+
+        function updateNodeConfig(key, val) {
+            const node = nodes.find(n => n.id === selectedNodeId);
+            if (node) {
+                node.config[key] = val;
+                renderNodes();
+            }
+        }
+
+        function updateTelemetryStats() {
+            const eventsCount = nodes.filter(n => n.type === 'event').length;
+            const timersCount = nodes.filter(n => n.type === 'timer').length;
+            const triggersCount = nodes.filter(n => n.type === 'trigger').length;
+
+            document.getElementById('nodeCountBadge').textContent = `${nodes.length} Node${nodes.length === 1 ? '' : 's'}`;
+            document.getElementById('statEvents').textContent = eventsCount;
+            document.getElementById('statTimersTriggers').textContent = `${timersCount} / ${triggersCount}`;
+            document.getElementById('statConnections').textContent = connections.length;
+        }
+
+        function escapeHtml(str) {
+            return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        }
+
+        // ==========================================
+        // Compiler: Graph -> JSON Manifest & Squirrel .NUT
+        // ==========================================
+        function getConnectedActions(sourceNodeId, portType = 'default') {
+            return connections
+                .filter(c => c.from === sourceNodeId && c.portType === portType)
+                .map(c => nodes.find(n => n.id === c.to))
+                .filter(n => n && n.category === 'action')
+                .map(n => ({ ...n.config }));
+        }
+
+        function buildManifestObject() {
+            const manifest = {
+                plugin_id: pluginId,
+                events: [],
+                timers: [],
+                entity_triggers: [],
+                publishes: [],
+                subscribes: {}
+            };
+
+            // 1. Game Events
+            nodes.filter(n => n.type === 'event').forEach(evNode => {
+                const actions = getConnectedActions(evNode.id, 'default');
+                actions.forEach(a => {
+                    if (a.type === 'publish_event' && !manifest.publishes.includes(a.event)) {
+                        manifest.publishes.push(a.event);
+                    }
+                });
+                manifest.events.push({
+                    event: evNode.config.event,
+                    actions
+                });
+            });
+
+            // 2. Periodic Timers
+            nodes.filter(n => n.type === 'timer').forEach(tmNode => {
+                const actions = getConnectedActions(tmNode.id, 'default');
+                manifest.timers.push({
+                    name: tmNode.config.name,
+                    interval: tmNode.config.interval,
+                    actions
+                });
+            });
+
+            // 3. Entity Triggers
+            nodes.filter(n => n.type === 'trigger').forEach(trNode => {
+                manifest.entity_triggers.push({
+                    targetname: trNode.config.targetname,
+                    on_start_touch: getConnectedActions(trNode.id, 'start_touch'),
+                    on_end_touch: getConnectedActions(trNode.id, 'end_touch')
+                });
+            });
+
+            // 4. Event Bus Subscribers
+            nodes.filter(n => n.type === 'subscribe').forEach(subNode => {
+                const actions = getConnectedActions(subNode.id, 'default');
+                manifest.subscribes[subNode.config.event] = actions;
+            });
+
+            // Clean empty optional keys for crisp manifests
+            if (manifest.entity_triggers.length === 0) delete manifest.entity_triggers;
+            if (manifest.publishes.length === 0) delete manifest.publishes;
+            if (Object.keys(manifest.subscribes).length === 0) delete manifest.subscribes;
+
+            return manifest;
+        }
+
+        function compileActionToSquirrel(action, targetVar = "player", indent = "    ") {
+            switch (action.type) {
+                case "set_health":
+                    return `${indent}${targetVar}.SetHealth(${action.value ?? 100});`;
+                case "apply_attribute":
+                    return `${indent}${targetVar}.AddCustomAttribute("${action.attribute ?? ''}", ${action.value ?? 1.0}, ${action.duration ?? -1.0});`;
+                case "set_netprop":
+                    return `${indent}NetProps.SetPropFloat(${targetVar}, "${action.prop ?? ''}", ${(action.value ?? 0).toFixed(2)});`;
+                case "client_print":
+                    return `${indent}ClientPrint(${targetVar}, ${action.print_type ?? 3}, "[Plugin] ${action.message ?? ''}\\n");`;
+                case "give_item":
+                    return `${indent}${targetVar}.GiveNamedItem("${action.item ?? ''}");`;
+                case "publish_event":
+                    return `${indent}PublishFrameworkEvent("${action.event ?? 'custom_event'}", ${targetVar});`;
+                default:
+                    return `${indent}// Unhandled action: ${action.type}`;
+            }
+        }
+
+        function generateSquirrelPreview(manifest) {
+            const pid = manifest.plugin_id;
+            const lines = [
+                `// ========================================================`,
+                `// Live Squirrel 3 VScript Preview: ${pid}`,
+                `// Generated by TF2 VScript Visual Node Studio`,
+                `// ========================================================`,
+                ``,
+                `if (!('_${pid}_State' in getroottable())) {`,
+                `    ::_${pid}_State <- { enabled = true, tick_count = 0, storage = {} };`,
+                `}`,
+                ``
+            ];
+
+            const eventCallbacks = [];
+
+            (manifest.events || []).forEach(ev => {
+                const fnName = `Plugin_${pid}_${ev.event}`;
+                eventCallbacks.push(`    ${ev.event} = function(params) { ${fnName}(params); }`);
+                lines.push(`function ${fnName}(params)`);
+                lines.push(`{`);
+                lines.push(`    local player = ('userid' in params) ? GetPlayerFromUserID(params.userid) : null;`);
+                lines.push(`    if (!player || !player.IsValid()) return;`);
+                lines.push(`    local pdata = GetOrCreatePluginPlayerData("${pid}", player);`);
+                ev.actions.forEach(act => lines.push(compileActionToSquirrel(act, "player", "    ")));
+                lines.push(`}\n`);
+            });
+
+            (manifest.timers || []).forEach(tm => {
+                const fnName = `${pid}_${tm.name}`;
+                lines.push(`function ${fnName}()`);
+                lines.push(`{`);
+                lines.push(`    ::_${pid}_State.tick_count++;`);
+                lines.push(`    local player = null;`);
+                lines.push(`    while ((player = Entities.FindByClassname(player, "player")) != null) {`);
+                lines.push(`        if (player.IsValid() && player.IsAlive()) {`);
+                tm.actions.forEach(act => lines.push(compileActionToSquirrel(act, "player", "            ")));
+                lines.push(`        }`);
+                lines.push(`    }`);
+                lines.push(`    return ${tm.interval};`);
+                lines.push(`}\n`);
+            });
+
+            (manifest.entity_triggers || []).forEach(tr => {
+                const safe = `${pid}_${tr.targetname}`.replace(/[^a-zA-Z0-9_]/g, '_');
+                lines.push(`function Trigger_${safe}_StartTouch()`);
+                lines.push(`{`);
+                lines.push(`    if (activator && activator.IsValid() && activator.IsPlayer()) {`);
+                tr.on_start_touch.forEach(act => lines.push(compileActionToSquirrel(act, "activator", "        ")));
+                lines.push(`    }`);
+                lines.push(`}\n`);
+
+                if (tr.on_end_touch && tr.on_end_touch.length > 0) {
+                    lines.push(`function Trigger_${safe}_EndTouch()`);
+                    lines.push(`{`);
+                    lines.push(`    if (activator && activator.IsValid() && activator.IsPlayer()) {`);
+                    tr.on_end_touch.forEach(act => lines.push(compileActionToSquirrel(act, "activator", "        ")));
+                    lines.push(`    }`);
+                    lines.push(`}\n`);
+                }
+            });
+
+            if (manifest.subscribes) {
+                Object.entries(manifest.subscribes).forEach(([evName, acts]) => {
+                    const subFn = `Plugin_${pid}_OnCustomEvent_${evName}`;
+                    lines.push(`function ${subFn}(player, payload)`);
+                    lines.push(`{`);
+                    acts.forEach(act => lines.push(compileActionToSquirrel(act, "player", "    ")));
+                    lines.push(`}`);
+                    lines.push(`RegisterEventSubscriber("${evName}", ${subFn});\n`);
+                });
+            }
+
+            if (eventCallbacks.length > 0) {
+                lines.push(`__CollectGameEventCallbacks({`);
+                lines.push(eventCallbacks.join(",\n"));
+                lines.push(`});`);
+            }
+
+            return lines.join("\n");
+        }
+
+        // ==========================================
+        // Modal, Copy & Download Handlers
+        // ==========================================
+        function openPreviewModal(tab = 'json') {
+            currentPreviewTab = tab;
+            const modal = document.getElementById('previewModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            switchPreviewTab(tab);
+        }
+
+        function closePreviewModal() {
+            const modal = document.getElementById('previewModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function switchPreviewTab(tab) {
+            currentPreviewTab = tab;
+            const jsonBtn = document.getElementById('tabJsonBtn');
+            const nutBtn = document.getElementById('tabNutBtn');
+            const codeBox = document.getElementById('codeOutputBox');
+            const fileLabel = document.getElementById('previewFilenameLabel');
+
+            const manifest = buildManifestObject();
+
+            if (tab === 'json') {
+                jsonBtn.className = "px-3.5 py-1.5 rounded-xl text-xs font-bold bg-amber-500 text-white shadow-md shadow-amber-500/20";
+                nutBtn.className = "px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white glass-card";
+                fileLabel.textContent = `${pluginId}.json`;
+                codeBox.className = "flex-1 w-full bg-slate-950 border border-slate-800/90 rounded-xl p-4 font-mono text-xs text-amber-300 overflow-auto select-all leading-relaxed";
+                codeBox.textContent = JSON.stringify(manifest, null, 4);
+            } else {
+                nutBtn.className = "px-3.5 py-1.5 rounded-xl text-xs font-bold bg-amber-500 text-white shadow-md shadow-amber-500/20";
+                jsonBtn.className = "px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white glass-card";
+                fileLabel.textContent = `${pluginId}.nut (Squirrel 3 Output)`;
+                codeBox.className = "flex-1 w-full bg-slate-950 border border-slate-800/90 rounded-xl p-4 font-mono text-xs text-sky-300 overflow-auto select-all leading-relaxed";
+                codeBox.textContent = generateSquirrelPreview(manifest);
+            }
+        }
+
+        function copyCurrentCode() {
+            const text = document.getElementById('codeOutputBox').textContent;
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+
+            const status = document.getElementById('copyStatusToast');
+            status.style.opacity = '1';
+            clearTimeout(window._copyTimer);
+            window._copyTimer = setTimeout(() => { status.style.opacity = '0'; }, 2000);
+        }
+
+        function downloadCurrentFile() {
+            const text = document.getElementById('codeOutputBox').textContent;
+            const ext = currentPreviewTab === 'json' ? 'json' : 'nut';
+            const filename = `${pluginId}.${ext}`;
+            const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast(`Downloaded ${filename}`);
+        }
+
+        // ==========================================
+        // Workspace Management & Presets
+        // ==========================================
+        function clearWorkspace() {
+            nodes = [];
+            connections = [];
+            selectedNodeId = null;
+            nextNodeId = 1;
+            selectNode(null);
+            renderNodes();
+            renderConnections();
+            updateTelemetryStats();
+        }
+
+        function loadPreset(presetName) {
+            clearWorkspace();
+            resetView();
+
+            if (presetName === 'combat') {
+                pluginId = "combat_enhancer";
+                document.getElementById('pluginIdInput').value = pluginId;
+
+                const ev = spawnNode('event', { event: 'player_spawn' }, { x: 80, y: 90 });
+                const hp = spawnNode('action_health', { value: 175 }, { x: 420, y: 40 });
+                const attr = spawnNode('action_attr', { attribute: 'move speed bonus', value: 1.15, duration: -1.0 }, { x: 420, y: 200 });
+                const pub = spawnNode('action_pub', { event: 'player_streak_started' }, { x: 420, y: 360 });
+
+                connections.push({ id: 'c1', from: ev.id, to: hp.id, portType: 'default' });
+                connections.push({ id: 'c2', from: ev.id, to: attr.id, portType: 'default' });
+                connections.push({ id: 'c3', from: ev.id, to: pub.id, portType: 'default' });
+            } else if (presetName === 'movement') {
+                pluginId = "movement_tweaks";
+                document.getElementById('pluginIdInput').value = pluginId;
+
+                const ev = spawnNode('event', { event: 'player_spawn' }, { x: 80, y: 80 });
+                const np = spawnNode('action_netprop', { prop: 'm_flGravity', value: 0.55 }, { x: 420, y: 60 });
+                const pr1 = spawnNode('action_print', { message: 'Low Gravity Mode Active!', print_type: 3 }, { x: 420, y: 220 });
+
+                const tm = spawnNode('timer', { name: 'StaminaRegenTick', interval: 3.0 }, { x: 80, y: 320 });
+                const pr2 = spawnNode('action_print', { message: 'Stamina Pulse Tick', print_type: 4 }, { x: 420, y: 370 });
+
+                connections.push({ id: 'c1', from: ev.id, to: np.id, portType: 'default' });
+                connections.push({ id: 'c2', from: ev.id, to: pr1.id, portType: 'default' });
+                connections.push({ id: 'c3', from: tm.id, to: pr2.id, portType: 'default' });
+            } else if (presetName === 'hazard') {
+                pluginId = "hazard_zones";
+                document.getElementById('pluginIdInput').value = pluginId;
+
+                const tr = spawnNode('trigger', { targetname: 'hazard_zone_trigger' }, { x: 80, y: 130 });
+                const hp = spawnNode('action_health', { value: 50 }, { x: 440, y: 60 });
+                const prStart = spawnNode('action_print', { message: 'WARNING: Entered Hazard Zone!', print_type: 4 }, { x: 440, y: 210 });
+                const prEnd = spawnNode('action_print', { message: 'Exited Hazard Zone safely.', print_type: 3 }, { x: 440, y: 360 });
+
+                connections.push({ id: 'c1', from: tr.id, to: hp.id, portType: 'start_touch' });
+                connections.push({ id: 'c2', from: tr.id, to: prStart.id, portType: 'start_touch' });
+                connections.push({ id: 'c3', from: tr.id, to: prEnd.id, portType: 'end_touch' });
+            }
+
+            selectNode(null);
+            renderNodes();
+            renderConnections();
+            updateTelemetryStats();
+            showToast(`Loaded "${presetName}" preset template`);
+        }
+
+        // Initialize default preset on load
+        window.addEventListener('DOMContentLoaded', () => {
+            loadPreset('combat');
+        });
+    </script>
+</body>
+</html>
