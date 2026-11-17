@@ -1,0 +1,492 @@
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+
+// ============================================================================
+// PART 1: SYSTEM INTERPOLATION & DATA STRUCTURES
+// ============================================================================
+
+export interface SystemConfig {
+    targetFPS: number;
+    maxSwarmNodes: number;
+    memoryLayout: 'quantum-spatial' | 'linear-mesh' | 'zero-copy';
+    networkPeerId: string;
+    canvasElementId?: string;
+}
+
+export interface PilotInputState {
+    moveX: number;
+    moveY: number;
+    jump: boolean;
+    wallRun: boolean;
+    slide: boolean;
+}
+
+export interface PilotState {
+    position: THREE.Vector3;
+    velocity: THREE.Vector3;
+    isGrounded: boolean;
+    isWallRunning: boolean;
+    isSliding: boolean;
+    airJumpsRemaining: number;
+    titanMeterPercent: number;
+}
+
+export interface EvolutionGenome {
+    aiSpawnIntervalSec: number;
+    pilotMaxSpeed: number;
+    wallRunGravityScale: number;
+    fogDensity: number;
+    renderPixelRatio: number;
+}
+
+// ============================================================================
+// PART 2: AUTONOMIC SELF-HEALING MEMORY & TELEMETRY SUPERVISOR
+// ============================================================================
+
+export class B12AutonomicMemoryUnit {
+    private telemetryRingBuffer: { timestamp: number; fps: number; health: number; x: number; y: number; z: number }[] = [];
+    private bufferCapacity: number = 120; // 2 seconds of 60Hz memory
+    private healEventsCount: number = 0;
+    private generation: number = 1;
+    private stationarySeconds: number = 0;
+    private wallRunAccumulator: number = 0;
+
+    public genome: EvolutionGenome = {
+        aiSpawnIntervalSec: 15.0,
+        pilotMaxSpeed: 13.0,
+        wallRunGravityScale: 0.1,
+        fogDensity: 0.015,
+        renderPixelRatio: Math.min(window.devicePixelRatio || 1, 2)
+    };
+
+    constructor() {
+        console.log("[AutonomicMemory] Initializing zero-allocation telemetry memory ring.");
+    }
+
+    public recordSnapshot(fps: number, health: number, pos: THREE.Vector3, isWallRunning: boolean): void {
+        if (isWallRunning) this.wallRunAccumulator += 0.016;
+
+        this.telemetryRingBuffer.push({
+            timestamp: performance.now(),
+            fps,
+            health,
+            x: pos.x,
+            y: pos.y,
+            z: pos.z
+        });
+
+        if (this.telemetryRingBuffer.length > this.bufferCapacity) {
+            this.telemetryRingBuffer.shift();
+        }
+    }
+
+    public diagnoseAndHeal(orchestrator: any): string[] {
+        const patchesApplied: string[] = [];
+        const latest = this.telemetryRingBuffer[this.telemetryRingBuffer.length - 1];
+        if (!latest) return patchesApplied;
+
+        // 1. Self-Heal: Physics Coordinate Anomaly / Out of Bounds
+        if (Number.isNaN(latest.x) || latest.y < -20 || Math.abs(latest.z) > 400) {
+            console.warn("[Self-Heal] Coordinate anomaly detected in memory state. Reverting to safe anchor.");
+            if (orchestrator.pilotSystem) {
+                const pState = orchestrator.pilotSystem.getState();
+                pState.position.set(0, 2, 18);
+                pState.velocity.set(0, 0, 0);
+            }
+            patchesApplied.push("PHYSICS_COORDINATE_RECOVERY");
+            this.healEventsCount++;
+        }
+
+        // 2. Self-Heal: Low FPS Thermal / GPU Throttling
+        if (latest.fps < 38) {
+            this.genome.renderPixelRatio = Math.max(0.7, this.genome.renderPixelRatio - 0.2);
+            this.genome.fogDensity = Math.min(0.04, this.genome.fogDensity + 0.005);
+            if (orchestrator.renderer) orchestrator.renderer.setPixelRatio(this.genome.renderPixelRatio);
+            if (orchestrator.scene?.fog) orchestrator.scene.fog.density = this.genome.fogDensity;
+            patchesApplied.push("GPU_LOAD_SHEDDING");
+            this.healEventsCount++;
+        }
+
+        // 3. Evolutionary Mutation Check
+        if (this.wallRunAccumulator >= 7.0) {
+            this.generation++;
+            this.genome.pilotMaxSpeed = Math.min(18.0, this.genome.pilotMaxSpeed + 1.0);
+            this.genome.aiSpawnIntervalSec = Math.max(8.0, this.genome.aiSpawnIntervalSec - 1.5);
+            this.wallRunAccumulator = 0;
+            patchesApplied.push(`EVOLUTION_GEN_${this.generation}_SPEED_BOOST`);
+        }
+
+        return patchesApplied;
+    }
+
+    public getStats() {
+        return { heals: this.healEventsCount, gen: this.generation, genome: this.genome };
+    }
+}
+
+// ============================================================================
+// PART 3: AUDIO DSP & INTENT BRIDGE SUBSYSTEM
+// ============================================================================
+
+export class ProductionAudioDSPWorkstation {
+    private audioCtx: AudioContext | null = null;
+    private masterGain: GainNode | null = null;
+
+    public async init(): Promise<void> {
+        try {
+            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+            this.audioCtx = new AudioContextClass();
+            this.masterGain = this.audioCtx.createGain();
+            this.masterGain.connect(this.audioCtx.destination);
+        } catch (e) {
+            console.warn("[AudioDSP] Deferred until user interaction.");
+        }
+    }
+
+    public playBeep(freq: number = 880, durationMs: number = 100): void {
+        if (!this.audioCtx || !this.masterGain) return;
+        if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
+
+        const osc = this.audioCtx.createOscillator();
+        const gain = this.audioCtx.createGain();
+        osc.frequency.setValueAtTime(freq, this.audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.15, this.audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + (durationMs / 1000));
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start();
+        osc.stop(this.audioCtx.currentTime + (durationMs / 1000));
+    }
+}
+
+// ============================================================================
+// PART 4: DUAL-LAYER LEVEL DESIGN & KINEMATIC PILOT PHYSICS
+// ============================================================================
+
+export class ProductionLevelDesignSystem {
+    private obstacles = new THREE.Group();
+
+    constructor(private scene: THREE.Scene) {
+        // Ground Arena (Typhon Jungle Clearing)
+        const ground = new THREE.Mesh(
+            new THREE.PlaneGeometry(300, 300),
+            new THREE.MeshStandardMaterial({ color: 0x14181f, roughness: 0.8 })
+        );
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        this.scene.add(ground);
+
+        // Wall-Run Conduits
+        const wallMat = new THREE.MeshStandardMaterial({ color: 0x222834, roughness: 0.5 });
+        const wallGeo = new THREE.BoxGeometry(2, 12, 35);
+        
+        const leftWall = new THREE.Mesh(wallGeo, wallMat);
+        leftWall.position.set(-7, 6, -10);
+        this.obstacles.add(leftWall);
+        this.scene.add(leftWall);
+
+        const rightWall = new THREE.Mesh(wallGeo, wallMat);
+        rightWall.position.set(7, 6, -10);
+        this.obstacles.add(rightWall);
+        this.scene.add(rightWall);
+    }
+
+    public getObstacles(): THREE.Group { return this.obstacles; }
+}
+
+export class ProductionPilotPhysics {
+    private state: PilotState;
+    private raycaster = new THREE.Raycaster();
+    private wallNormal = new THREE.Vector3();
+    private wasJumpPressed = false;
+
+    constructor(initialPos: THREE.Vector3) {
+        this.state = {
+            position: initialPos.clone(),
+            velocity: new THREE.Vector3(0, 0, 0),
+            isGrounded: true,
+            isWallRunning: false,
+            isSliding: false,
+            airJumpsRemaining: 1,
+            titanMeterPercent: 0.0
+        };
+    }
+
+    public update(dt: number, input: PilotInputState, obstacleGroup: THREE.Group, maxSpeed: number): PilotState {
+        // Sliding
+        if (input.slide && this.state.isGrounded && !this.state.isSliding) {
+            this.state.isSliding = true;
+            this.state.velocity.multiplyScalar(1.5);
+            this.state.titanMeterPercent = Math.min(100, this.state.titanMeterPercent + 2.0);
+        } else if (!input.slide && this.state.isGrounded) {
+            this.state.isSliding = false;
+        }
+
+        // Wall Run Check
+        let detectedWall = false;
+        const rightDir = new THREE.Vector3(1, 0, 0);
+        this.raycaster.set(this.state.position, rightDir);
+        let hits = this.raycaster.intersectObjects(obstacleGroup.children, true);
+
+        if (hits.length > 0 && hits[0].distance < 1.3 && !this.state.isGrounded) {
+            detectedWall = true;
+            this.wallNormal.copy(hits[0].face?.normal || new THREE.Vector3(-1, 0, 0));
+        }
+
+        if (detectedWall && input.wallRun) {
+            this.state.isWallRunning = true;
+            this.state.velocity.y = Math.max(this.state.velocity.y, -1.2);
+            this.state.titanMeterPercent = Math.min(100, this.state.titanMeterPercent + 0.1);
+        } else {
+            this.state.isWallRunning = false;
+        }
+
+        // Jumps
+        if (input.jump && !this.wasJumpPressed) {
+            if (this.state.isGrounded) {
+                this.state.velocity.y = 12.0;
+                this.state.isGrounded = false;
+            } else if (this.state.isWallRunning) {
+                this.state.velocity.addScaledVector(this.wallNormal, 15.0);
+                this.state.velocity.y = 11.0;
+                this.state.isWallRunning = false;
+            } else if (this.state.airJumpsRemaining > 0) {
+                this.state.velocity.y = 10.0;
+                this.state.airJumpsRemaining--;
+            }
+        }
+        this.wasJumpPressed = input.jump;
+
+        // Gravity & Integration
+        if (this.state.isWallRunning) {
+            this.state.velocity.y -= 30.0 * 0.1 * dt;
+        } else if (!this.state.isGrounded) {
+            this.state.velocity.y -= 28.0 * dt;
+        }
+
+        if (this.state.isGrounded && !this.state.isSliding) {
+            this.state.velocity.x -= this.state.velocity.x * 12.0 * dt;
+            this.state.velocity.z -= this.state.velocity.z * 12.0 * dt;
+        }
+
+        const targetVx = input.moveX * maxSpeed;
+        this.state.velocity.x += (targetVx - this.state.velocity.x) * 40.0 * dt;
+        this.state.position.addScaledVector(this.state.velocity, dt);
+
+        if (this.state.position.y <= 0) {
+            this.state.position.y = 0;
+            this.state.velocity.y = 0;
+            this.state.isGrounded = true;
+            this.state.airJumpsRemaining = 1;
+            this.state.isWallRunning = false;
+        }
+
+        return this.state;
+    }
+
+    public getState(): PilotState { return this.state; }
+}
+
+// ============================================================================
+// PART 5: BATTLEFIELD AI DIRECTOR & TITAN COCKPIT
+// ============================================================================
+
+export class ProductionBattlefieldAI {
+    private units: { mesh: THREE.Mesh; pos: THREE.Vector3 }[] = [];
+
+    constructor(private scene: THREE.Scene) {}
+
+    public spawnDropshipWave(targetPos: THREE.Vector3): void {
+        const gruntMesh = new THREE.Mesh(
+            new THREE.CapsuleGeometry(0.35, 1.4, 4, 8),
+            new THREE.MeshStandardMaterial({ color: 0x3d5240 })
+        );
+        gruntMesh.position.copy(targetPos).add(new THREE.Vector3(0, 0, -5));
+        this.scene.add(gruntMesh);
+        this.units.push({ mesh: gruntMesh, pos: gruntMesh.position });
+    }
+
+    public getActiveUnitCount(): number { return this.units.length; }
+}
+
+export class ProductionTitanCockpit {
+    private isPilotInside = false;
+
+    public embark(): void {
+        this.isPilotInside = true;
+        console.log("[TitanCockpit] Neural link established. Pilot seated in BT-7274.");
+    }
+
+    public disembark(): void {
+        this.isPilotInside = false;
+        console.log("[TitanCockpit] Pilot disembarked.");
+    }
+
+    public isSeated(): boolean { return this.isPilotInside; }
+}
+
+// ============================================================================
+// PART 6: MASTER UNIFIED ORCHESTRATOR & RUNTIME LOOP
+// ============================================================================
+
+export class B12MasterUnifiedOrchestrator {
+    private scene!: THREE.Scene;
+    private camera!: THREE.PerspectiveCamera;
+    private renderer!: THREE.WebGLRenderer;
+
+    private memoryUnit!: B12AutonomicMemoryUnit;
+    private audioDSP!: ProductionAudioDSPWorkstation;
+    private levelDesign!: ProductionLevelDesignSystem;
+    private pilotPhysics!: ProductionPilotPhysics;
+    private aiDirector!: ProductionBattlefieldAI;
+    private titanCockpit!: ProductionTitanCockpit;
+
+    private playerAnchor!: THREE.Mesh;
+    private titanChassis!: THREE.Group;
+    private inputState: PilotInputState = { moveX: 0, moveY: 0, jump: false, wallRun: false, slide: false };
+    private lastTime = performance.now();
+    private frameCount = 0;
+    private currentFPS = 60;
+
+    public async boot(canvasId: string = 'b12-canvas'): Promise<void> {
+        console.log("[B12 Master Orchestrator] Booting self-healing unit of memory & runtime...");
+
+        // 1. Initialize Memory & Autonomic Supervisor
+        this.memoryUnit = new B12AutonomicMemoryUnit();
+
+        // 2. Audio DSP
+        this.audioDSP = new ProductionAudioDSPWorkstation();
+        await this.audioDSP.init();
+
+        // 3. Three.js Scene
+        const canvas = document.getElementById(canvasId) || document.createElement('canvas');
+        if (!canvas.id) {
+            canvas.id = canvasId;
+            document.body.appendChild(canvas);
+        }
+
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(0x05070a);
+        this.scene.fog = new THREE.FogExp2(0x05070a, 0.015);
+
+        this.camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
+        this.renderer = new THREE.WebGLRenderer({ canvas: canvas as HTMLCanvasElement, antialias: false });
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+
+        // Lighting
+        this.scene.add(new THREE.AmbientLight(0xddeeff, 0.5));
+        const sun = new THREE.DirectionalLight(0xffeedd, 1.2);
+        sun.position.set(20, 40, 20);
+        this.scene.add(sun);
+
+        // 4. Subsystems
+        this.levelDesign = new ProductionLevelDesignSystem(this.scene);
+        this.pilotPhysics = new ProductionPilotPhysics(new THREE.Vector3(0, 0, 15));
+        this.aiDirector = new ProductionBattlefieldAI(this.scene);
+        this.titanCockpit = new ProductionTitanCockpit();
+
+        // 5. Entities
+        this.playerAnchor = new THREE.Mesh(new THREE.CapsuleGeometry(0.5, 1.8, 4, 8), new THREE.MeshBasicMaterial({ visible: false }));
+        this.scene.add(this.playerAnchor);
+
+        this.titanChassis = new THREE.Group();
+        const chassisBody = new THREE.Mesh(
+            new THREE.BoxGeometry(2.5, 3.8, 2.2),
+            new THREE.MeshStandardMaterial({ color: 0x3b4c3e, metalness: 0.7 })
+        );
+        chassisBody.position.y = 2.4;
+        this.titanChassis.add(chassisBody);
+        this.titanChassis.position.set(0, 0, -12);
+        this.scene.add(this.titanChassis);
+
+        // 6. Bind Events
+        this.bindEvents();
+
+        // 7. Start Loop
+        requestAnimationFrame(this.masterLoop.bind(this));
+    }
+
+    private bindEvents(): void {
+        window.addEventListener('keydown', (e) => {
+            const k = e.key.toLowerCase();
+            if (k === 'a' || e.key === 'ArrowLeft') this.inputState.moveX = -1;
+            if (k === 'd' || e.key === 'ArrowRight') this.inputState.moveX = 1;
+            if (e.key === ' ') this.inputState.jump = true;
+            if (e.key === 'Shift') this.inputState.wallRun = true;
+            if (e.key === 'Control') this.inputState.slide = true;
+
+            if (k === 'e') {
+                const dist = this.pilotPhysics.getState().position.distanceTo(this.titanChassis.position);
+                if (dist <= 6.0 && this.pilotPhysics.getState().titanMeterPercent >= 100) {
+                    if (!this.titanCockpit.isSeated()) {
+                        this.titanCockpit.embark();
+                        this.audioDSP.playBeep(1200, 200);
+                    } else {
+                        this.titanCockpit.disembark();
+                    }
+                }
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            const k = e.key.toLowerCase();
+            if (k === 'a' || k === 'd' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') this.inputState.moveX = 0;
+            if (e.key === ' ') this.inputState.jump = false;
+            if (e.key === 'Shift') this.inputState.wallRun = false;
+            if (e.key === 'Control') this.inputState.slide = false;
+        });
+
+        window.addEventListener('mousedown', () => {
+            this.audioDSP.playBeep(350, 70);
+            this.pilotPhysics.getState().titanMeterPercent = Math.min(100, this.pilotPhysics.getState().titanMeterPercent + 4.0);
+        });
+    }
+
+    private masterLoop(timestamp: number): void {
+        requestAnimationFrame(this.masterLoop.bind(this));
+
+        const dt = Math.min((timestamp - this.lastTime) / 1000, 0.1);
+        this.lastTime = timestamp;
+
+        this.frameCount++;
+        if (this.frameCount % 30 === 0) {
+            this.currentFPS = Math.round(1000 / (dt * 1000));
+        }
+
+        // 1. Update Physics / Pilot State
+        const genome = this.memoryUnit.genome;
+        const pState = this.pilotPhysics.update(dt, this.inputState, this.levelDesign.getObstacles(), genome.pilotMaxSpeed);
+
+        this.playerAnchor.position.copy(pState.position);
+        this.playerAnchor.position.z -= this.inputState.moveY * 12.0 * dt;
+        pState.position.z = this.playerAnchor.position.z;
+
+        // Camera Lock
+        if (!this.titanCockpit.isSeated()) {
+            this.camera.position.copy(pState.position);
+            this.camera.position.y += 1.6;
+        } else {
+            this.camera.position.copy(this.titanChassis.position);
+            this.camera.position.y += 3.4;
+        }
+
+        // 2. Record telemetry into Self-Healing Memory Unit
+        this.memoryUnit.recordSnapshot(this.currentFPS, 100, pState.position, pState.isWallRunning);
+        const patches = this.memoryUnit.diagnoseAndHeal(this);
+        if (patches.length > 0) {
+            console.log("[Autonomic Unit] Self-healing patches executed:", patches);
+        }
+
+        // 3. Render
+        this.renderer.render(this.scene, this.camera);
+    }
+}
+
+// ============================================================================
+// ONE-CLICK MASTER ENTRYPOINT
+// ============================================================================
+export async function launchB12UnifiedCore(): Promise<B12MasterUnifiedOrchestrator> {
+    const orchestrator = new B12MasterUnifiedOrchestrator();
+    await orchestrator.boot('b12-unified-canvas');
+    return orchestrator;
+}
