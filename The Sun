@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Digital Sun - Sovereign Mobile Fractal Core</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Inter:wght@300;400;500;600&display=swap');
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000000;
+            font-family: 'Inter', sans-serif;
+            color: #e0f2fe;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        .font-cinzel {
+            font-family: 'Cinzel', serif;
+        }
+
+        /* Glassmorphic UI Panel */
+        .glass-panel {
+            background: rgba(4, 10, 22, 0.82);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border: 1px solid rgba(186, 230, 253, 0.15);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+        }
+
+        .glass-button {
+            background: rgba(186, 230, 253, 0.08);
+            border: 1px solid rgba(186, 230, 253, 0.22);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .glass-button:active {
+            background: rgba(186, 230, 253, 0.3);
+            transform: scale(0.96);
+        }
+
+        /* Custom Range Slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: rgba(255, 255, 255, 0.12);
+            height: 6px;
+            border-radius: 3px;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 22px;
+            width: 22px;
+            border-radius: 50%;
+            background: #bae6fd;
+            box-shadow: 0 0 12px #38bdf8;
+            cursor: pointer;
+        }
+
+        /* Optical Vignette Overlay */
+        .vignette {
+            pointer-events: none;
+            position: absolute;
+            inset: 0;
+            background: 
+                radial-gradient(circle at 50% 50%, transparent 30%, rgba(0, 0, 0, 0.95) 100%),
+                radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.06) 0%, transparent 70%);
+        }
+
+        .ui-fade {
+            transition: opacity 0.4s ease, transform 0.4s ease;
+        }
+
+        .ui-hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(15px);
+        }
+
+        /* Pulse animation for sovereign state */
+        @keyframes sunPulse {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 1; filter: drop-shadow(0 0 10px rgba(56,189,248,0.6)); }
+        }
+        .sun-alive {
+            animation: sunPulse 4s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="relative flex items-center justify-center w-full h-full bg-black">
+
+    <!-- WebGL Canvas Container -->
+    <div id="canvas-container" class="relative w-full h-full flex items-center justify-center overflow-hidden">
+        <canvas id="glCanvas" class="w-full h-full block cursor-crosshair touch-none"></canvas>
+        <div class="vignette"></div>
+    </div>
+
+    <!-- Hidden Audio Element -->
+    <audio id="ambientAudio" src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf756.mp3?filename=deep-space-ambient-11082.mp3" crossorigin="anonymous" loop></audio>
+
+    <!-- Header UI -->
+    <div id="header-ui" class="ui-fade absolute top-4 left-4 right-4 max-w-md mx-auto flex items-center justify-between pointer-events-auto z-20">
+        <div class="flex items-center space-x-3 p-2.5 rounded-2xl glass-panel">
+            <div class="p-2 rounded-xl bg-cyan-950/60 text-cyan-300 sun-alive">
+                <i data-lucide="sun" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <h1 class="font-cinzel text-sm font-semibold tracking-wider text-slate-100">DIGITAL SUN CORE</h1>
+                <div class="flex items-center space-x-2 text-[10px] text-cyan-400 tracking-widest uppercase">
+                    <span id="thermal-badge" class="px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-500/30">Stable</span>
+                    <span>•</span>
+                    <span id="fps-display">60 FPS</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-2">
+            <button id="toggle-settings-btn" title="Toggle Controls" class="glass-button p-3 rounded-2xl text-slate-200">
+                <i data-lucide="sliders" class="w-5 h-5"></i>
+            </button>
+            <button id="audio-toggle-btn" title="Toggle Audio" class="glass-button p-3 rounded-2xl text-cyan-300">
+                <i data-lucide="volume-2" class="w-5 h-5"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Interactive Control Panel -->
+    <div id="controls-panel" class="ui-fade ui-hidden absolute bottom-6 left-4 right-4 max-w-md mx-auto p-5 rounded-3xl glass-panel text-xs z-30 space-y-4">
+        <div class="flex items-center justify-between pb-2 border-b border-cyan-500/20">
+            <span class="font-cinzel text-cyan-200 font-semibold tracking-wide text-sm">Sovereign Node Parameters</span>
+            <button id="close-settings-btn" class="p-1 rounded-lg text-slate-400 hover:text-white">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+
+        <!-- Fractal Iterations / Depth -->
+        <div class="space-y-1.5">
+            <div class="flex justify-between text-slate-300">
+                <span>Fractal Depth (Max Iterations)</span>
+                <span id="depth-val" class="text-cyan-400 font-mono font-semibold">6.0</span>
+            </div>
+            <input type="range" id="depth-range" min="2.0" max="10.0" step="0.5" value="6.0" class="w-full">
+        </div>
+
+        <!-- Spiral Arm Frequency -->
+        <div class="space-y-1.5">
+            <div class="flex justify-between text-slate-300">
+                <span>Spiral Arm Frequency</span>
+                <span id="arms-val" class="text-cyan-400 font-mono font-semibold">3.0</span>
+            </div>
+            <input type="range" id="arms-range" min="1.0" max="8.0" step="0.5" value="3.0" class="w-full">
+        </div>
+
+        <!-- Orbital Velocity -->
+        <div class="space-y-1.5">
+            <div class="flex justify-between text-slate-300">
+                <span>Orbital Velocity</span>
+                <span id="speed-val" class="text-cyan-400 font-mono font-semibold">1.0x</span>
+            </div>
+            <input type="range" id="speed-range" min="0.1" max="2.5" step="0.1" value="1.0" class="w-full">
+        </div>
+
+        <!-- Telemetry & Shunt Stats -->
+        <div class="grid grid-cols-2 gap-2 pt-2 border-t border-cyan-500/10 text-[11px] text-slate-400">
+            <div class="p-2 rounded-xl bg-black/40 border border-white/5">
+                <span>Res Scale: </span><span id="res-scale-val" class="text-cyan-300 font-mono">1.00x</span>
+            </div>
+            <div class="p-2 rounded-xl bg-black/40 border border-white/5">
+                <span>Allocations: </span><span class="text-emerald-400 font-mono">0 bytes/f</span>
+            </div>
+        </div>
+
+        <button id="gyro-request-btn" class="w-full py-2.5 rounded-xl glass-button text-cyan-200 font-medium flex items-center justify-center space-x-2">
+            <i data-lucide="compass" class="w-4 h-4"></i>
+            <span id="gyro-status-text">Enable Gyroscope Parallax</span>
+        </button>
+    </div>
+
+    <!-- Hint Banner -->
+    <div id="hint-banner" class="ui-fade absolute bottom-6 left-0 right-0 text-center pointer-events-none z-10 px-4">
+        <p class="text-[11px] font-light text-cyan-200/60 tracking-widest uppercase">Tap screen for supernova shockwaves • Tilt phone to rotate core</p>
+    </div>
+
+    <!-- Vertex Shader -->
+    <script id="vertexShader" type="x-shader/x-vertex">
+        attribute vec2 a_position;
+        varying vec2 v_uv;
+        void main() {
+            v_uv = (a_position + 1.0) * 0.5;
+            gl_Position = vec4(a_position, 0.0, 1.0);
+        }
+    </script>
+
+    <!-- Fragment Shader -->
+    <script id="fragmentShader" type="x-shader/x-fragment">
+        precision highp float;
+        varying vec2 v_uv;
+
+        uniform vec2 u_resolution;
+        uniform float u_time;
+        uniform float u_bass;
+        uniform float u_speed;
+        uniform float u_arms;
+        uniform float u_depth;
+        uniform vec2 u_mouse;
+        uniform vec2 u_shockwave;
+        uniform float u_shockwaveTime;
+
+        #define PI 3.14159265359
+
+        vec2 complexMul(vec2 a, vec2 b) {
+            return vec2(a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x);
+        }
+
+        float getFractalDensity(vec2 p, float rot, float arms, float maxDepth) {
+            float accum = 0.0;
+            float scale = 1.0;
+            vec2 z = p;
+
+            float c = cos(rot);
+            float s = sin(rot);
+            mat2 rotMat = mat2(c, -s, s, c);
+            z = rotMat * z;
+
+            for (int i = 0; i < 10; i++) {
+                if (float(i) >= maxDepth) break;
+                
+                float angle = atan(z.y, z.x);
+                float radius = length(z);
+                angle = mod(angle + PI / arms, 2.0 * PI / arms) - PI / arms;
+                z = vec2(cos(angle), sin(angle)) * radius;
+
+                z = abs(z) - vec2(0.32, 0.14) * (1.0 + u_bass * 0.25);
+                z = complexMul(z, z) - vec2(0.38, 0.12);
+
+                accum += sin(z.x * 4.0 + u_time * 0.4) * cos(z.y * 4.0 - u_time * 0.25) / scale;
+                scale *= 1.4;
+            }
+            return abs(accum);
+        }
+
+        void main() {
+            vec2 st = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y);
+            
+            vec2 mouseOffset = (u_mouse / u_resolution.xy - 0.5) * 0.25;
+            st += mouseOffset;
+
+            float time = u_time * 0.12 * u_speed;
+            float r = length(st);
+            float theta = atan(st.y, st.x);
+            
+            float coreDist = length(st);
+            float coreGlow = 0.07 / (coreDist + 0.04 + u_bass * 0.15);
+            
+            float shockDist = length(gl_FragCoord.xy - u_shockwave);
+            float shockWave = smoothstep(0.0, 35.0, abs(shockDist - u_shockwaveTime * 320.0)) * max(0.0, 1.0 - u_shockwaveTime * 1.4);
+
+            float depthParam = clamp(u_depth, 2.0, 10.0);
+            float fractalPattern = getFractalDensity(st, time * 0.4, u_arms, depthParam);
+            
+            float dust = smoothstep(0.65, 1.0, fract(sin(dot(st * r, vec2(12.9898, 78.233))) * 43758.5453));
+
+            vec3 colTeal = vec3(0.01, 0.1, 0.22);
+            vec3 colOrange = vec3(0.92, 0.52, 0.12);
+            vec3 colCore = vec3(1.0, 0.88, 0.55);
+
+            vec3 color = mix(colTeal, colOrange, clamp(fractalPattern * 1.4 + r * 0.45, 0.0, 1.0));
+            color += colCore * coreGlow * (1.0 + u_bass * 1.5);
+            color += vec3(0.6, 0.85, 1.0) * dust * (0.25 + u_bass * 0.6);
+            color += vec3(0.25, 0.65, 1.0) * shockWave * 2.2;
+
+            float vignette = 1.0 - r * 0.7;
+            color *= clamp(vignette, 0.0, 1.0);
+
+            gl_FragColor = vec4(color, 1.0);
+        }
+    </script>
+
+    <!-- Sovereign Engine Script -->
+    <script>
+        lucide.createIcons();
+
+        // ---------------------------------------------------------
+        // 2. ZERO-ALLOCATION MEMORY POOL & STATE STRUCTURES
+        // ---------------------------------------------------------
+        const MemoryPool = {
+            mouse: { x: window.innerWidth * 0.5, y: window.innerHeight * 0.5 },
+            targetMouse: { x: window.innerWidth * 0.5, y: window.innerHeight * 0.5 },
+            shockwave: { x: -2000, y: -2000, time: 10.0 },
+            config: {
+                depth: 6.0,
+                arms: 3.0,
+                speed: 1.0,
+                resScale: 1.0,
+                baseResScale: window.devicePixelRatio || 1.0
+            },
+            telemetry: {
+                fps: 60,
+                frameTimes: new Float32Array(30),
+                frameIndex: 0,
+                thermalState: 'STABLE', // STABLE, WARMING, THROTTLED
+                shuntCounter: 0
+            }
+        };
+
+        // ---------------------------------------------------------
+        // AUDIO ENGINE
+        // ---------------------------------------------------------
+        class SovereignAudio {
+            constructor() {
+                this.ctx = null;
+                this.analyser = null;
+                this.dataArray = null;
+                this.bass = 0.0;
+                this.isPlaying = false;
+            }
+
+            init() {
+                const audioEl = document.getElementById('ambientAudio');
+                if (!this.ctx) {
+                    try {
+                        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                        const src = this.ctx.createMediaElementSource(audioEl);
+                        this.analyser = this.ctx.createAnalyser();
+                        this.analyser.fftSize = 128;
+                        src.connect(this.analyser);
+                        this.analyser.connect(this.ctx.destination);
+                        this.dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+                    } catch(e) {
+                        console.warn('Audio context restriction:', e);
+                    }
+                }
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+                if (audioEl.paused) {
+                    audioEl.play().catch(()=>{});
+                    this.isPlaying = true;
+                    document.getElementById('audio-toggle-btn').innerHTML = '<i data-lucide="volume-2" class="w-5 h-5 text-cyan-300"></i>';
+                } else {
+                    audioEl.pause();
+                    this.isPlaying = false;
+                    document.getElementById('audio-toggle-btn').innerHTML = '<i data-lucide="volume-x" class="w-5 h-5 text-slate-400"></i>';
+                }
+                lucide.createIcons();
+            }
+
+            update() {
+                if (!this.analyser || !this.dataArray || !this.isPlaying) {
+                    this.bass *= 0.92; // smooth decay
+                    return;
+                }
+                this.analyser.getByteFrequencyData(this.dataArray);
+                let sum = 0;
+                const bins = Math.floor(this.dataArray.length * 0.3);
+                for (let i = 0; i < bins; i++) {
+                    sum += this.dataArray[i];
+                }
+                this.bass = (sum / bins) / 255.0;
+            }
+        }
+        const audioEngine = new SovereignAudio();
+
+        // ---------------------------------------------------------
+        // WEBGL PIPELINE INITIALIZATION
+        // ---------------------------------------------------------
+        const canvas = document.getElementById('glCanvas');
+        const gl = canvas.getContext('webgl', { alpha: false, antialias: false, depth: false, stencil: false }) || 
+                   canvas.getContext('experimental-webgl');
+
+        if (!gl) {
+            alert('WebGL2/WebGL1 not supported on this mobile device.');
+        }
+
+        function createShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error('Shader compilation error:', gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        const vertShader = createShader(gl, gl.VERTEX_SHADER, document.getElementById('vertexShader').text);
+        const fragShader = createShader(gl, gl.FRAGMENT_SHADER, document.getElementById('fragmentShader').text);
+        
+        const program = gl.createProgram();
+        gl.attachShader(program, vertShader);
+        gl.attachShader(program, fragShader);
+        gl.linkProgram(program);
+        gl.useProgram(program);
+
+        const positionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+            -1, -1,  1, -1, -1,  1,
+            -1,  1,  1, -1,  1,  1,
+        ]), gl.STATIC_DRAW);
+
+        const aPosLoc = gl.getAttribLocation(program, 'a_position');
+        gl.enableVertexAttribArray(aPosLoc);
+        gl.vertexAttribPointer(aPosLoc, 2, gl.FLOAT, false, 0, 0);
+
+        // Uniform Locations Cache
+        const uLocs = {
+            resolution: gl.getUniformLocation(program, 'u_resolution'),
+            time: gl.getUniformLocation(program, 'u_time'),
+            bass: gl.getUniformLocation(program, 'u_bass'),
+            speed: gl.getUniformLocation(program, 'u_speed'),
+            arms: gl.getUniformLocation(program, 'u_arms'),
+            depth: gl.getUniformLocation(program, 'u_depth'),
+            mouse: gl.getUniformLocation(program, 'u_mouse'),
+            shockwave: gl.getUniformLocation(program, 'u_shockwave'),
+            shockwaveTime: gl.getUniformLocation(program, 'u_shockwaveTime')
+        };
+
+        function resizeCanvas() {
+            const dpr = Math.min(window.devicePixelRatio || 1, 2) * MemoryPool.config.resScale;
+            const displayW = Math.floor(window.innerWidth * dpr);
+            const displayH = Math.floor(window.innerHeight * dpr);
+            
+            if (canvas.width !== displayW || canvas.height !== displayH) {
+                canvas.width = displayW;
+                canvas.height = displayH;
+                gl.viewport(0, 0, canvas.width, canvas.height);
+            }
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // ---------------------------------------------------------
+        // 1. THE THERMAL-THROTTLING SHUNT
+        // ---------------------------------------------------------
+        function processThermalShunt(frameDelta) {
+            const t = MemoryPool.telemetry;
+            t.frameTimes[t.frameIndex] = frameDelta;
+            t.frameIndex = (t.frameIndex + 1) % t.frameTimes.length;
+
+            // Compute rolling average frame duration
+            let avgDelta = 0;
+            for (let i = 0; i < t.frameTimes.length; i++) {
+                avgDelta += t.frameTimes[i];
+            }
+            avgDelta /= t.frameTimes.length;
+
+            const currentFPS = 1000 / avgDelta;
+            t.fps = Math.round(currentFPS);
+            document.getElementById('fps-display').innerText = `${t.fps} FPS`;
+
+            // If frame duration exceeds 18ms (~55 FPS threshold) for sustained duration
+            if (avgDelta > 18.0) {
+                t.shuntCounter++;
+                if (t.shuntCounter > 15) { // sustained load check
+                    if (MemoryPool.config.resScale > 0.5) {
+                        MemoryPool.config.resScale = Math.max(0.5, MemoryPool.config.resScale - 0.05);
+                        resizeCanvas();
+                    }
+                    if (MemoryPool.config.depth > 3.0) {
+                        MemoryPool.config.depth = Math.max(3.0, MemoryPool.config.depth - 0.2);
+                        document.getElementById('depth-range').value = MemoryPool.config.depth;
+                        document.getElementById('depth-val').innerText = MemoryPool.config.depth.toFixed(1);
+                    }
+                    t.thermalState = 'THROTTLED';
+                    updateThermalBadge();
+                    t.shuntCounter = 0;
+                }
+            } else if (avgDelta < 14.0 && t.thermalState === 'THROTTLED') {
+                // Recovery phase when cooling down
+                t.shuntCounter++;
+                if (t.shuntCounter > 60) {
+                    MemoryPool.config.resScale = Math.min(1.0, MemoryPool.config.resScale + 0.05);
+                    resizeCanvas();
+                    if (MemoryPool.config.resScale >= 1.0) {
+                        t.thermalState = 'STABLE';
+                        updateThermalBadge();
+                    }
+                    t.shuntCounter = 0;
+                }
+            }
+
+            document.getElementById('res-scale-val').innerText = `${MemoryPool.config.resScale.toFixed(2)}x`;
+        }
+
+        function updateThermalBadge() {
+            const badge = document.getElementById('thermal-badge');
+            const state = MemoryPool.telemetry.thermalState;
+            if (state === 'STABLE') {
+                badge.className = 'px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-500/30';
+                badge.innerText = 'Stable Core';
+            } else {
+                badge.className = 'px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-500/30 animate-pulse';
+                badge.innerText = 'Thermal Shunt Active';
+            }
+        }
+
+        // ---------------------------------------------------------
+        // 3. MOBILE TOUCH & GYRO PARALLAX
+        // ---------------------------------------------------------
+        window.addEventListener('pointermove', (e) => {
+            MemoryPool.targetMouse.x = e.clientX * (canvas.width / window.innerWidth);
+            MemoryPool.targetMouse.y = (window.innerHeight - e.clientY) * (canvas.height / window.innerHeight);
+            showUI();
+        }, { passive: true });
+
+        window.addEventListener('pointerdown', (e) => {
+            if (e.target.closest('#controls-panel') || e.target.closest('#header-ui')) return;
+            
+            audioEngine.init();
+
+            // Trigger Supernova Shockwave (Mapped to canvas coordinates)
+            MemoryPool.shockwave.x = e.clientX * (canvas.width / window.innerWidth);
+            MemoryPool.shockwave.y = (window.innerHeight - e.clientY) * (canvas.height / window.innerHeight);
+            MemoryPool.shockwave.time = performance.now() * 0.001;
+
+            // Haptic feedback pulse on tap
+            if (navigator.vibrate) {
+                try { navigator.vibrate([20, 30, 40]); } catch(err) {}
+            }
+
+            showUI();
+        });
+
+        // Gyroscope Device Orientation Hook
+        const gyroBtn = document.getElementById('gyro-request-btn');
+        gyroBtn.addEventListener('click', async () => {
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                try {
+                    const response = await DeviceOrientationEvent.requestPermission();
+                    if (response === 'granted') {
+                        initGyroListener();
+                    }
+                } catch(e) {
+                    console.warn('Gyro permission denied', e);
+                }
+            } else {
+                initGyroListener();
+            }
+        });
+
+        function initGyroListener() {
+            window.addEventListener('deviceorientation', (e) => {
+                if (e.gamma !== null && e.beta !== null) {
+                    // Map tilt gamma (-90 to 90) and beta (-180 to 180) to screen parallax
+                    const normX = (e.gamma / 45.0) * 0.5 + 0.5;
+                    const normY = (e.beta / 45.0) * 0.5 + 0.5;
+                    MemoryPool.targetMouse.x = normX * canvas.width;
+                    MemoryPool.targetMouse.y = normY * canvas.height;
+                }
+            }, true);
+            document.getElementById('gyro-status-text').innerText = 'Gyro Active (Parallax Engaged)';
+            gyroBtn.classList.add('border-cyan-400', 'bg-cyan-500/20');
+        }
+
+        // ---------------------------------------------------------
+        // MAIN RENDER LOOP (ZERO ALLOCATION)
+        // ---------------------------------------------------------
+        let startTime = performance.now();
+        let lastFrameTime = startTime;
+
+        function renderLoop(currentTime) {
+            const delta = currentTime - lastFrameTime;
+            lastFrameTime = currentTime;
+
+            processThermalShunt(delta);
+            audioEngine.update();
+
+            // Lerp mouse coordinates smoothly with zero allocation
+            MemoryPool.mouse.x += (MemoryPool.targetMouse.x - MemoryPool.mouse.x) * 0.1;
+            MemoryPool.mouse.y += (MemoryPool.targetMouse.y - MemoryPool.mouse.y) * 0.1;
+
+            const elapsedTime = (currentTime - startTime) * 0.001;
+
+            // Bind uniforms
+            gl.uniform2f(uLocs.resolution, canvas.width, canvas.height);
+            gl.uniform1f(uLocs.time, elapsedTime);
+            gl.uniform1f(uLocs.bass, audioEngine.bass);
+            gl.uniform1f(uLocs.speed, MemoryPool.config.speed);
+            gl.uniform1f(uLocs.arms, MemoryPool.config.arms);
+            gl.uniform1f(uLocs.depth, MemoryPool.config.depth);
+            gl.uniform2f(uLocs.mouse, MemoryPool.mouse.x, MemoryPool.mouse.y);
+            gl.uniform2f(uLocs.shockwave, MemoryPool.shockwave.x, MemoryPool.shockwave.y);
+            gl.uniform1f(uLocs.shockwaveTime, elapsedTime - MemoryPool.shockwave.time);
+
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+            // Auto-hide UI inactivity check
+            if (uiVisible && Date.now() - lastInteractionTime > 4500) {
+                hideUI();
+            }
+
+            requestAnimationFrame(renderLoop);
+        }
+        requestAnimationFrame(renderLoop);
+
+        // ---------------------------------------------------------
+        // UI INTERACTION & CONTROLS BINDING
+        // ---------------------------------------------------------
+        const controlsPanel = document.getElementById('controls-panel');
+        const headerUI = document.getElementById('header-ui');
+        const hintBanner = document.getElementById('hint-banner');
+        let uiVisible = true;
+        let lastInteractionTime = Date.now();
+
+        function showUI() {
+            uiVisible = true;
+            lastInteractionTime = Date.now();
+            headerUI.classList.remove('ui-hidden');
+            hintBanner.classList.remove('ui-hidden');
+        }
+
+        function hideUI() {
+            uiVisible = false;
+            headerUI.classList.add('ui-hidden');
+            hintBanner.classList.add('ui-hidden');
+            controlsPanel.classList.add('ui-hidden');
+        }
+
+        document.getElementById('toggle-settings-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            controlsPanel.classList.toggle('ui-hidden');
+            showUI();
+        });
+
+        document.getElementById('close-settings-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            controlsPanel.classList.add('ui-hidden');
+        });
+
+        document.getElementById('audio-toggle-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            audioEngine.init();
+            showUI();
+        });
+
+        document.getElementById('depth-range').addEventListener('input', (e) => {
+            MemoryPool.config.depth = parseFloat(e.target.value);
+            document.getElementById('depth-val').innerText = MemoryPool.config.depth.toFixed(1);
+            showUI();
+        });
+
+        document.getElementById('arms-range').addEventListener('input', (e) => {
+            MemoryPool.config.arms = parseFloat(e.target.value);
+            document.getElementById('arms-val').innerText = MemoryPool.config.arms.toFixed(1);
+            showUI();
+        });
+
+        document.getElementById('speed-range').addEventListener('input', (e) => {
+            MemoryPool.config.speed = parseFloat(e.target.value);
+            document.getElementById('speed-val').innerText = MemoryPool.config.speed.toFixed(1) + 'x';
+            showUI();
+        });
+    </script>
+</body>
+</html>
