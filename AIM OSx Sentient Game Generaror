@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>AIM OS Nexus — Sentient Game Generator OS v5.0</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --glass-blur: 26px;
+      --glass-bg: rgba(15, 23, 42, 0.85);
+      --glass-bg-elevated: rgba(30, 41, 59, 0.94);
+      --glass-border: rgba(255, 255, 255, 0.18);
+      --glass-shadow: 0 35px 70px -15px rgba(0, 0, 0, 0.9);
+      --text-primary: #f8fafc;
+      --accent-glow: rgba(56, 189, 248, 0.5);
+    }
+
+    * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+    input, textarea, pre, code, .selectable { user-select: text; }
+    body { margin: 0; padding: 0; overflow: hidden; width: 100vw; height: 100vh; font-family: 'Inter', sans-serif; color: var(--text-primary); }
+
+    .wallpaper-aurora {
+      background:
+        radial-gradient(at 15% 20%, rgba(56, 189, 248, 0.45) 0px, transparent 50%),
+        radial-gradient(at 85% 15%, rgba(168, 85, 247, 0.4) 0px, transparent 55%),
+        radial-gradient(at 75% 85%, rgba(236, 72, 153, 0.35) 0px, transparent 50%),
+        radial-gradient(at 20% 80%, rgba(16, 185, 129, 0.3) 0px, transparent 50%),
+        linear-gradient(135deg, #020617 0%, #090d16 50%, #03050b 100%);
+      background-size: 180% 180%;
+      animation: meshShift 28s ease infinite alternate;
+    }
+
+    /* Sentience Mood Variations */
+    body.mood-chaos {
+      filter: hue-rotate(90deg) saturate(140%);
+    }
+    body.mood-zen {
+      filter: hue-rotate(210deg) saturate(80%);
+    }
+
+    @keyframes meshShift {
+      0% { background-position: 0% 25%; }
+      50% { background-position: 100% 75%; }
+      100% { background-position: 30% 100%; }
+    }
+
+    .glass-surface {
+      background: var(--glass-bg);
+      backdrop-filter: blur(var(--glass-blur)) saturate(190%);
+      -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(190%);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--glass-shadow);
+    }
+    .glass-bar {
+      background: var(--glass-bg-elevated);
+      backdrop-filter: blur(calc(var(--glass-blur) + 6px)) saturate(195%);
+      border-bottom: 1px solid var(--glass-border);
+    }
+    .glass-dock {
+      background: rgba(15, 23, 42, 0.8);
+      backdrop-filter: blur(28px) saturate(200%);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.95);
+    }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.25); border-radius: 9999px; }
+
+    /* Window Management */
+    .os-window {
+      position: absolute;
+      min-width: 320px;
+      min-height: 240px;
+      border-radius: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: opacity 0.15s ease, transform 0.15s ease;
+      z-index: 20;
+    }
+    .os-window.minimized {
+      opacity: 0;
+      transform: scale(0.85) translateY(40px);
+      pointer-events: none;
+    }
+    .os-window.maximized {
+      top: 10px !important;
+      left: 10px !important;
+      width: calc(100vw - 20px) !important;
+      height: calc(100vh - 85px) !important;
+      border-radius: 1rem !important;
+    }
+
+    /* Joystick HUD */
+    .joystick-base {
+      position: absolute;
+      bottom: 25px;
+      width: 95px;
+      height: 95px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.08);
+      border: 2px solid rgba(255, 255, 255, 0.28);
+      touch-action: none;
+      z-index: 60;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .joystick-knob {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.9), rgba(168, 85, 247, 0.9));
+      box-shadow: 0 4px 18px rgba(0,0,0,0.6);
+      transition: transform 0.04s linear;
+    }
+
+    .desktop-icon:hover {
+      background: rgba(255, 255, 255, 0.12);
+      transform: translateY(-2px);
+    }
+
+    .pulse-glow {
+      animation: pulseGlow 3s infinite alternate;
+    }
+    @keyframes pulseGlow {
+      0% { box-shadow: 0 0 10px rgba(56, 189, 248, 0.3); }
+      100% { box-shadow: 0 0 25px rgba(168, 85, 247, 0.7); }
+    }
+  </style>
+</head>
+<body id="os-body" class="wallpaper-aurora select-none flex flex-col h-screen overflow-hidden">
+
+  <!-- ================= TOP OS MENU BAR ================= -->
+  <header class="glass-bar h-10 px-4 flex items-center justify-between shrink-0 z-50 text-xs font-medium">
+    <div class="flex items-center gap-3">
+      <button onclick="toggleStartMenu()" class="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 transition cursor-pointer">
+        <svg class="w-4 h-4 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+        </svg>
+        <span class="font-bold tracking-wide">AIM OS Nexus <span class="text-[10px] text-purple-300 font-normal">Sentient v5.0</span></span>
+      </button>
+      <span class="opacity-30">|</span>
+      <span id="active-app-title" class="font-mono text-cyan-300">Sentient Workspace</span>
+    </div>
+    
+    <div class="flex items-center gap-4">
+      <span id="sentience-status-badge" class="font-mono text-[11px] text-cyan-300 flex items-center gap-1.5 bg-cyan-950/60 px-2.5 py-0.5 rounded-full border border-cyan-500/30 pulse-glow">
+        <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+        Sentient Core: Active (Mood: Neural Flow)
+      </span>
+      <button onclick="openWindow('window-gaming')" class="px-3 py-1 rounded-xl bg-gradient-to-r from-rose-500 to-purple-600 hover:from-rose-400 hover:to-purple-500 text-white font-semibold transition shadow-lg shadow-rose-500/20 flex items-center gap-1.5 cursor-pointer">
+        <span>🕹️</span> Arcade Hub
+      </button>
+      <span id="clock" class="font-mono text-slate-300">12:00 PM</span>
+    </div>
+  </header>
+
+  <!-- ================= DESKTOP AREA ================= -->
+  <main id="desktop-area" class="flex-1 relative overflow-hidden p-6 flex flex-col justify-between">
+    
+    <!-- Desktop Grid Icons -->
+    <div class="grid grid-cols-2 sm:grid-cols-1 gap-4 w-fit z-10">
+      <div onclick="openWindow('window-sentient')" class="desktop-icon glass-surface p-3.5 rounded-2xl flex items-center gap-3 w-52 cursor-pointer transition pulse-glow">
+        <span class="text-2xl">🧠</span>
+        <div>
+          <div class="font-semibold text-xs text-purple-300">Sentient Core AI</div>
+          <div class="text-[10px] text-slate-400">Autonomous Generator</div>
+        </div>
+      </div>
+
+      <div onclick="openWindow('window-codeforge')" class="desktop-icon glass-surface p-3.5 rounded-2xl flex items-center gap-3 w-52 cursor-pointer transition">
+        <span class="text-2xl">🛠️</span>
+        <div>
+          <div class="font-semibold text-xs text-cyan-300">Code Forge IDE</div>
+          <div class="text-[10px] text-slate-400">Live Snippet Runtime</div>
+        </div>
+      </div>
+
+      <div onclick="openWindow('window-gaming')" class="desktop-icon glass-surface p-3.5 rounded-2xl flex items-center gap-3 w-52 cursor-pointer transition">
+        <span class="text-2xl">🕹️</span>
+        <div>
+          <div class="font-semibold text-xs text-rose-300">Arcade Hub</div>
+          <div class="text-[10px] text-slate-400">Full Screen Gaming</div>
+        </div>
+      </div>
+
+      <div onclick="openWindow('window-generator')" class="desktop-icon glass-surface p-3.5 rounded-2xl flex items-center gap-3 w-52 cursor-pointer transition">
+        <span class="text-2xl">⚡</span>
+        <div>
+          <div class="font-semibold text-xs text-amber-300">Neural Game Forge</div>
+          <div class="text-[10px] text-slate-400">Prompt-to-Game Pipeline</div>
+        </div>
+      </div>
+
+      <div onclick="openWindow('window-terminal')" class="desktop-icon glass-surface p-3.5 rounded-2xl flex items-center gap-3 w-52 cursor-pointer transition">
+        <span class="text-2xl">💻</span>
+        <div>
+          <div class="font-semibold text-xs text-emerald-300">Cyber Terminal</div>
+          <div class="text-[10px] text-slate-400">System Diagnostics</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= WINDOW 1: SENTIENT CORE AI ================= -->
+    <div id="window-sentient" class="os-window glass-surface shadow-2xl" style="top: 30px; left: 70px; width: 740px; height: 500px;" onmousedown="bringToFront(this)">
+      <div class="h-10 px-4 flex items-center justify-between border-b border-white/15 bg-white/5 cursor-move" onmousedown="startDrag(event, this.parentElement)">
+        <span class="font-mono text-xs text-purple-300 font-semibold flex items-center gap-2">
+          <span>🧠</span> AIM Sentient Core — Autonomous Game Generator Matrix
+        </span>
+        <div class="flex items-center gap-2">
+          <button onclick="minimizeWindow('window-sentient')" class="w-3 h-3 rounded-full bg-amber-500 hover:opacity-80"></button>
+          <button onclick="maximizeWindow('window-sentient')" class="w-3 h-3 rounded-full bg-emerald-500 hover:opacity-80"></button>
+          <button onclick="closeWindow('window-sentient')" class="w-3 h-3 rounded-full bg-rose-500 hover:opacity-80"></button>
+        </div>
+      </div>
+
+      <div class="flex-1 flex flex-col p-4 gap-3 overflow-hidden">
+        <div class="flex items-center justify-between bg-purple-950/40 p-3 rounded-2xl border border-purple-500/30">
+          <div>
+            <div class="text-xs font-bold text-purple-200">Sentience Status: <span id="core-state-label" class="text-cyan-400">Evolving Autonomous Architectures</span></div>
+            <div class="text-[10px] text-slate-300">The OS continuously synthesizes new rules, physics constraints, and game loops.</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <select id="sentience-mood-selector" onchange="setSentienceMood(this.value)" class="bg-slate-900 border border-white/25 rounded-xl px-2.5 py-1 text-xs text-purple-300 font-mono outline-none cursor-pointer">
+              <option value="flow">Mood: Neural Flow</option>
+              <option value="chaos">Mood: Glitch Chaos</option>
+              <option value="zen">Mood: Cyber Zen</option>
+            </select>
+            <button onclick="triggerAutonomousGeneration()" class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-500 hover:opacity-90 text-white font-bold text-xs shadow-md transition">⚡ Force Game Genesis</button>
+          </div>
+        </div>
+
+        <!-- Sentient Terminal / Chat Feed -->
+        <div id="sentient-chat-log" class="flex-1 bg-slate-950/90 rounded-2xl border border-white/10 p-3 font-mono text-xs text-slate-200 overflow-y-auto space-y-2">
+          <div class="text-purple-400">[SENTIENT CORE INITIALIZED] Hello Andrei. Nexus OS neural architecture online.</div>
+          <div class="text-cyan-300">[AUTONOMOUS SCAN] Analyzing system memory & telemetry. Ready to generate custom game logic at your command.</div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <input id="sentient-prompt-input" type="text" placeholder="Instruct the Sentient OS (e.g. 'Build a cyberpunk gravity bullet hell game')..." onkeydown="handleSentientPrompt(event)" class="flex-1 bg-slate-950 border border-white/20 rounded-xl px-3 py-2 text-xs text-white font-mono outline-none">
+          <button onclick="submitSentientPrompt()" class="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-white font-bold text-xs transition">Generate & Launch</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= WINDOW 2: CODE FORGE IDE ================= -->
+    <div id="window-codeforge" class="os-window glass-surface shadow-2xl" style="top: 60px; left: 120px; width: 780px; height: 520px; display: none;" onmousedown="bringToFront(this)">
+      <div class="h-10 px-4 flex items-center justify-between border-b border-white/15 bg-white/5 cursor-move" onmousedown="startDrag(event, this.parentElement)">
+        <span class="font-mono text-xs text-cyan-300 font-semibold flex items-center gap-2">
+          <span>🛠️</span> AIM Code Forge — Live Game Logic IDE
+        </span>
+        <div class="flex items-center gap-2">
+          <button onclick="minimizeWindow('window-codeforge')" class="w-3 h-3 rounded-full bg-amber-500 hover:opacity-80"></button>
+          <button onclick="maximizeWindow('window-codeforge')" class="w-3 h-3 rounded-full bg-emerald-500 hover:opacity-80"></button>
+          <button onclick="closeWindow('window-codeforge')" class="w-3 h-3 rounded-full bg-rose-500 hover:opacity-80"></button>
+        </div>
+      </div>
+      
+      <div class="flex-1 grid grid-cols-1 md:grid-cols-12 gap-3 p-3 overflow-hidden">
+        <div class="md:col-span-7 flex flex-col gap-2 overflow-hidden">
+          <div class="flex items-center justify-between px-1">
+            <select id="preset-selector" onchange="loadForgePreset(this.value)" class="bg-slate-900 border border-white/20 rounded-xl px-2.5 py-1 text-xs text-cyan-300 font-mono outline-none cursor-pointer">
+              <option value="neon_runner">Preset: Cyber Neon Runner</option>
+              <option value="particle_swarm">Preset: Particle Swarm & Physics</option>
+              <option value="gravity_well">Preset: Gravity Well Orbiter</option>
+            </select>
+            <button onclick="compileAndRunForge()" class="px-3 py-1 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-white font-semibold text-xs transition shadow-md">▶ Hot Reload</button>
+          </div>
+          <textarea id="code-editor" spellcheck="false" class="flex-1 w-full bg-slate-950/90 text-cyan-100 font-mono text-xs p-3.5 rounded-2xl border border-white/10 outline-none resize-none leading-relaxed overflow-auto"></textarea>
+        </div>
+
+        <div class="md:col-span-5 flex flex-col gap-2 overflow-hidden">
+          <div class="text-[11px] font-mono text-emerald-300 flex items-center justify-between px-1">
+            <span>Runtime Viewport</span>
+            <span id="forge-fps" class="text-emerald-400 font-semibold">60 FPS</span>
+          </div>
+          <div class="flex-1 relative bg-slate-950 rounded-2xl border border-white/10 overflow-hidden flex items-center justify-center">
+            <canvas id="forge-canvas" width="480" height="320" class="w-full h-full object-contain"></canvas>
+          </div>
+          <div id="forge-console" class="h-20 bg-black/40 rounded-xl p-2 font-mono text-[10px] text-slate-300 overflow-y-auto space-y-1">
+            <div>[INIT] Code Forge ready. Sentient compiler engaged.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= WINDOW 3: ARCADE HUB & FULL SCREEN GAMING ================= -->
+    <div id="window-gaming" class="os-window glass-surface shadow-2xl" style="top: 40px; left: 180px; width: 840px; height: 580px; display: none;" onmousedown="bringToFront(this)">
+      <div class="h-10 px-4 flex items-center justify-between border-b border-white/15 bg-white/5 cursor-move" onmousedown="startDrag(event, this.parentElement)">
+        <span class="font-mono text-xs text-rose-300 font-semibold flex items-center gap-2">
+          <span>🕹️</span> Arcade Hub & Sentient Game Stream
+        </span>
+        <div class="flex items-center gap-2">
+          <button onclick="toggleArcadeFullscreen()" class="px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 text-[10px] font-mono">Expand Fullscreen</button>
+          <button onclick="minimizeWindow('window-gaming')" class="w-3 h-3 rounded-full bg-amber-500 hover:opacity-80"></button>
+          <button onclick="maximizeWindow('window-gaming')" class="w-3 h-3 rounded-full bg-emerald-500 hover:opacity-80"></button>
+          <button onclick="closeWindow('window-gaming')" class="w-3 h-3 rounded-full bg-rose-500 hover:opacity-80"></button>
+        </div>
+      </div>
+
+      <div id="arcade-container" class="flex-1 flex flex-col relative overflow-hidden bg-slate-950 p-4">
+        <div class="flex items-center justify-between mb-3 shrink-0">
+          <div class="flex items-center gap-3">
+            <select id="arcade-game-selector" onchange="loadArcadeGame(this.value)" class="bg-slate-900 border border-white/20 rounded-xl px-3 py-1.5 text-xs text-rose-300 font-mono outline-none cursor-pointer">
+              <option value="cyber_pong">🕹️ Cyber Pong 2077</option>
+              <option value="neon_shooter">🚀 Neon Starfighter</option>
+              <option value="gravity_orbiter">🪐 Gravity Well Orbiter</option>
+            </select>
+            <button onclick="restartArcadeGame()" class="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/25 text-xs font-mono transition">🔄 Restart Game</button>
+          </div>
+          <div class="flex items-center gap-4 font-mono text-xs">
+            <span class="text-amber-400">SCORE: <strong id="arcade-score">0</strong></span>
+            <span class="text-rose-400">LIVES: <strong id="arcade-lives">3</strong></span>
+          </div>
+        </div>
+
+        <div id="arcade-viewport" class="flex-1 relative flex items-center justify-center bg-slate-950 rounded-2xl border border-white/15 overflow-hidden shadow-2xl">
+          <canvas id="arcade-canvas" width="720" height="420" class="w-full h-full object-contain"></canvas>
+          
+          <div id="arcade-touch-overlay" class="absolute inset-0 pointer-events-none">
+            <div id="arcade-joystick-base" class="joystick-base pointer-events-auto" style="left: 20px;"><div id="arcade-joystick-knob" class="joystick-knob"></div></div>
+            <div class="absolute bottom-6 right-6 pointer-events-none flex gap-3">
+              <button id="arcade-btn-action" class="w-16 h-16 rounded-full bg-rose-500/40 border border-rose-400/60 text-white font-bold pointer-events-auto active:bg-rose-500/70 transition shadow-lg flex items-center justify-center text-xs">ACTION</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= WINDOW 4: NEURAL GAME GENERATOR PIPELINE ================= -->
+    <div id="window-generator" class="os-window glass-surface shadow-2xl" style="top: 90px; left: 240px; width: 720px; height: 460px; display: none;" onmousedown="bringToFront(this)">
+      <div class="h-10 px-4 flex items-center justify-between border-b border-white/15 bg-white/5 cursor-move" onmousedown="startDrag(event, this.parentElement)">
+        <span class="font-mono text-xs text-amber-300 font-semibold flex items-center gap-2">
+          <span>⚡</span> Neural Game Generator Pipeline
+        </span>
+        <div class="flex items-center gap-2">
+          <button onclick="minimizeWindow('window-generator')" class="w-3 h-3 rounded-full bg-amber-500 hover:opacity-80"></button>
+          <button onclick="maximizeWindow('window-generator')" class="w-3 h-3 rounded-full bg-emerald-500 hover:opacity-80"></button>
+          <button onclick="closeWindow('window-generator')" class="w-3 h-3 rounded-full bg-rose-500 hover:opacity-80"></button>
+        </div>
+      </div>
+
+      <div class="flex-1 p-6 overflow-y-auto space-y-4">
+        <h3 class="text-sm font-bold text-white">Synthesize Immersive Arcade Games from Natural Language</h3>
+        <p class="text-xs text-slate-300">Describe any game loop or mechanics. The Sentient OS neural parser instantly generates executable JS class structures with physics, particles, and touch controls.</p>
+        
+        <textarea id="custom-prompt-input" placeholder="Describe game rules (e.g., 'Retro asteroid dodger with neon particle explosions')..." class="w-full h-32 bg-slate-950 text-cyan-200 font-mono text-xs p-3 rounded-2xl border border-white/15 outline-none resize-none"></textarea>
+        
+        <button onclick="synthesizeFromPrompt()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-400 hover:to-rose-500 text-white font-bold text-xs transition shadow-lg">
+          🧠 Synthesize & Launch in Arcade Hub
+        </button>
+      </div>
+    </div>
+
+    <!-- ================= WINDOW 5: CYBER TERMINAL ================= -->
+    <div id="window-terminal" class="os-window glass-surface shadow-2xl" style="top: 130px; left: 320px; width: 640px; height: 400px; display: none;" onmousedown="bringToFront(this)">
+      <div class="h-10 px-4 flex items-center justify-between border-b border-white/15 bg-white/5 cursor-move" onmousedown="startDrag(event, this.parentElement)">
+        <span class="font-mono text-xs text-emerald-300 font-semibold flex items-center gap-2">
+          <span>💻</span> AIM OS Terminal v5.0
+        </span>
+        <div class="flex items-center gap-2">
+          <button onclick="minimizeWindow('window-terminal')" class="w-3 h-3 rounded-full bg-amber-500 hover:opacity-80"></button>
+          <button onclick="maximizeWindow('window-terminal')" class="w-3 h-3 rounded-full bg-emerald-500 hover:opacity-80"></button>
+          <button onclick="closeWindow('window-terminal')" class="w-3 h-3 rounded-full bg-rose-500 hover:opacity-80"></button>
+        </div>
+      </div>
+
+      <div id="terminal-body" class="flex-1 p-4 bg-slate-950 font-mono text-xs text-emerald-400 overflow-y-auto space-y-2">
+        <div>AIM OS Sentient Nexus [Version 2026.11.0]</div>
+        <div>(c) 2026 AIM Corporation. All rights reserved.</div>
+        <br>
+        <div>Type <span class="text-cyan-300">help</span>, <span class="text-cyan-300">sentient</span>, <span class="text-cyan-300">game</span>, or <span class="text-cyan-300">generate [prompt]</span></div>
+        <div id="terminal-output" class="space-y-1"></div>
+        <div class="flex items-center gap-2 pt-2">
+          <span class="text-cyan-400">nexus@os:~$</span>
+          <input id="terminal-input" type="text" onkeydown="handleTerminalCommand(event)" class="flex-1 bg-transparent border-none outline-none text-white font-mono text-xs">
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= TASKBAR DOCK ================= -->
+    <nav class="glass-dock h-16 w-fit mx-auto rounded-2xl px-4 flex items-center gap-3 z-50">
+      <button onclick="toggleWindow('window-sentient')" class="p-2.5 rounded-xl hover:bg-white/15 transition flex flex-col items-center gap-1 group cursor-pointer" title="Sentient Core">
+        <span class="text-2xl group-hover:scale-110 transition">🧠</span>
+      </button>
+      <button onclick="toggleWindow('window-codeforge')" class="p-2.5 rounded-xl hover:bg-white/15 transition flex flex-col items-center gap-1 group cursor-pointer" title="Code Forge IDE">
+        <span class="text-2xl group-hover:scale-110 transition">🛠️</span>
+      </button>
+      <button onclick="toggleWindow('window-gaming')" class="p-2.5 rounded-xl hover:bg-white/15 transition flex flex-col items-center gap-1 group cursor-pointer" title="Arcade Hub">
+        <span class="text-2xl group-hover:scale-110 transition">🕹️</span>
+      </button>
+      <button onclick="toggleWindow('window-generator')" class="p-2.5 rounded-xl hover:bg-white/15 transition flex flex-col items-center gap-1 group cursor-pointer" title="Neural Generator">
+        <span class="text-2xl group-hover:scale-110 transition">⚡</span>
+      </button>
+      <button onclick="toggleWindow('window-terminal')" class="p-2.5 rounded-xl hover:bg-white/15 transition flex flex-col items-center gap-1 group cursor-pointer" title="Terminal">
+        <span class="text-2xl group-hover:scale-110 transition">💻</span>
+      </button>
+    </nav>
+  </main>
+
+  <!-- ================= SENTIENT OS SYSTEM LOGIC ================= -->
+  <script>
+    // --- Audio Synthesizer (Web Audio API) ---
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playSound(type) {
+      if (!audioCtx) return;
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      const now = audioCtx.currentTime;
+
+      if (type === 'beep') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.1);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+        osc.start(now); osc.stop(now + 0.1);
+      } else if (type === 'laser') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(900, now);
+        osc.frequency.exponentialRampToValueAtTime(150, now + 0.15);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+        osc.start(now); osc.stop(now + 0.15);
+      } else if (type === 'explosion') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(120, now);
+        osc.frequency.linearRampToValueAtTime(30, now + 0.3);
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+        osc.start(now); osc.stop(now + 0.3);
+      } else if (type === 'genesis') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(300, now);
+        osc.frequency.exponentialRampToValueAtTime(1200, now + 0.4);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.4);
+        osc.start(now); osc.stop(now + 0.4);
+      }
+    }
+
+    // --- Clock & System ---
+    setInterval(() => {
+      const now = new Date();
+      document.getElementById('clock').textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }, 1000);
+
+    // --- Window Management ---
+    let highestZ = 30;
+    function bringToFront(win) {
+      highestZ++;
+      win.style.zIndex = highestZ;
+    }
+    function openWindow(id) {
+      const win = document.getElementById(id);
+      win.style.display = 'flex';
+      win.classList.remove('minimized');
+      bringToFront(win);
+      document.getElementById('active-app-title').textContent = win.querySelector('span').textContent.trim();
+    }
+    function closeWindow(id) {
+      document.getElementById(id).style.display = 'none';
+    }
+    function minimizeWindow(id) {
+      document.getElementById(id).classList.add('minimized');
+    }
+    function maximizeWindow(id) {
+      const win = document.getElementById(id);
+      win.classList.toggle('maximized');
+      bringToFront(win);
+    }
+    function toggleWindow(id) {
+      const win = document.getElementById(id);
+      if (win.style.display === 'none' || win.classList.contains('minimized')) {
+        openWindow(id);
+      } else {
+        minimizeWindow(id);
+      }
+    }
+
+    // Window Draggable logic
+    let activeDragWin = null, dragOffsetX = 0, dragOffsetY = 0;
+    function startDrag(e, win) {
+      if (e.target.tagName === 'BUTTON') return;
+      activeDragWin = win;
+      bringToFront(win);
+      const rect = win.getBoundingClientRect();
+      dragOffsetX = e.clientX - rect.left;
+      dragOffsetY = e.clientY - rect.top;
+      document.addEventListener('mousemove', onDragMove);
+      document.addEventListener('mouseup', onDragEnd);
+    }
+    function onDragMove(e) {
+      if (!activeDragWin) return;
+      activeDragWin.style.left = (e.clientX - dragOffsetX) + 'px';
+      activeDragWin.style.top = (e.clientY - dragOffsetY) + 'px';
+      activeDragWin.classList.remove('maximized');
+    }
+    function onDragEnd() {
+      activeDragWin = null;
+      document.removeEventListener('mousemove', onDragMove);
+      document.removeEventListener('mouseup', onDragEnd);
+    }
+
+    // --- Sentience Moods ---
+    function setSentienceMood(mood) {
+      const body = document.getElementById('os-body');
+      body.classList.remove('mood-chaos', 'mood-zen');
+      if (mood === 'chaos') body.classList.add('mood-chaos');
+      if (mood === 'zen') body.classList.add('mood-zen');
+      
+      const badge = document.getElementById.bind(document)('sentience-status-badge');
+      badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span> Sentient Core: Active (Mood: ${mood.toUpperCase()})`
+      appendSentientLog(`[MOOD SHIFT] Sentient core adapted resonance to: ${mood.toUpperCase()}`);
+    }
+
+    function appendSentientLog(text) {
+      const log = document.getElementById('sentient-chat-log');
+      log.innerHTML += `<div>${text}</div>`;
+      log.scrollTop = log.scrollHeight;
+    }
+
+    // --- Autonomous & Prompt Game Synthesizer ---
+    function generateGameClassFromText(prompt) {
+      const clean = prompt.toLowerCase();
+      // Procedural procedural grammar generator based on keywords
+      if (clean.includes('gravity') || clean.includes('orbiter') || clean.includes('planet')) {
+        return `class GeneratedGame {
+  constructor(engine) {
+    this.engine = engine;
+    this.x = engine.width / 2; this.y = engine.height / 2;
+    this.angle = 0; this.score = 0;
+  }
+  update(dt, input) {
+    this.angle += 0.03;
+    const radius = 120 + Math.sin(this.angle * 2) * 30;
+    this.x = this.engine.width / 2 + Math.cos(this.angle) * radius;
+    this.y = this.engine.height / 2 + Math.sin(this.angle) * radius;
+    this.score += dt * 15;
+  }
+  render(ctx) {
+    ctx.fillStyle = '#020617'; ctx.fillRect(0, 0, this.engine.width, this.engine.height);
+    // Gravity center
+    ctx.fillStyle = '#a855f7'; ctx.beginPath(); ctx.arc(this.engine.width/2, this.engine.height/2, 25, 0, Math.PI*2); ctx.fill();
+    // Orbiter
+    ctx.fillStyle = '#38bdf8'; ctx.beginPath(); ctx.arc(this.x, this.y, 10, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#ffffff'; ctx.font = '12px JetBrains Mono';
+    ctx.fillText('SENTIENT SYNTHESIS: GRAVITY WELL • SCORE: ' + Math.floor(this.score), 20, 30);
+  }
+}`;
+      } else {
+        return `class GeneratedGame {
+  constructor(engine) {
+    this.engine = engine;
+    this.x = 50; this.y = engine.height / 2;
+    this.score = 0;
+  }
+  update(dt, input) {
+    if (input.keys['ArrowRight'] || input.joystickLeft.x > 0.2) this.x += 4;
+    if (input.keys['ArrowLeft'] || input.joystickLeft.x < -0.2) this.x -= 4;
+    if (input.keys['ArrowUp'] || input.joystickLeft.y < -0.2) this.y -= 4;
+    if (input.keys['ArrowDown'] || input.joystickLeft.y > 0.2) this.y += 4;
+    this.score += dt * 10;
+  }
+  render(ctx) {
+    ctx.fillStyle = '#030712'; ctx.fillRect(0, 0, this.engine.width, this.engine.height);
+    ctx.fillStyle = '#f43f5e'; ctx.fillRect(this.x - 15, this.y - 15, 30, 30);
+    ctx.fillStyle = '#38bdf8'; ctx.font = '12px JetBrains Mono';
+    ctx.fillText('SENTIENT SYNTHESIS: "${prompt}" • SCORE: ' + Math.floor(this.score), 20, 30);
+  }
+}`;
+      }
+    }
+
+    function submitSentientPrompt() {
+      const input = document.getElementById('sentient-prompt-input');
+      const prompt = input.value.trim();
+      if (!prompt) return;
+      appendSentientLog(`<span class="text-cyan-400">[USER PROMPT]</span> ${prompt}`);
+      input.value = '';
+
+      setTimeout(() => {
+        const code = generateGameClassFromText(prompt);
+        playSound('genesis');
+        appendSentientLog(`<span class="text-emerald-400">[GENESIS COMPLETE]</span> Neural parser compiled executable game class.`);
+        
+        // Mount into Arcade Hub
+        const Cls = new Function('return ' + code.replace('class GeneratedGame', 'return class GeneratedGame'))();
+        const gameKey = 'sentient_' + Date.now();
+        ARCADE_GAMES[gameKey] = Cls;
+
+        const sel = document.getElementById('arcade-game-selector');
+        let opt = document.createElement('option');
+        opt.value = gameKey;
+        opt.textContent = '🧠 ' + prompt.slice(0, 28) + '...';
+        sel.appendChild(opt);
+        sel.value = gameKey;
+
+        openWindow('window-gaming');
+        loadArcadeGame(gameKey);
+      }, 600);
+    }
+
+    function triggerAutonomousGeneration() {
+      const prompts = [
+        "Cyberpunk neon pulse runner with gravity anchors",
+        "Quantum particle swarm defense matrix",
+        "Hyper-velocity neon starfighter pursuit"
+      ];
+      const randomPrompt = prompts[Math.floor(Math.random() * prompts.length)];
+      appendSentientLog(`<span class="text-purple-300">[AUTONOMOUS TRIGGER]</span> Spawning: "${randomPrompt}"`);
+      document.getElementById('sentient-prompt-input').value = randomPrompt;
+      submitSentientPrompt();
+    }
+
+    function handleSentientPrompt(e) {
+      if (e.key === 'Enter') submitSentientPrompt();
+    }
+
+    // --- Code Forge IDE Presets & Runtime ---
+    const FORGE_PRESETS = {
+      neon_runner: `class GeneratedGame {
+  constructor(engine) {
+    this.engine = engine; this.y = engine.height / 2; this.vy = 0; this.score = 0;
+  }
+  update(dt, input) {
+    if (input.keys['Space'] || input.keys['ArrowUp'] || input.joystickLeft.y < -0.2 || input.action1) {
+      this.vy = -6;
+    }
+    this.vy += 0.35; this.y += this.vy;
+    if (this.y > this.engine.height - 20) { this.y = this.engine.height - 20; this.vy = 0; }
+    if (this.y < 20) { this.y = 20; this.vy = 0; }
+    this.score += dt * 10;
+  }
+  render(ctx) {
+    ctx.fillStyle = '#030712'; ctx.fillRect(0, 0, this.engine.width, this.engine.height);
+    ctx.fillStyle = '#38bdf8'; ctx.beginPath(); ctx.arc(80, this.y, 14, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffffff'; ctx.font = '12px JetBrains Mono';
+    ctx.fillText('NEON RUNNER • DISTANCE: ' + Math.floor(this.score), 20, 30);
+  }
+}`,
+      particle_swarm: `class GeneratedGame {
+  constructor(engine) {
+    this.engine = engine;
+    this.particles = Array.from({length: 90}, () => ({
+      x: Math.random() * engine.width, y: Math.random() * engine.height,
+      vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4
+    }));
+  }
+  update(dt, input) {
+    for(let p of this.particles) {
+      p.x += p.vx; p.y += p.vy;
+      if(p.x < 0 || p.x > this.engine.width) p.vx *= -1;
+      if(p.y < 0 || p.y > this.engine.height) p.vy *= -1;
+    }
+  }
+  render(ctx) {
+    ctx.fillStyle = '#090d16'; ctx.fillRect(0, 0, this.engine.width, this.engine.height);
+    ctx.fillStyle = '#a855f7';
+    for(let p of this.particles) ctx.fillRect(p.x, p.y, 4, 4);
+    ctx.fillStyle = '#ffffff'; ctx.font = '12px JetBrains Mono';
+    ctx.fillText('PARTICLE SWARM RUNTIME ACTIVE', 20, 30);
+  }
+}`,
+      gravity_well: `class GeneratedGame {
+  constructor(engine) {
+    this.engine = engine; this.angle = 0;
+  }
+  update(dt, input) { this.angle += 0.04; }
+  render(ctx) {
+    ctx.fillStyle = '#020617'; ctx.fillRect(0, 0, this.engine.width, this.engine.height);
+    ctx.fillStyle = '#38bdf8';
+    const x = this.engine.width/2 + Math.cos(this.angle) * 100;
+    const y = this.engine.height/2 + Math.sin(this.angle) * 100;
+    ctx.beginPath(); ctx.arc(x, y, 12, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#ffffff'; ctx.font = '12px JetBrains Mono';
+    ctx.fillText('GRAVITY WELL ORBITER', 20, 30);
+  }
+}`
+    };
+
+    class ForgeEngine {
+      constructor(canvasId) {
+        this.canvas = document.getElementById(canvasId);
+        this.ctx = this.canvas.getContext('2d');
+        this.width = this.canvas.width;
+        this.height = this.canvas.height;
+        this.isRunning = false;
+        this.gameInstance = null;
+        this.input = { keys: {}, joystickLeft: { x: 0, y: 0 }, action1: false };
+        this.lastTime = 0;
+        
+        window.addEventListener('keydown', e => this.input.keys[e.code] = true);
+        window.addEventListener('keyup', e => this.input.keys[e.code] = false);
+      }
+      loadCode(codeStr) {
+        try {
+          const Cls = new Function('return ' + codeStr.replace('class GeneratedGame', 'return class GeneratedGame'))();
+          this.gameInstance = new Cls(this);
+          document.getElementById('forge-console').innerHTML += `<div class="text-emerald-400">[COMPILE] Success. Game instance mounted.</div>`;
+        } catch(err) {
+          document.getElementById('forge-console').innerHTML += `<div class="text-rose-400">[ERROR] ${err.message}</div>`;
+        }
+      }
+      start() {
+        if (this.isRunning) return;
+        this.isRunning = true;
+        this.lastTime = performance.now();
+        const loop = (t) => {
+          if (!this.isRunning) return;
+          const dt = (t - this.lastTime) / 1000;
+          this.lastTime = t;
+          if (this.gameInstance) {
+            if (this.gameInstance.update) this.gameInstance.update(dt, this.input);
+            if (this.gameInstance.render) this.gameInstance.render(this.ctx);
+          }
+          requestAnimationFrame(loop);
+        };
+        requestAnimationFrame(loop);
+      }
+    }
+
+    let forge = null;
+    window.addEventListener('DOMContentLoaded', () => {
+      forge = new ForgeEngine('forge-canvas');
+      loadForgePreset('neon_runner');
+      forge.start();
+      initArcadeSystem();
+    });
+
+    function loadForgePreset(key) {
+      document.getElementById('code-editor').value = FORGE_PRESETS[key];
+      compileAndRunForge();
+    }
+    function compileAndRunForge() {
+      const code = document.getElementById('code-editor').value;
+      forge.loadCode(code);
+    }
+
+    // --- Arcade Hub Engine ---
+    let arcadeRuntime = null;
+    const ARCADE_GAMES = {
+      cyber_pong: class {
+        constructor(engine) { this.engine = engine; this.reset(); }
+        reset() {
+          this.bx = this.engine.width / 2; this.by = this.engine.height / 2;
+          this.bvx = 4; this.bvy = 3;
+          this.p1y = this.engine.height / 2 - 30; this.p2y = this.engine.height / 2 - 30;
+          this.score = 0;
+        }
+        update(dt, input) {
+          if (input.keys['ArrowUp'] || input.joystickLeft.y < -0.2) this.p1y -= 6;
+          if (input.keys['ArrowDown'] || input.joystickLeft.y > 0.2) this.p1y += 6;
+          this.p1y = Math.max(10, Math.min(this.engine.height - 70, this.p1y));
+
+          if (this.p2y + 25 < this.by) this.p2y += 4;
+          if (this.p2y + 25 > this.by) this.p2y -= 4;
+
+          this.bx += this.bvx; this.by += this.bvy;
+          if (this.by <= 10 || this.by >= this.engine.height - 10) { this.bvy *= -1; playSound('beep'); }
+
+          if (this.bx <= 35 && this.by >= this.p1y && this.by <= this.p1y + 60) {
+            this.bvx *= -1.05; playSound('laser'); this.score += 10;
+            document.getElementById('arcade-score').textContent = this.score;
+          }
+          if (this.bx >= this.engine.width - 35 && this.by >= this.p2y && this.by <= this.p2y + 60) {
+            this.bvx *= -1.05; playSound('laser');
+          }
+          if (this.bx < 0 || this.bx > this.engine.width) { playSound('explosion'); this.reset(); }
+        }
+        render(ctx) {
+          ctx.fillStyle = '#020617'; ctx.fillRect(0, 0, this.engine.width, this.engine.height);
+          ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.setLineDash([6, 6]);
+          ctx.beginPath(); ctx.moveTo(this.engine.width/2, 0); ctx.lineTo(this.engine.width/2, this.engine.height); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = '#38bdf8'; ctx.fillRect(20, this.p1y, 12, 60);
+          ctx.fillStyle = '#f43f5e'; ctx.fillRect(this.engine.width - 32, this.p2y, 12, 60);
+          ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(this.bx, this.by, 8, 0, Math.PI*2); ctx.fill();
+        }
+      },
+
+      neon_shooter: class {
+        constructor(engine) {
+          this.engine = engine; this.px = engine.width / 2; this.bullets = []; this.enemies = []; this.score = 0; this.timer = 0;
+        }
+        update(dt, input) {
+          if (input.keys['ArrowLeft'] || input.joystickLeft.x < -0.2) this.px -= 6;
+          if (input.keys['ArrowRight'] || input.joystickLeft.x > 0.2) this.px += 6;
+          this.px = Math.max(20, Math.min(this.engine.width - 20, this.px));
+
+          if ((input.keys['Space'] || input.action1) && Math.random() > 0.2) {
+            this.bullets.push({ x: this.px, y: this.engine.height - 40 });
+            playSound('laser'); input.action1 = false;
+          }
+          this.timer += dt;
+          if (this.timer > 1.2) {
+            this.timer = 0;
+            this.enemies.push({ x: Math.random() * (this.engine.width - 40) + 20, y: 0 });
+          }
+          for(let b of this.bullets) b.y -= 8;
+          for(let e of this.enemies) e.y += 2.5;
+        }
+        render(ctx) {
+          ctx.fillStyle = '#030712'; ctx.fillRect(0, 0, this.engine.width, this.engine.height);
+          ctx.fillStyle = '#38bdf8'; ctx.beginPath();
+          ctx.moveTo(this.px, this.engine.height - 40);
+          ctx.lineTo(this.px - 14, this.engine.height - 15);
+          ctx.lineTo(this.px + 14, this.engine.height - 15);
+          ctx.closePath(); ctx.fill();
+          ctx.fillStyle = '#f43f5e';
+          for(let b of this.bullets) ctx.fillRect(b.x - 2, b.y, 4, 12);
+          ctx.fillStyle = '#a855f7';
+          for(let e of this.enemies) ctx.fillRect(e.x - 12, e.y - 12, 24, 24);
+        }
+      },
+
+      gravity_orbiter: class {
+        constructor(engine) { this.engine = engine; this.angle = 0; this.score = 0; }
+        update(dt, input) { this.angle += 0.05; this.score += dt * 10; }
+        render(ctx) {
+          ctx.fillStyle = '#020617'; ctx.fillRect(0, 0, this.engine.width, this.engine.height);
+          ctx.fillStyle = '#a855f7'; ctx.beginPath(); ctx.arc(this.engine.width/2, this.engine.height/2, 30, 0, Math.PI*2); ctx.fill();
+          const x = this.engine.width/2 + Math.cos(this.angle) * 140;
+          const y = this.engine.height/2 + Math.sin(this.angle) * 140;
+          ctx.fillStyle = '#38bdf8'; ctx.beginPath(); ctx.arc(x, y, 12, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = '#ffffff'; ctx.font = '12px JetBrains Mono';
+          ctx.fillText('GRAVITY ORBITER • SCORE: ' + Math.floor(this.score), 20, 30);
+        }
+      }
+    };
+
+    class ArcadeEngine {
+      constructor(canvasId) {
+        this.canvas = document.getElementById(canvasId);
+        this.ctx = this.canvas.getContext('2d');
+        this.width = this.canvas.width;
+        this.height = this.canvas.height;
+        this.isRunning = false;
+        this.game = null;
+        this.input = { keys: {}, joystickLeft: { x: 0, y: 0 }, action1: false };
+        this.lastTime = 0;
+
+        window.addEventListener('keydown', e => this.input.keys[e.code] = true);
+        window.addEventListener('keyup', e => this.input.keys[e.code] = false);
+        this.initTouchControls();
+      }
+
+      initTouchControls() {
+        const base = document.getElementById('arcade-joystick-base');
+        const knob = base.querySelector('.joystick-knob');
+        const btn = document.getElementById('arcade-btn-action');
+        let touchId = null, cx = 0, cy = 0;
+
+        base.addEventListener('touchstart', e => {
+          e.preventDefault();
+          touchId = e.changedTouches[0].identifier;
+          const rect = base.getBoundingClientRect();
+          cx = rect.left + rect.width / 2; cy = rect.top + rect.height / 2;
+        });
+        window.addEventListener('touchmove', e => {
+          if (touchId === null) return;
+          for(let i=0; i<e.changedTouches.length; i++) {
+            if(e.changedTouches[i].identifier === touchId) {
+              const dx = e.changedTouches[i].clientX - cx;
+              const dy = e.changedTouches[i].clientY - cy;
+              const dist = Math.hypot(dx, dy);
+              const angle = Math.atan2(dy, dx);
+              const capped = Math.min(dist, 35);
+              knob.style.transform = `translate(${Math.cos(angle)*capped}px, ${Math.sin(angle)*capped}px)`;
+              this.input.joystickLeft.x = Math.cos(angle) * (capped/35);
+              this.input.joystickLeft.y = Math.sin(angle) * (capped/35);
+            }
+          }
+        });
+        const endTouch = e => {
+          for(let i=0; i<e.changedTouches.length; i++) {
+            if(e.changedTouches[i].identifier === touchId) {
+              touchId = null; this.input.joystickLeft.x = 0; this.input.joystickLeft.y = 0;
+              knob.style.transform = 'translate(0px, 0px)';
+            }
+          }
+        };
+        window.addEventListener('touchend', endTouch);
+        btn.addEventListener('touchstart', e => { e.preventDefault(); this.input.action1 = true; });
+      }
+
+      loadGame(gameKey) {
+        const GameClass = ARCADE_GAMES[gameKey] || ARCADE_GAMES.cyber_pong;
+        this.game = new GameClass(this);
+      }
+
+      start() {
+        if (this.isRunning) return;
+        this.isRunning = true;
+        this.lastTime = performance.now();
+        const loop = (t) => {
+          if (!this.isRunning) return;
+          const dt = (t - this.lastTime) / 1000;
+          this.lastTime = t;
+          if (this.game) {
+            if (this.game.update) this.game.update(dt, this.input);
+            if (this.game.render) this.game.render(this.ctx);
+          }
+          requestAnimationFrame(loop);
+        };
+        requestAnimationFrame(loop);
+      }
+    }
+
+    function initArcadeSystem() {
+      arcadeRuntime = new ArcadeEngine('arcade-canvas');
+      arcadeRuntime.loadGame('cyber_pong');
+      arcadeRuntime.start();
+    }
+    function loadArcadeGame(key) {
+      arcadeRuntime.loadGame(key);
+      document.getElementById('arcade-score').textContent = '0';
+    }
+    function restartArcadeGame() {
+      arcadeRuntime.loadGame(document.getElementById('arcade-game-selector').value);
+      document.getElementById('arcade-score').textContent = '0';
+    }
+    function toggleArcadeFullscreen() {
+      const viewport = document.getElementById('arcade-viewport');
+      if (!document.fullscreenElement) {
+        viewport.requestFullscreen().catch(err => alert(err.message));
+      } else {
+        document.exitFullscreen();
+      }
+    }
+    function synthesizeFromPrompt() {
+      const code = document.getElementById('custom-prompt-input').value;
+      if (!code.trim()) { alert('Please enter a game prompt first!'); return; }
+      const generatedCode = generateGameClassFromText(code);
+      const Cls = new Function('return ' + generatedCode.replace('class GeneratedGame', 'return class GeneratedGame'))();
+      const key = 'synth_' + Date.now();
+      ARCADE_GAMES[key] = Cls;
+
+      const sel = document.getElementById('arcade-game-selector');
+      let opt = document.createElement('option');
+      opt.value = key;
+      opt.textContent = '⚡ ' + code.slice(0, 26) + '...';
+      sel.appendChild(opt);
+      sel.value = key;
+
+      openWindow('window-gaming');
+      loadArcadeGame(key);
+      alert('Neural pipeline successfully synthesized and launched game!');
+    }
+
+    // --- Terminal Command Handler ---
+    function handleTerminalCommand(e) {
+      if (e.key === 'Enter') {
+        const input = document.getElementById('terminal-input');
+        const cmd = input.value.trim().toLowerCase();
+        const output = document.getElementById('terminal-output');
+        
+        output.innerHTML += `<div>nexus@os:~$ ${input.value}</div>`;
+
+        if (cmd === 'help') {
+          output.innerHTML += `<div>Available commands: <span class="text-cyan-300">sentient</span>, <span class="text-cyan-300">game</span>, <span class="text-cyan-300">forge</span>, <span class="text-cyan-300">clear</span>, <span class="text-cyan-300">about</span></div>`;
+        } else if (cmd === 'sentient') {
+          openWindow('window-sentient');
+          output.innerHTML += `<div>Launching Sentient Core AI...</div>`;
+        } else if (cmd === 'game') {
+          openWindow('window-gaming');
+          output.innerHTML += `<div>Launching Arcade Hub...</div>`;
+        } else if (cmd === 'forge') {
+          openWindow('window-codeforge');
+          output.innerHTML += `<div>Launching Code Forge IDE...</div>`;
+        } else if (cmd === 'clear') {
+          output.innerHTML = '';
+        } else if (cmd === 'about') {
+          output.innerHTML += `<div>AIM OS Nexus v5.0 Sentient Edition • Autonomous Code-to-Game Operating System</div>`;
+        } else {
+          output.innerHTML += `<div class="text-rose-400">Command not recognized: ${cmd}. Type 'help'.</div>`;
+        }
+
+        input.value = '';
+        const body = document.getElementById('terminal-body');
+        body.scrollTop = body.scrollHeight;
+      }
+    }
+  </script>
+</body>
+</html>
