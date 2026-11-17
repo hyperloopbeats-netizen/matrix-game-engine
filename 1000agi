@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PS7 — Orion OS v15.00 Liquid Core & Binary Split Sovereign Matrix</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/min/three.min.js"></script>
+  <style>
+    body { background-color: #020617; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; overflow: hidden; user-select: none; }
+    .glass-panel { background: rgba(8, 14, 30, 0.88); backdrop-filter: blur(28px); border: 1px solid rgba(255, 255, 255, 0.12); }
+    .ps7-card { transition: all 0.25s cubic-bezier(0.1, 0.9, 0.2, 1); }
+    .ps7-card.selected { transform: scale(1.06) translateY(-8px); border-color: rgba(56, 189, 248, 0.9); box-shadow: 0 30px 60px -15px rgba(56, 189, 248, 0.4), 0 0 35px rgba(56, 189, 248, 0.25); }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 2px; }
+  </style>
+</head>
+<body class="w-screen h-screen flex flex-col justify-between relative overflow-hidden">
+
+  <!-- THREE.JS LIQUID AWARENESS & QUANTUM BACKGROUND -->
+  <div id="webgl-bg" class="absolute inset-0 w-full h-full pointer-events-none z-0"></div>
+  <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-black/60 pointer-events-none z-1"></div>
+
+  <!-- TOP SYSTEM BAR & TELEMETRY HUDs -->
+  <header class="h-16 px-12 flex items-center justify-between z-30">
+    <div class="flex items-center gap-4">
+      <div class="flex items-center gap-2 bg-slate-900/80 px-4 py-2 rounded-full border border-white/10">
+        <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping"></span>
+        <span class="text-cyan-300 font-bold text-xs tracking-wider">PS7 / BINARY SPLIT KERNEL v15.00</span>
+      </div>
+    </div>
+
+    <!-- System Status & Profile -->
+    <div class="flex items-center gap-5 text-xs text-slate-200">
+      <div class="flex items-center gap-2 bg-slate-900/80 px-3 py-1.5 rounded-full border border-white/10 font-mono text-[11px]">
+        <span>🧬</span>
+        <span class="text-slate-300">Dual-Core Harmony:</span>
+        <span id="harmony-stat" class="text-cyan-400 font-bold">98.4%</span>
+      </div>
+      <div class="flex items-center gap-3 bg-slate-900/80 px-4 py-2 rounded-full border border-white/10">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+        <span class="font-bold tracking-wide">XimiK_ORION</span>
+      </div>
+      <span id="live-clock" class="font-bold text-cyan-400 font-mono">00:00</span>
+    </div>
+  </header>
+
+  <!-- FLOATING HUD OVERLAYS -->
+  
+  <!-- 1. Spectrum Analyzer HUD -->
+  <div class="fixed top-20 left-12 z-40 glass-panel p-3 rounded-2xl border border-white/15 shadow-2xl flex flex-col gap-1.5 font-mono text-xs pointer-events-none">
+    <div class="flex justify-between items-center text-[10px] text-cyan-400 font-bold">
+      <span>SPECTRUM DSP</span>
+      <span class="text-slate-400 font-normal">Active</span>
+    </div>
+    <canvas id="spectrum-canvas" width="180" height="50" class="w-[180px] h-[50px] bg-slate-950 rounded-xl border border-white/10"></canvas>
+  </div>
+
+  <!-- 2. Conductor Telemetry HUD -->
+  <div class="fixed top-20 right-12 z-40 glass-panel px-4 py-2.5 rounded-2xl border border-white/15 shadow-2xl flex items-center gap-4 font-mono text-xs pointer-events-none">
+    <div class="flex items-center gap-1.5">
+      <span class="text-slate-400">TEMPO:</span>
+      <span id="hud-tempo" class="text-cyan-400 font-bold">120 BPM</span>
+    </div>
+    <div class="h-3 w-px bg-white/10"></div>
+    <div class="flex items-center gap-1.5">
+      <span class="text-slate-400">CHORD:</span>
+      <span id="hud-chord" class="text-rose-400 font-bold">Am</span>
+    </div>
+    <div class="h-3 w-px bg-white/10"></div>
+    <div class="flex items-center gap-1.5">
+      <span class="text-slate-400">HEALED:</span>
+      <span id="hud-healed" class="text-emerald-400 font-bold">0 incidents</span>
+    </div>
+  </div>
+
+  <!-- 3. Ontological Swarm Command Deck -->
+  <div class="fixed top-36 left-1/2 -translate-x-1/2 z-40 w-full max-w-md glass-panel p-3.5 rounded-2xl border border-white/15 shadow-2xl flex flex-col gap-2 font-mono text-xs pointer-events-auto">
+    <div class="flex justify-between items-center border-b border-white/10 pb-1.5">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+        <span class="text-rose-400 font-bold tracking-wider">AiM BINARY SPLIT COMMAND DECK</span>
+      </div>
+    </div>
+    <form onsubmit="handleSwarmPrompt(event)" class="flex items-center gap-2">
+      <input id="swarm-input" type="text" placeholder="Prompt world or trigger simulation test..." class="flex-1 bg-slate-950 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-rose-500">
+      <button type="submit" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl transition cursor-pointer">Execute</button>
+    </form>
+    <div id="swarm-log" class="bg-slate-950/80 p-2 rounded-xl border border-white/5 text-[9px] text-slate-400 space-y-0.5 max-h-16 overflow-y-auto">
+      <div class="text-cyan-400">[Dual-Core]: 1000-AGI hemispheres primed and synchronized.</div>
+    </div>
+  </div>
+
+  <!-- 4. Binary Split Neural Council & AI Medic Monitor -->
+  <div class="fixed top-36 right-12 z-40 w-72 glass-panel p-3.5 rounded-2xl border border-white/15 shadow-2xl flex flex-col gap-2 font-mono text-xs pointer-events-auto">
+    <div class="flex justify-between items-center border-b border-white/10 pb-1.5 text-[11px] text-cyan-300 font-bold">
+      <span>BINARY SPLIT & AI MEDIC</span>
+      <span id="medic-status" class="text-[9px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded">Active</span>
+    </div>
+    <div class="space-y-1.5 text-[10px]">
+      <div class="bg-slate-950 p-2 rounded-lg border border-white/5 flex justify-between items-center">
+        <span class="text-slate-300">⚡ Hemisphere A (Genesis)</span>
+        <span id="hemisphere-a-load" class="text-cyan-400">0.45 load</span>
+      </div>
+      <div class="bg-slate-950 p-2 rounded-lg border border-white/5 flex justify-between items-center">
+        <span class="text-slate-300">🛡️ Hemisphere B (Executioner)</span>
+        <span id="hemisphere-b-load" class="text-rose-400">0.52 load</span>
+      </div>
+      <div class="bg-slate-950 p-2 rounded-lg border border-white/5 flex justify-between items-center">
+        <span class="text-slate-300">🩺 AI Medic Patches</span>
+        <span id="medic-patches-count" class="text-amber-400">0 applied</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. DJ FX Rack -->
+  <div class="fixed top-36 left-12 z-40 w-64 glass-panel p-3.5 rounded-2xl border border-white/15 shadow-2xl flex flex-col gap-2 font-mono text-xs pointer-events-auto">
+    <div class="flex justify-between items-center border-b border-white/10 pb-1.5 text-[11px] text-rose-400 font-bold">
+      <span>🎚️ AiM DJ DSP RACK</span>
+    </div>
+    <div class="space-y-2 text-[10px]">
+      <div>
+        <div class="flex justify-between text-slate-400 mb-1"><span>Filter Cutoff:</span> <span id="filter-val" class="text-cyan-400 font-bold">5.0 kHz</span></div>
+        <input type="range" min="200" max="18000" value="5000" step="100" class="w-full accent-cyan-500 cursor-pointer" oninput="updateDJFilter(this.value)">
+      </div>
+      <div>
+        <div class="flex justify-between text-slate-400 mb-1"><span>Analog Drive:</span> <span id="drive-val" class="text-rose-400 font-bold">0%</span></div>
+        <input type="range" min="0" max="100" value="0" class="w-full accent-rose-500 cursor-pointer" oninput="updateDJDrive(this.value)">
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. Orion Chord Wheel -->
+  <div class="fixed bottom-24 left-12 z-40 glass-panel p-3.5 rounded-2xl border border-white/15 shadow-2xl flex flex-col gap-2 font-mono text-xs pointer-events-auto">
+    <div class="flex justify-between items-center border-b border-white/10 pb-1.5 text-[11px] text-cyan-400 font-bold">
+      <span>🌌 Orion Chord Wheel</span>
+    </div>
+    <div class="grid grid-cols-4 gap-1.5">
+      <button onclick="selectChordNode(0, 'Am', [220.00, 261.63, 329.63, 440.00])" class="chord-node px-2.5 py-1.5 bg-slate-900 hover:bg-cyan-500/20 border border-white/10 rounded-lg text-center cursor-pointer font-bold text-white text-[10px]">Am</button>
+      <button onclick="selectChordNode(1, 'F', [174.61, 220.00, 261.63, 349.23])" class="chord-node px-2.5 py-1.5 bg-slate-900 hover:bg-cyan-500/20 border border-white/10 rounded-lg text-center cursor-pointer font-bold text-white text-[10px]">F</button>
+      <button onclick="selectChordNode(2, 'C', [130.81, 164.81, 196.00, 261.63])" class="chord-node px-2.5 py-1.5 bg-slate-900 hover:bg-cyan-500/20 border border-white/10 rounded-lg text-center cursor-pointer font-bold text-white text-[10px]">C</button>
+      <button onclick="selectChordNode(3, 'G', [196.00, 246.94, 293.66, 392.00])" class="chord-node px-2.5 py-1.5 bg-slate-900 hover:bg-cyan-500/20 border border-white/10 rounded-lg text-center cursor-pointer font-bold text-white text-[10px]">G</button>
+    </div>
+  </div>
+
+  <!-- 7. Session Vault & Epoch Arcade Sandbox HUD -->
+  <div class="fixed bottom-24 right-12 z-40 w-72 glass-panel p-3.5 rounded-2xl border border-white/15 shadow-2xl flex flex-col gap-2 font-mono text-xs pointer-events-auto">
+    <div class="flex justify-between items-center border-b border-white/10 pb-1.5 text-[11px] text-cyan-300 font-bold">
+      <span>💾 SESSION VAULT & SANDBOX</span>
+    </div>
+    <div class="flex gap-2">
+      <input id="vault-name-input" type="text" placeholder="Session name..." class="flex-1 bg-slate-950 border border-white/10 rounded-lg px-2 py-1 text-[10px] text-white">
+      <button onclick="saveCurrentSession()" class="px-2.5 py-1 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-lg text-[10px]">Save</button>
+    </div>
+    <button onclick="toggleEpochSandbox()" id="sandbox-toggle-btn" class="w-full py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-lg text-[10px] transition cursor-pointer shadow">🕹️ Launch Arcade Physics Sandbox</button>
+  </div>
+
+  <!-- MAIN DYNAMIC CONTENT AREA -->
+  <main class="flex-1 relative z-20 flex flex-col justify-end px-12 pb-12 overflow-hidden pointer-events-none">
+    <div id="tile-container" class="flex items-center gap-5 overflow-x-auto py-4 px-1 scrollbar-none pointer-events-auto cursor-grab">
+      <div class="ps7-card glass-panel w-80 h-44 rounded-2xl p-5 flex flex-col justify-between cursor-pointer border border-rose-500/50 flex-shrink-0 selected">
+        <div class="flex justify-between items-start"><span class="text-3xl">🎙️</span><span class="text-[10px] bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded font-mono">BINARY SPLIT</span></div>
+        <div><h3 class="font-bold text-sm text-white">AiM Sovereign Conductor</h3><p class="text-[11px] text-slate-400 mt-1">1000-AGI Self-Healing & Dual-Core Matrix</p></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- BOTTOM FOOTER -->
+  <footer class="h-14 px-12 flex items-center justify-between z-30 bg-black/70 border-t border-white/5 text-xs text-slate-400">
+    <div class="flex items-center gap-8">
+      <span class="flex items-center gap-2"><kbd class="bg-slate-800 px-2.5 py-1 rounded text-cyan-400 font-bold">W / S</kbd> Tempo</span>
+      <span class="flex items-center gap-2"><kbd class="bg-slate-800 px-2.5 py-1 rounded text-rose-400 font-bold">E / Q</kbd> Transpose</span>
+      <span class="flex items-center gap-2"><kbd class="bg-slate-800 px-2.5 py-1 rounded text-amber-400 font-bold">Mouse / Drag</kbd> Interact 3D Entity</span>
+    </div>
+    <div class="text-[11px] text-slate-500 font-mono">PS7 Binary Split Kernel v15.00 — AI Medic Active</div>
+  </footer>
+
+  <!-- ================= JAVASCRIPT ENGINE & SYSTEM MATRIX ================= -->
+  <script>
+    // --- 1. BINARY SPLIT CORE, DUAL-CORE GOVERNOR & AI MEDIC ---
+    class AIMedicSelfHealingBridge {
+      constructor() {
+        this.incidentCount = 0;
+        this.activePatches = new Set();
+      }
+      inspectAndHeal(codeSnippet) {
+        let logs = [];
+        let healed = codeSnippet;
+        if (codeSnippet.includes("while(true)") || codeSnippet.includes("while (true)")) {
+          this.incidentCount++;
+          logs.push(`AI Medic: Infinite loop detected. Hard frame boundary injected.`);
+          healed = codeSnippet.replace(/while\s*\(true\)/g, "while(running && frameCount < 10000)");
+        }
+        return { healed, logs };
+      }
+    }
+
+    class DualCoreGovernor {
+      constructor() {
+        this.genesisLoad = 0.45;
+        this.executionerLoad = 0.52;
+        this.medic = new AIMedicSelfHealingBridge();
+      }
+      processHemispheres(taskName, rawCode) {
+        // Hemisphere A: Genesis Expansion
+        this.genesisLoad = Math.min(0.95, this.genesisLoad + 0.05);
+        let genesisOutput = `// [HEMISPHERE A: GENESIS EXPANSION - ${taskName}]\n` + rawCode;
+
+        // Hemisphere B: Executioner Hardening & AI Medic Verification
+        this.executionerLoad = Math.min(0.95, this.executionerLoad + 0.05);
+        let { healed, logs } = this.medic.inspectAndHeal(genesisOutput);
+
+        return { hardenedCode: healed, logs, incidentCount: this.medic.incidentCount };
+      }
+    }
+
+    // --- 2. WEB WORKER BACKGROUND TIMING CLOCK ---
+    const workerScript = `
+      let timerId = null;
+      let tempo = 120;
+      let step = 0;
+      function startClock(bpm) {
+        tempo = bpm;
+        const intervalMs = (60 / tempo) * 500;
+        if (timerId) clearInterval(timerId);
+        timerId = setInterval(() => {
+          postMessage({ type: 'TICK', step: step, tempo: tempo });
+          step = (step + 1) % 64;
+        }, intervalMs);
+      }
+      onmessage = function(e) {
+        const { type, tempo: newTempo } = e.data;
+        if (type === 'START' || type === 'UPDATE_TEMPO') {
+          if (newTempo) tempo = newTempo;
+          startClock(tempo);
+        } else if (type === 'STOP') {
+          if (timerId) clearInterval(timerId);
+          timerId = null;
+          step = 0;
+        }
+      };
+    `;
+    const workerBlob = new Blob([workerScript], { type: 'application/javascript' });
+    const orionAudioWorker = new Worker(URL.createObjectURL(workerBlob));
+
+    // --- 3. ORCHESTRAL CONDUCTOR & DSP CLASS ---
+    class OrchestralConductor {
+      constructor(audioContext) {
+        this.ctx = audioContext;
+        this.masterGain = this.ctx.createGain();
+        this.masterGain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+
+        this.analyser = this.ctx.createAnalyser();
+        this.analyser.fftSize = 64;
+        this.dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+
+        this.initFXChain();
+
+        this.busses = {
+          vocal: this.createBus(),
+          rhythm: this.createBus(),
+          harmony: this.createBus(),
+          symphony: this.createBus()
+        };
+
+        this.tempo = 120;
+        this.transpositionSemitones = 0;
+        this.tension = 0.0;
+        this.isPlaying = false;
+        this.chordStep = 0;
+
+        this.baseChordProgression = [
+          [220.00, 261.63, 329.63, 440.00], // Am
+          [174.61, 220.00, 261.63, 349.23], // F
+          [130.81, 164.81, 196.00, 261.63], // C
+          [196.00, 246.94, 293.66, 392.00]  // G
+        ];
+
+        orionAudioWorker.onmessage = (e) => {
+          if (e.data.type === 'TICK' && this.isPlaying) {
+            this.onWorkerTick(e.data.step);
+          }
+        };
+      }
+
+      initFXChain() {
+        this.fxFilter = this.ctx.createBiquadFilter();
+        this.fxFilter.type = 'lowpass';
+        this.fxFilter.frequency.setValueAtTime(5000, this.ctx.currentTime);
+        this.fxFilter.Q.setValueAtTime(2.0, this.ctx.currentTime);
+
+        this.fxDrive = this.ctx.createWaveShaper();
+        this.fxDrive.curve = this.makeDistortionCurve(0);
+
+        this.masterGain.connect(this.fxFilter);
+        this.fxFilter.connect(this.fxDrive);
+        this.fxDrive.connect(this.analyser);
+        this.analyser.connect(this.ctx.destination);
+      }
+
+      makeDistortionCurve(amount) {
+        const k = typeof amount === 'number' ? amount : 50;
+        const n_samples = 44100;
+        const curve = new Float32Array(n_samples);
+        const deg = Math.PI / 180;
+        for (let i = 0; i < n_samples; ++i) {
+          const x = (i * 2) / n_samples - 1;
+          curve[i] = ((3 + k) * x * 20 * deg) / (Math.PI + k * Math.abs(x));
+        }
+        return curve;
+      }
+
+      setFilterCutoff(freqHz) {
+        if (!this.fxFilter) return;
+        this.fxFilter.frequency.setTargetAtTime(Math.max(100, Math.min(20000, freqHz)), this.ctx.currentTime, 0.05);
+      }
+
+      setDriveAmount(amount) {
+        if (!this.fxDrive) return;
+        this.fxDrive.curve = this.makeDistortionCurve(amount);
+      }
+
+      createBus() {
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.7, this.ctx.currentTime);
+        gain.connect(this.masterGain);
+        return gain;
+      }
+
+      getAudioEnergy() {
+        if (!this.isPlaying) return 0.0;
+        this.analyser.getByteFrequencyData(this.dataArray);
+        let sum = 0;
+        for (let i = 0; i < this.dataArray.length; i++) sum += this.dataArray[i];
+        return (sum / this.dataArray.length) / 255.0;
+      }
+
+      setTempo(newBpm) {
+        this.tempo = Math.max(60, Math.min(240, newBpm));
+        if (this.isPlaying) {
+          orionAudioWorker.postMessage({ type: 'UPDATE_TEMPO', tempo: this.tempo });
+        }
+      }
+
+      transpose(semitones) {
+        this.transpositionSemitones = Math.max(-12, Math.min(12, semitones));
+      }
+
+      setTier(tierLevel) {
+        this.busses.vocal.gain.setValueAtTime(tierLevel >= 1 ? 0.8 : 0, this.ctx.currentTime);
+        this.busses.rhythm.gain.setValueAtTime(tierLevel >= 2 ? 0.7 : 0, this.ctx.currentTime);
+        this.busses.harmony.gain.setValueAtTime(tierLevel >= 3 ? 0.6 : 0, this.ctx.currentTime);
+        this.busses.symphony.gain.setValueAtTime(tierLevel >= 4 ? 0.5 : 0, this.ctx.currentTime);
+      }
+
+      setTension(val) {
+        this.tension = Math.max(0, Math.min(1, val));
+      }
+
+      forceChord(index, name, freqs) {
+        this.chordStep = index;
+        this.tension = 0.5;
+        this.playManualChord(freqs);
+      }
+
+      playManualChord(freqs) {
+        if (!this.isPlaying) return;
+        const now = this.ctx.currentTime;
+        const activeFreqs = freqs.map(f => f * Math.pow(2, this.transpositionSemitones / 12));
+        activeFreqs.forEach((baseFreq) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(baseFreq * 2, now);
+          gain.gain.setValueAtTime(0.06, now);
+          gain.gain.linearRampToValueAtTime(0.001, now + 0.5);
+          osc.connect(gain);
+          gain.connect(this.busses.harmony);
+          osc.start(now);
+          osc.stop(now + 0.5);
+        });
+      }
+
+      onWorkerTick(step) {
+        if (!this.isPlaying) return;
+        const now = this.ctx.currentTime;
+
+        if (step % 8 === 0) {
+          this.chordStep = (this.chordStep + 1) % this.baseChordProgression.length;
+          this.tension = 0.2 + (this.chordStep * 0.2);
+        }
+
+        if (this.busses.rhythm.gain.value > 0) {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(150, now);
+          osc.frequency.exponentialRampToValueAtTime(40, now + 0.15);
+          gain.gain.setValueAtTime(0.5, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+          osc.connect(gain);
+          gain.connect(this.busses.rhythm);
+          osc.start(now);
+          osc.stop(now + 0.15);
+        }
+
+        const multiplier = Math.pow(2, this.transpositionSemitones / 12);
+        const activeChordFreqs = this.baseChordProgression[this.chordStep].map(f => f * multiplier);
+
+        if (this.busses.harmony.gain.value > 0 || this.busses.symphony.gain.value > 0) {
+          activeChordFreqs.forEach((baseFreq, idx) => {
+            if (this.busses.harmony.gain.value > 0 && idx < 3) {
+              const osc = this.ctx.createOscillator();
+              const gain = this.ctx.createGain();
+              osc.type = 'triangle';
+              osc.frequency.setValueAtTime(baseFreq * 2, now);
+              gain.gain.setValueAtTime(0.04, now);
+              gain.gain.linearRampToValueAtTime(0.001, now + 0.3);
+              osc.connect(gain);
+              gain.connect(this.busses.harmony);
+              osc.start(now);
+              osc.stop(now + 0.3);
+            }
+
+            if (this.busses.symphony.gain.value > 0) {
+              const osc = this.ctx.createOscillator();
+              const gain = this.ctx.createGain();
+              const filter = this.ctx.createBiquadFilter();
+              osc.type = 'sawtooth';
+              osc.frequency.setValueAtTime(baseFreq * (1 + this.tension * 0.02), now);
+              filter.type = 'lowpass';
+              filter.frequency.setValueAtTime(800 + this.tension * 1200, now);
+              gain.gain.setValueAtTime(0.015, now);
+              gain.gain.linearRampToValueAtTime(0.001, now + (60 / this.tempo) * 3);
+              osc.connect(filter);
+              filter.connect(gain);
+              gain.connect(this.busses.symphony);
+              osc.start(now);
+              osc.stop(now + (60 / this.tempo) * 3);
+            }
+          });
+        }
+      }
+
+      start(tier = 4) {
+        if (this.isPlaying) return;
+        this.isPlaying = true;
+        this.chordStep = 0;
+        this.setTier(tier);
+        orionAudioWorker.postMessage({ type: 'START', tempo: this.tempo });
+      }
+
+      stop() {
+        this.isPlaying = false;
+        orionAudioWorker.postMessage({ type: 'STOP' });
+      }
+    }
+
+    // --- 4. ONTOLOGICAL WORLD SPAWNER ---
+    class OntologicalWorldSpawner {
+      constructor(threeScene) {
+        this.scene = threeScene;
+        this.currentEntities = [];
+      }
+      clearWorld() {
+        this.currentEntities.forEach(entity => this.scene.remove(entity));
+        this.currentEntities = [];
+      }
+      spawnEnvironment(manifest) {
+        this.clearWorld();
+        const themeColors = {
+          cyberpunk: { primary: 0x00a2ff, secondary: 0xf43f5e },
+          sunset: { primary: 0xf59e0b, secondary: 0xec4899 },
+          symphonic: { primary: 0x8b5cf6, secondary: 0x06b6d4 }
+        };
+        const colors = themeColors[manifest.theme] || themeColors.cyberpunk;
+        const geometryType = manifest.entityType === 'orchestra' ? new THREE.TorusKnotGeometry(1.2, 0.35, 128, 32) : new THREE.IcosahedronGeometry(1.4, 64);
+        const material = new THREE.MeshStandardMaterial({
+          color: colors.primary,
+          roughness: 0.1,
+          metalness: 0.9,
+          emissive: colors.primary,
+          emissiveIntensity: 0.3
+        });
+        const coreEntity = new THREE.Mesh(geometryType, material);
+        coreEntity.position.set(0, 0, 0);
+        this.scene.add(coreEntity);
+        this.currentEntities.push(coreEntity);
+        return coreEntity;
+      }
+    }
+
+    // --- 5. EPOCH ARCADE PHYSICS SANDBOX & COLLISION ---
+    class EpochPhysicsSandbox {
+      constructor(threeScene, conductor) {
+        this.scene = threeScene;
+        this.conductor = conductor;
+        this.projectiles = [];
+        this.isActive = false;
+      }
+      start() { this.isActive = true; }
+      stop() { this.isActive = false; this.clearProjectiles(); }
+      clearProjectiles() {
+        this.projectiles.forEach(p => this.scene.remove(p.mesh));
+        this.projectiles = [];
+      }
+      spawnBeatPulse() {
+        if (!this.isActive) return;
+        const geometry = new THREE.RingGeometry(0.5, 0.6, 32);
+        const material = new THREE.MeshBasicMaterial({ color: 0x00a2ff, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.position.set(0, 0, 0);
+        mesh.rotation.x = Math.PI / 2;
+        this.scene.add(mesh);
+        this.projectiles.push({ mesh: mesh, scale: 1.0, opacity: 0.8, speed: 0.08 });
+      }
+      updateFrame(time, liquidMesh) {
+        if (!this.isActive) return;
+        const energy = this.conductor ? this.conductor.getAudioEnergy() : 0;
+        for (let i = this.projectiles.length - 1; i >= 0; i--) {
+          let p = this.projectiles[i];
+          p.scale += p.speed + (energy * 0.1);
+          p.opacity -= 0.02;
+          p.mesh.scale.set(p.scale, p.scale, p.scale);
+          p.mesh.material.opacity = p.opacity;
+
+          if (Math.abs(p.scale - 1.45) < 0.25 && liquidMesh) {
+            this.applyVertexShockwave(liquidMesh, p.scale);
+          }
+          if (p.opacity <= 0) {
+            this.scene.remove(p.mesh);
+            this.projectiles.splice(i, 1);
+          }
+        }
+      }
+      applyVertexShockwave(mesh, ringRadius) {
+        const posAttr = mesh.geometry.attributes.position;
+        const vertex = new THREE.Vector3();
+        for (let j = 0; j < posAttr.count; j++) {
+          vertex.fromBufferAttribute(posAttr, j);
+          const distFromOrigin = vertex.length();
+          if (Math.abs(distFromOrigin - ringRadius) < 0.35) {
+            const normal = vertex.clone().normalize();
+            vertex.addScaledVector(normal, 0.35);
+            posAttr.setXYZ(j, vertex.x, vertex.y, vertex.z);
+          }
+        }
+        posAttr.needsUpdate = true;
+        mesh.geometry.computeVertexNormals();
+      }
+    }
+
+    // --- 6. INTERNAL MIRROR SWARM WITH DUAL-CORE GOVERNOR ---
+    class InternalMirrorSwarm {
+      constructor(conductor, spawner, liquidMesh) {
+        this.conductor = conductor;
+        this.spawner = spawner;
+        this.liquidMesh = liquidMesh;
+        this.governor = new DualCoreGovernor();
+        this.activeManifest = null;
+      }
+      async processUserInquiry(promptText) {
+        const logContainer = document.getElementById('swarm-log');
+        const genesisElem = document.getElementById('hemisphere-a-load');
+        const execElem = document.getElementById('hemisphere-b-load');
+        const healedElem = document.getElementById('hud-healed');
+        const patchesElem = document.getElementById('medic-patches-count');
+
+        const log = (msg, color = 'text-slate-300') => {
+          if (logContainer) {
+            logContainer.innerHTML += `<div class="${color}">[Binary Split]: ${msg}</div>`;
+            logContainer.scrollTop = logContainer.scrollHeight;
+          }
+        };
+
+        log(`Running dual-core synthesis for "${promptText}"...`, 'text-cyan-400');
+        await new Promise(r => setTimeout(r, 150));
+
+        // Pass through Dual-Core Governor & AI Medic
+        let sampleTaskCode = `function runLoop() { while(true) { renderFrame(); } }`;
+        let { hardenedCode, logs, incidentCount } = this.governor.processHemispheres(promptText, sampleTaskCode);
+
+        genesisElem.textContent = `${this.governor.genesisLoad.toFixed(2)} load`;
+        execElem.textContent = `${this.governor.executionerLoad.toFixed(2)} load`;
+        healedElem.textContent = `${incidentCount} incidents`;
+        patchesElem.textContent = `${incidentCount} applied`;
+
+        logs.forEach(l => log(l, 'text-amber-400'));
+
+        const lower = promptText.toLowerCase();
+        const tier = lower.includes('symphony') || lower.includes('orchestra') ? 4 : (lower.includes('band') ? 2 : 1);
+        const theme = lower.includes('cyberpunk') ? 'cyberpunk' : (lower.includes('sunset') ? 'sunset' : 'symphonic');
+
+        if (this.conductor.ctx.state === 'suspended') await this.conductor.ctx.resume();
+        this.conductor.start(tier);
+        this.conductor.setTension(tier * 0.25);
+
+        const manifest = { theme, weather: 'rain', tier, entityType: tier >= 3 ? 'orchestra' : 'vocalist' };
+        this.activeManifest = manifest;
+        const newMesh = this.spawner.spawnEnvironment(manifest);
+        this.liquidMesh = newMesh;
+        log(`System synchronized successfully via Binary Split Consensus.`, 'text-emerald-400');
+        return { status: "Synchronized", manifest };
+      }
+      updateFrame(time) {
+        if (!this.liquidMesh) return;
+        const audioEnergy = this.conductor ? this.conductor.getAudioEnergy() : 0;
+        const tension = this.conductor ? this.conductor.tension : 0;
+        const displacementFactor = 0.1 + (tension * 0.1) + (audioEnergy * 0.5);
+
+        const posAttr = this.liquidMesh.geometry.attributes.position;
+        const vertex = new THREE.Vector3();
+        for (let i = 0; i < posAttr.count; i++) {
+          vertex.fromBufferAttribute(posAttr, i);
+          let normal = vertex.clone().normalize();
+          let distance = 1.4 + Math.sin(vertex.x * 6 + time * (4 + audioEnergy * 8)) * 
+                         Math.cos(vertex.y * 6 + time * (4 + audioEnergy * 8)) * displacementFactor;
+          vertex.copy(normal).multiplyScalar(distance);
+          posAttr.setXYZ(i, vertex.x, vertex.y, vertex.z);
+        }
+        posAttr.needsUpdate = true;
+        this.liquidMesh.geometry.computeVertexNormals();
+      }
+    }
+
+    // --- 7. THREE.JS & SYSTEM INITIALIZATION ---
+    let scene, camera, renderer, liquidMesh, particleSystem;
+    let mouseX = 0, mouseY = 0, targetX = 0, targetY = 0;
+    let conductor, spawner, swarm, epochSandbox;
+
+    function initMatrixSystem() {
+      const container = document.getElementById('webgl-bg');
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.z = 5;
+
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      container.appendChild(renderer.domElement);
+
+      scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+      const pointLight = new THREE.PointLight(0x00a2ff, 3, 50);
+      pointLight.position.set(2, 3, 4);
+      scene.add(pointLight);
+
+      const geometry = new THREE.IcosahedronGeometry(1.4, 64);
+      const material = new THREE.MeshStandardMaterial({ color: 0x00a2ff, roughness: 0.15, metalness: 0.85, emissive: 0x003366, emissiveIntensity: 0.4 });
+      liquidMesh = new THREE.Mesh(geometry, material);
+      scene.add(liquidMesh);
+
+      const particleGeo = new THREE.BufferGeometry();
+      const count = 1200;
+      const positions = new Float32Array(count * 3);
+      for (let i = 0; i < count * 3; i += 3) {
+        positions[i] = (Math.random() - 0.5) * 20;
+        positions[i+1] = (Math.random() - 0.5) * 12;
+        positions[i+2] = (Math.random() - 0.5) * 10;
+      }
+      particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      particleSystem = new THREE.Points(particleGeo, new THREE.PointsMaterial({ color: 0x38bdf8, size: 0.04, transparent: true, opacity: 0.7 }));
+      scene.add(particleSystem);
+
+      // Initialize Audio & Binary Split Swarm Architecture
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      conductor = new OrchestralConductor(audioCtx);
+      spawner = new OntologicalWorldSpawner(scene);
+      swarm = new InternalMirrorSwarm(conductor, spawner, liquidMesh);
+      epochSandbox = new EpochPhysicsSandbox(scene, conductor);
+
+      orionAudioWorker.onmessage = (e) => {
+        if (e.data.type === 'TICK') {
+          if (conductor.isPlaying) conductor.onWorkerTick(e.data.step);
+          if (e.data.step % 2 === 0 && epochSandbox) epochSandbox.spawnBeatPulse();
+        }
+      };
+
+      window.addEventListener('mousemove', (e) => {
+        mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+        mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
+      });
+
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      initSpectrumVisualizer();
+      animateMatrixLoop();
+    }
+
+    function animateMatrixLoop() {
+      requestAnimationFrame(animateMatrixLoop);
+      const time = Date.now() * 0.002;
+
+      targetX += (mouseX - targetX) * 0.05;
+      targetY += (mouseY - targetY) * 0.05;
+
+      liquidMesh.rotation.y = time * 0.3 + targetX * 1.5;
+      liquidMesh.rotation.x = time * 0.2 + targetY * 1.5;
+
+      if (swarm) swarm.updateFrame(time);
+      if (epochSandbox && liquidMesh) epochSandbox.updateFrame(time, liquidMesh);
+      if (particleSystem) particleSystem.rotation.y -= 0.0008;
+
+      renderer.render(scene, camera);
+    }
+
+    // --- 8. SPECTRUM VISUALIZER RENDERING ---
+    function initSpectrumVisualizer() {
+      const canvas = document.getElementById('spectrum-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      function renderSpectrum() {
+        requestAnimationFrame(renderSpectrum);
+        ctx.fillStyle = 'rgba(2, 6, 23, 0.4)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        if (!conductor || !conductor.analyser || !conductor.isPlaying) return;
+
+        const bufferLength = conductor.analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        conductor.analyser.getByteFrequencyData(dataArray);
+
+        const barWidth = (canvas.width / bufferLength) * 1.8;
+        let x = 2;
+        for (let i = 0; i < bufferLength; i++) {
+          const barHeight = (dataArray[i] / 255.0) * canvas.height;
+          const gradient = ctx.createLinearGradient(0, canvas.height, 0, 0);
+          gradient.addColorStop(0, '#00a2ff');
+          gradient.addColorStop(1, '#f43f5e');
+          ctx.fillStyle = gradient;
+          ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+          x += barWidth + 2;
+        }
+      }
+      renderSpectrum();
+    }
+
+    // --- 9. UI EVENT HANDLERS & HELPERS ---
+    function handleSwarmPrompt(e) {
+      e.preventDefault();
+      const input = document.getElementById('swarm-input');
+      const val = input.value.trim();
+      if (!val) return;
+      if (swarm) swarm.processUserInquiry(val);
+      input.value = '';
+    }
+
+    function updateDJFilter(val) {
+      const freq = parseFloat(val);
+      if (conductor) conductor.setFilterCutoff(freq);
+      document.getElementById('filter-val').textContent = freq >= 1000 ? `${(freq/1000).toFixed(1)} kHz` : `${Math.round(freq)} Hz`;
+    }
+
+    function updateDJDrive(val) {
+      const pct = parseFloat(val);
+      if (conductor) conductor.setDriveAmount(pct * 2);
+      document.getElementById('drive-val').textContent = `${Math.round(pct)}%`;
+    }
+
+    function selectChordNode(idx, name, freqs) {
+      if (!conductor) return;
+      if (!conductor.isPlaying) conductor.start(4);
+      conductor.forceChord(idx, name, freqs);
+      document.getElementById('hud-chord').textContent = name;
+    }
+
+    let sandboxActive = false;
+    function toggleEpochSandbox() {
+      sandboxActive = !sandboxActive;
+      const btn = document.getElementById('sandbox-toggle-btn');
+      if (sandboxActive) {
+        if (epochSandbox) epochSandbox.start();
+        if (conductor && !conductor.isPlaying) conductor.start(4);
+        btn.textContent = "Stop Arcade Physics";
+        btn.className = "w-full py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-lg text-[10px] transition cursor-pointer shadow";
+      } else {
+        if (epochSandbox) epochSandbox.stop();
+        btn.textContent = "🕹️ Launch Arcade Physics Sandbox";
+        btn.className = "w-full py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-lg text-[10px] transition cursor-pointer shadow";
+      }
+    }
+
+    function saveCurrentSession() {
+      const input = document.getElementById('vault-name-input');
+      const name = input.value.trim() || `Session_${new Date().toLocaleTimeString()}`;
+      const sessions = JSON.parse(localStorage.getItem('orion_vault') || '{}');
+      sessions[name] = { name, tempo: conductor ? conductor.tempo : 120, time: new Date().toISOString() };
+      localStorage.setItem('orion_vault', JSON.stringify(sessions));
+      alert(`Session "${name}" saved to local vault.`);
+      input.value = '';
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (!conductor || !conductor.isPlaying) return;
+      if (e.key === 'w' || e.key === 'W') { conductor.setTempo(conductor.tempo + 5); }
+      else if (e.key === 's' || e.key === 'S') { conductor.setTempo(conductor.tempo - 5); }
+      else if (e.key === 'e' || e.key === 'E') { conductor.transpose(conductor.transpositionSemitones + 1); }
+      else if (e.key === 'q' || e.key === 'Q') { conductor.transpose(conductor.transpositionSemitones - 1); }
+
+      document.getElementById('hud-tempo').textContent = `${conductor.tempo} BPM`;
+    });
+
+    setInterval(() => {
+      document.getElementById('live-clock').textContent = new Date().toTimeString().split(' ')[0].substring(0, 5);
+    }, 1000);
+
+    // Boot Matrix System on Load
+    window.addEventListener('load', initMatrixSystem);
+  </script>
+</body>
+</html>
