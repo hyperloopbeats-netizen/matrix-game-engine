@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PS7 — Orion OS v15.00 Liquid Core & Quantum Shell</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/min/three.min.js"></script>
+  <style>
+    body { background-color: #020617; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; overflow: hidden; user-select: none; }
+    .glass-panel { background: rgba(8, 14, 30, 0.88); backdrop-filter: blur(28px); border: 1px solid rgba(255, 255, 255, 0.12); }
+    .ps7-card { transition: all 0.25s cubic-bezier(0.1, 0.9, 0.2, 1); }
+    .ps7-card.selected { transform: scale(1.06) translateY(-8px); border-color: rgba(56, 189, 248, 0.9); box-shadow: 0 30px 60px -15px rgba(56, 189, 248, 0.4), 0 0 35px rgba(56, 189, 248, 0.25); }
+    .tab-btn.active { background: rgba(255, 255, 255, 0.15); border-color: rgba(255, 255, 255, 0.4); color: white; }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 2px; }
+  </style>
+</head>
+<body class="w-screen h-screen flex flex-col justify-between relative overflow-hidden">
+
+  <!-- THREE.JS LIQUID AWARENESS & QUANTUM BACKGROUND -->
+  <div id="webgl-bg" class="absolute inset-0 w-full h-full pointer-events-none z-0"></div>
+  <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-black/60 pointer-events-none z-1"></div>
+
+  <!-- TROPHY TOAST NOTIFICATION -->
+  <div id="trophy-toast" class="fixed top-20 right-8 z-50 glass-panel px-6 py-4 rounded-2xl border border-white/15 shadow-2xl flex items-center gap-4 transition-all duration-500 translate-x-full opacity-0 pointer-events-none">
+    <div class="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-xl text-cyan-300">💧</div>
+    <div>
+      <div class="text-[10px] text-cyan-400 font-mono font-bold uppercase tracking-wider">Liquid Awareness Triggered</div>
+      <h4 id="trophy-title" class="text-white font-bold text-xs mt-0.5">PS7 Core Synchronized</h4>
+      <p id="trophy-desc" class="text-[10px] text-slate-400">Successfully linked neural telemetry to 3D liquid entity.</p>
+    </div>
+  </div>
+
+  <!-- TOP SYSTEM BAR -->
+  <header class="h-16 px-12 flex items-center justify-between z-30">
+    <div class="flex items-center gap-4">
+      <div class="flex items-center gap-2 bg-slate-900/80 px-4 py-2 rounded-full border border-white/10">
+        <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping"></span>
+        <span class="text-cyan-300 font-bold text-xs tracking-wider">PS7 / LIQUID CORE v15.00</span>
+      </div>
+      <!-- Quick Launch Modules -->
+      <div class="flex items-center gap-2">
+        <button onclick="toggleBrowserModal()" class="tab-btn px-4 py-1.5 rounded-full border border-white/10 text-xs font-semibold text-cyan-300 tracking-wide transition cursor-pointer">🌐 OrionWeb v1.1</button>
+        <button onclick="toggleEpochModal()" class="tab-btn px-4 py-1.5 rounded-full border border-white/10 text-xs font-semibold text-amber-300 tracking-wide transition cursor-pointer">🕹️ Epoch Arcade</button>
+        <button onclick="toggleTrophyRoomModal()" class="tab-btn px-4 py-1.5 rounded-full border border-white/10 text-xs font-semibold text-purple-300 tracking-wide transition cursor-pointer">🏆 Trophies</button>
+        <button onclick="toggleMappingModal()" class="tab-btn px-4 py-1.5 rounded-full border border-white/10 text-xs font-semibold text-emerald-300 tracking-wide transition cursor-pointer">⚙️ Controls</button>
+      </div>
+    </div>
+
+    <!-- System Status & Profile -->
+    <div class="flex items-center gap-5 text-xs text-slate-200">
+      <div class="flex items-center gap-2 bg-slate-900/80 px-3 py-1.5 rounded-full border border-white/10 font-mono text-[11px]">
+        <span>💧</span>
+        <span class="text-slate-300">Liquid Flux:</span>
+        <span id="liquid-flux-stat" class="text-cyan-400 font-bold">1.00x</span>
+      </div>
+      <span id="gamepad-status" class="text-amber-400 font-mono text-[11px]">Gamepad: Standby</span>
+      <div class="flex items-center gap-3 bg-slate-900/80 px-4 py-2 rounded-full border border-white/10">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+        <span class="font-bold tracking-wide">XimiK_ORION</span>
+      </div>
+      <span id="live-clock" class="font-bold text-cyan-400 font-mono">00:00</span>
+    </div>
+  </header>
+
+  <!-- MAIN DYNAMIC CONTENT AREA -->
+  <main class="flex-1 relative z-20 flex flex-col justify-end px-12 pb-12 overflow-hidden pointer-events-none">
+    
+    <!-- Hero Banner -->
+    <div id="hero-info" class="mb-6 max-w-3xl transition-all duration-300 pointer-events-auto">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="text-[10px] bg-cyan-500/20 text-cyan-300 px-2.5 py-1 rounded-md font-mono font-semibold uppercase">PS7 Liquid Architecture</span>
+        <span class="text-[10px] text-slate-400 font-mono">Interactive 3D Entity • Real-Time Displacement</span>
+      </div>
+      <h1 class="text-4xl font-black tracking-tight text-white mb-2">Genesis Protocol: PS7 Liquid</h1>
+      <p class="text-xs text-slate-300 leading-relaxed">Next-generation quantum console shell featuring organic liquid awareness systems and immersive 3D entity entanglement.</p>
+      
+      <div class="flex items-center gap-4 mt-5">
+        <button onclick="toggleBrowserModal()" class="px-7 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl text-xs transition cursor-pointer shadow-lg shadow-cyan-900/50 flex items-center gap-2">
+          <span>🌐 Launch OrionWeb Browser</span>
+        </button>
+        <button onclick="toggleControlCenter()" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-xs transition cursor-pointer border border-white/10">
+          🌌 Control Center (` / Esc)
+        </button>
+      </div>
+    </div>
+
+    <!-- HORIZONTAL CAROUSEL TILE CONTAINER -->
+    <div id="tile-container" class="flex items-center gap-5 overflow-x-auto py-4 px-1 scrollbar-none pointer-events-auto cursor-grab active:cursor-grabbing">
+      
+      <!-- Card 1: OrionWeb Browser -->
+      <div class="ps7-card glass-panel w-80 h-44 rounded-2xl p-5 flex flex-col justify-between cursor-pointer border border-cyan-500/50 flex-shrink-0 selected" onclick="selectTile(0); toggleBrowserModal();">
+        <div class="flex justify-between items-start">
+          <span class="text-3xl">🌐</span>
+          <span class="text-[10px] bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded-md font-mono">ACTIVE</span>
+        </div>
+        <div>
+          <h3 class="font-bold text-sm text-white">OrionWeb Multi-Tab Browser</h3>
+          <p class="text-[11px] text-slate-400 mt-1">Proxy Fetching & OPFS Vault</p>
+        </div>
+      </div>
+
+      <!-- Card 2: Epoch Arcade -->
+      <div class="ps7-card glass-panel w-80 h-44 rounded-2xl p-5 flex flex-col justify-between cursor-pointer border border-white/10 flex-shrink-0" onclick="selectTile(1); toggleEpochModal();">
+        <div class="flex justify-between items-start">
+          <span class="text-3xl">🕹️</span>
+          <span class="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-md font-mono">ARCADE</span>
+        </div>
+        <div>
+          <h3 class="font-bold text-sm text-white">Epoch Evolution Arcade</h3>
+          <p class="text-[11px] text-slate-400 mt-1">10 Eras of PC Gaming Simulation</p>
+        </div>
+      </div>
+
+      <!-- Card 3: Trophy Showcase -->
+      <div class="ps7-card glass-panel w-80 h-44 rounded-2xl p-5 flex flex-col justify-between cursor-pointer border border-white/10 flex-shrink-0" onclick="selectTile(2); toggleTrophyRoomModal();">
+        <div class="flex justify-between items-start">
+          <span class="text-3xl">🏆</span>
+          <span class="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-md font-mono">VAULT</span>
+        </div>
+        <div>
+          <h3 class="font-bold text-sm text-white">Trophy & Milestone Showcase</h3>
+          <p class="text-[11px] text-slate-400 mt-1">Liquid State Achievements</p>
+        </div>
+      </div>
+
+      <!-- Card 4: Controller Mapping -->
+      <div class="ps7-card glass-panel w-80 h-44 rounded-2xl p-5 flex flex-col justify-between cursor-pointer border border-white/10 flex-shrink-0" onclick="selectTile(3); toggleMappingModal();">
+        <div class="flex justify-between items-start">
+          <span class="text-3xl">⚙️</span>
+          <span class="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-md font-mono">HAPTICS</span>
+        </div>
+        <div>
+          <h3 class="font-bold text-sm text-white">Controller & Haptic Config</h3>
+          <p class="text-[11px] text-slate-400 mt-1">Dual-Motor Rumble Testing</p>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- BOTTOM CONTROLLER HINT BAR -->
+  <footer class="h-14 px-12 flex items-center justify-between z-30 bg-black/70 border-t border-white/5 text-xs text-slate-400">
+    <div class="flex items-center gap-8">
+      <span class="flex items-center gap-2"><kbd class="bg-slate-800 px-2.5 py-1 rounded text-cyan-400 font-bold shadow">Select</kbd> Confirm</span>
+      <span class="flex items-center gap-2"><kbd class="bg-slate-800 px-2.5 py-1 rounded text-rose-400 font-bold shadow">Back</kbd> Cancel</span>
+      <span class="flex items-center gap-2"><kbd class="bg-slate-800 px-2.5 py-1 rounded text-amber-400 font-bold shadow">Mouse / Drag</kbd> Interact 3D Entity</span>
+      <span class="flex items-center gap-2"><kbd class="bg-slate-800 px-2.5 py-1 rounded text-emerald-400 font-bold shadow">PS / `</kbd> Control Center</span>
+    </div>
+    <div class="text-[11px] text-slate-500 font-mono">PS7 Kernel v15.00 — Liquid Awareness Runtime</div>
+  </footer>
+
+  <!-- ================= MODALS ================= -->
+
+  <!-- 1. ORIONWEB BROWSER MODAL -->
+  <div id="browser-modal" class="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-2xl flex flex-col transition-all duration-300 opacity-0 pointer-events-none">
+    <!-- Browser Header -->
+    <header class="glass-panel border-b border-white/10 flex flex-col z-30">
+      <div id="tab-bar" class="flex items-center gap-2 px-6 pt-3 overflow-x-auto scrollbar-none border-b border-white/5 bg-slate-950/80">
+        <button onclick="createNewTab()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-400 font-bold text-xs transition cursor-pointer flex items-center gap-1 mb-1">+ New Tab</button>
+      </div>
+      <div class="h-14 px-6 flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2 bg-slate-900 px-3 py-1.5 rounded-full border border-white/10 font-mono text-xs">
+            <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+            <span class="text-cyan-300 font-bold">ORIONWEB v1.1</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <button onclick="goBack()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 transition cursor-pointer">◀</button>
+            <button onclick="goForward()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 transition cursor-pointer">▶</button>
+            <button onclick="reloadPage()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 transition cursor-pointer">⟳</button>
+          </div>
+        </div>
+        <form onsubmit="handleNavigate(event)" class="flex-1 max-w-2xl flex items-center bg-slate-950 px-4 py-2 rounded-xl border border-white/10 focus-within:border-cyan-500 transition shadow-inner">
+          <span class="text-emerald-400 text-xs font-mono mr-2">🔒 https://</span>
+          <input id="url-input" type="text" class="flex-1 bg-transparent text-xs text-white font-mono focus:outline-none" placeholder="Enter URL...">
+          <button type="button" onclick="toggleBookmarkCurrentPage()" class="text-sm px-2 text-slate-400 hover:text-amber-400 transition cursor-pointer">⭐</button>
+          <button type="submit" class="text-xs bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1 rounded-lg font-bold transition cursor-pointer ml-2">Go</button>
+        </form>
+        <div class="flex items-center gap-2">
+          <button onclick="toggleBookmarksModal()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 rounded-lg text-xs font-mono transition cursor-pointer border border-white/10">⭐ Bookmarks</button>
+          <button onclick="saveCurrentPageToOPFS()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-cyan-300 rounded-lg text-xs font-mono transition cursor-pointer border border-white/10">💾 OPFS Save</button>
+          <button onclick="toggleVaultModal()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-purple-300 rounded-lg text-xs font-mono transition cursor-pointer border border-white/10">📂 Vault</button>
+          <button onclick="toggleBrowserModal()" class="px-4 py-2 bg-rose-600/80 hover:bg-rose-600 text-white rounded-xl text-xs font-semibold transition cursor-pointer shadow-lg ml-4">Close (Esc)</button>
+        </div>
+      </div>
+    </header>
+    <!-- Browser Viewport -->
+    <main class="flex-1 relative z-20 flex flex-col bg-slate-950 overflow-hidden">
+      <div id="loader" class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center transition-opacity duration-300 opacity-0 pointer-events-none">
+        <div class="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+        <div class="text-xs text-cyan-300 font-mono">Streaming Quantum Payload...</div>
+      </div>
+      <div id="viewport-container" class="w-full h-full relative"></div>
+    </main>
+    <footer class="h-8 px-6 glass-panel border-t border-white/5 flex items-center justify-between text-[11px] text-slate-400 font-mono z-30">
+      <div id="status-text" class="truncate">OrionWeb Proxy Gateway active.</div>
+      <div>PS7 Kernel Browser Subsystem</div>
+    </footer>
+  </div>
+
+  <!-- 2. EPOCH ARCADE MODAL -->
+  <div id="epoch-modal" class="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-2xl flex flex-col p-10 transition-all duration-300 opacity-0 pointer-events-none">
+    <div class="flex items-center justify-between pb-4 border-b border-white/10">
+      <div class="flex items-center gap-3">
+        <span class="text-2xl">🕹️</span>
+        <h2 class="font-bold text-lg text-white">Epoch Evolution Arcade — 10 Eras of PC Gaming</h2>
+      </div>
+      <button onclick="toggleEpochModal()" class="px-5 py-2 bg-rose-600/80 hover:bg-rose-600 text-white rounded-xl text-xs font-semibold transition cursor-pointer shadow-lg">Close (Esc)</button>
+    </div>
+    <div class="flex-1 grid grid-cols-3 gap-6 mt-6 overflow-hidden">
+      <div id="epoch-list" class="bg-slate-900/60 p-4 rounded-2xl border border-white/10 overflow-y-auto space-y-2 pr-2"></div>
+      <div class="col-span-2 bg-slate-900/60 p-6 rounded-2xl border border-white/10 flex flex-col justify-between">
+        <div class="flex justify-between items-start border-b border-white/10 pb-3">
+          <div>
+            <span id="epoch-era-year" class="text-[10px] bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded font-mono">1962</span>
+            <h3 id="epoch-era-title" class="text-xl font-bold text-white mt-1">Spacewar!</h3>
+            <p id="epoch-era-mechanic" class="text-xs text-amber-300 mt-0.5">Mechanic: Orbital Gravity & Vector Physics</p>
+          </div>
+          <button onclick="bootActiveEpochGame()" class="px-5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl text-xs transition cursor-pointer shadow">▶ Start Simulation</button>
+        </div>
+        <div class="flex-1 my-4 bg-slate-950 rounded-xl border border-white/10 relative overflow-hidden flex flex-col items-center justify-center">
+          <canvas id="epoch-canvas" class="w-full h-full"></canvas>
+          <div id="epoch-overlay" class="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-slate-950/80 backdrop-blur-sm">
+            <span class="text-6xl mb-3" id="epoch-era-icon">🚀</span>
+            <h4 class="text-white font-bold text-base" id="epoch-era-subtitle">Ready to Boot Simulation</h4>
+            <p class="text-xs text-slate-400 max-w-sm mt-2" id="epoch-era-desc">Click 'Start Simulation' to initialize this era's gameplay loop.</p>
+          </div>
+        </div>
+        <div class="flex justify-between items-center pt-3 border-t border-white/10 text-[11px] text-slate-500 font-mono">
+          <span>Controls: Arrow Keys or Mouse</span>
+          <span class="text-emerald-400 font-bold">60 FPS Stable</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. TROPHY ROOM MODAL -->
+  <div id="trophy-room-modal" class="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-2xl flex flex-col p-10 transition-all duration-300 opacity-0 pointer-events-none">
+    <div class="flex items-center justify-between pb-4 border-b border-white/10">
+      <div class="flex items-center gap-3">
+        <span class="text-2xl">🏆</span>
+        <h2 class="font-bold text-lg text-white">PS7 Liquid Core Trophy Vault</h2>
+      </div>
+      <button onclick="toggleTrophyRoomModal()" class="px-5 py-2 bg-rose-600/80 hover:bg-rose-600 text-white rounded-xl text-xs font-semibold transition cursor-pointer shadow-lg">Close (Esc)</button>
+    </div>
+    <div class="flex-1 grid grid-cols-4 gap-6 mt-6 overflow-hidden">
+      <div class="bg-slate-900/60 p-6 rounded-2xl border border-white/10 flex flex-col justify-between">
+        <div class="space-y-4">
+          <h3 class="font-bold text-sm text-cyan-400">Progression Overview</h3>
+          <div class="bg-slate-950 p-4 rounded-xl border border-white/10 text-center">
+            <div class="text-3xl font-black text-white">15 / 30</div>
+            <div class="text-[10px] text-slate-400 font-mono mt-1">Liquid Milestones Unlocked</div>
+          </div>
+        </div>
+        <div class="text-[11px] text-slate-500 font-mono">PS7 Achievement Daemon</div>
+      </div>
+      <div class="col-span-3 bg-slate-900/60 p-6 rounded-2xl border border-white/10 flex flex-col justify-between overflow-hidden">
+        <h3 class="font-bold text-sm text-cyan-400 mb-3">Unlocked Achievements</h3>
+        <div class="flex-1 overflow-y-auto grid grid-cols-2 gap-4 pr-2">
+          <div class="bg-slate-950 p-4 rounded-xl border border-white/10 flex items-start gap-4">
+            <div class="w-12 h-12 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-2xl flex-shrink-0">💧</div>
+            <div>
+              <h4 class="text-xs font-bold text-white">Liquid Sovereign (Platinum)</h4>
+              <p class="text-[10px] text-slate-400 mt-1">Initialized 3D liquid awareness mesh in PS7 shell.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. CONTROLLER REMAPPING & HAPTICS MODAL -->
+  <div id="mapping-modal" class="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-2xl flex flex-col p-10 transition-all duration-300 opacity-0 pointer-events-none">
+    <div class="flex items-center justify-between pb-4 border-b border-white/10">
+      <div class="flex items-center gap-3">
+        <span class="text-2xl">⚙️</span>
+        <h2 class="font-bold text-lg text-white">PS7 Controller Mapping & Haptic Rumble Test</h2>
+      </div>
+      <button onclick="toggleMappingModal()" class="px-5 py-2 bg-rose-600/80 hover:bg-rose-600 text-white rounded-xl text-xs font-semibold transition cursor-pointer shadow-lg">Close (Esc)</button>
+    </div>
+    <div class="flex-1 grid grid-cols-2 gap-6 mt-6">
+      <div class="bg-slate-900/60 p-6 rounded-2xl border border-white/10 flex flex-col justify-between">
+        <div class="space-y-4">
+          <h3 class="font-bold text-sm text-amber-400">Action Bindings Registry</h3>
+          <div id="mapping-list" class="space-y-2.5 overflow-y-auto max-h-[380px] pr-2"></div>
+        </div>
+        <button onclick="resetDefaultMappings()" class="py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-xs transition cursor-pointer border border-white/10">Reset Defaults</button>
+      </div>
+      <div class="bg-slate-900/60 p-6 rounded-2xl border border-white/10 flex flex-col justify-between space-y-4">
+        <div>
+          <h3 class="font-bold text-sm text-cyan-400 mb-3">Haptic Feedback Rumble Test</h3>
+          <div class="bg-slate-950 p-4 rounded-xl border border-white/10 space-y-3">
+            <p class="text-[11px] text-slate-400 leading-relaxed">Trigger haptic rumble pulses on connected gamepads.</p>
+            <div class="grid grid-cols-3 gap-2 pt-1">
+              <button onclick="testRumble('weak')" class="py-2.5 bg-slate-800 hover:bg-slate-700 text-cyan-300 font-bold rounded-xl text-xs transition cursor-pointer border border-cyan-500/30">⚡ Weak Buzz</button>
+              <button onclick="testRumble('strong')" class="py-2.5 bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold rounded-xl text-xs transition cursor-pointer border border-amber-500/30">🔥 Heavy Rumble</button>
+              <button onclick="testRumble('dual')" class="py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl text-xs transition cursor-pointer shadow">✨ Dual Pulse</button>
+            </div>
+          </div>
+        </div>
+        <div class="flex-1 flex flex-col items-center justify-center text-center space-y-2">
+          <span class="text-4xl">🎮</span>
+          <h4 class="font-bold text-xs text-white" id="mapping-status-title">Standard Input Profile Active</h4>
+          <p class="text-[11px] text-slate-400 max-w-xs" id="mapping-status-desc">Click any action on the left to rebind.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. BOOKMARKS MODAL -->
+  <div id="bookmarks-modal" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-xl flex flex-col p-10 transition-all duration-300 opacity-0 pointer-events-none">
+    <div class="flex items-center justify-between pb-4 border-b border-white/10">
+      <div class="flex items-center gap-3">
+        <span class="text-2xl">⭐</span>
+        <h2 class="font-bold text-lg text-white">OrionWeb Bookmark Manager</h2>
+      </div>
+      <button onclick="toggleBookmarksModal()" class="px-5 py-2 bg-rose-600/80 hover:bg-rose-600 text-white rounded-xl text-xs font-semibold transition cursor-pointer shadow-lg">Close (Esc)</button>
+    </div>
+    <div class="flex-1 grid grid-cols-1 gap-6 mt-6 overflow-hidden">
+      <div class="bg-slate-900/60 p-6 rounded-2xl border border-white/10 flex flex-col justify-between overflow-hidden">
+        <h3 class="font-bold text-sm text-amber-400 mb-3">Saved Bookmarks Registry</h3>
+        <div id="bookmarks-list" class="flex-1 overflow-y-auto space-y-2 pr-2 font-mono text-xs"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. OPFS VAULT MODAL -->
+  <div id="vault-modal" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-xl flex flex-col p-10 transition-all duration-300 opacity-0 pointer-events-none">
+    <div class="flex items-center justify-between pb-4 border-b border-white/10">
+      <div class="flex items-center gap-3">
+        <span class="text-2xl">📂</span>
+        <h2 class="font-bold text-lg text-white">Origin Private File System (OPFS) Vault</h2>
+      </div>
+      <button onclick="toggleVaultModal()" class="px-5 py-2 bg-rose-600/80 hover:bg-rose-600 text-white rounded-xl text-xs font-semibold transition cursor-pointer shadow-lg">Close (Esc)</button>
+    </div>
+    <div class="flex-1 grid grid-cols-3 gap-6 mt-6 overflow-hidden">
+      <div class="bg-slate-900/60 p-6 rounded-2xl border border-white/10 flex flex-col justify-between">
+        <div class="space-y-4">
+          <h3 class="font-bold text-sm text-purple-400">Vault Statistics</h3>
+          <div class="bg-slate-950 p-4 rounded-xl border border-white/10 space-y-2 font-mono text-xs">
+            <div class="flex justify-between"><span class="text-slate-400">Root Directory:</span> <span class="text-white">navigator.storage</span></div>
+            <div class="flex justify-between"><span class="text-slate-400">Cached Snapshots:</span> <span id="vault-file-count" class="text-cyan-400 font-bold">0 Files</span></div>
+          </div>
+        </div>
+        <button onclick="refreshOPFSFileList()" class="w-full py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl text-xs transition cursor-pointer shadow">🔄 Refresh File Index</button>
+      </div>
+      <div class="col-span-2 bg-slate-900/60 p-6 rounded-2xl border border-white/10 flex flex-col justify-between overflow-hidden">
+        <h3 class="font-bold text-sm text-cyan-400 mb-3">Stored Snapshots</h3>
+        <div id="vault-file-list" class="flex-1 overflow-y-auto space-y-2 pr-2 font-mono text-xs">
+          <div class="text-slate-500 italic">No files loaded. Click Refresh File Index.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTROL CENTER QUICK MENU -->
+  <div id="control-center" class="fixed inset-x-0 bottom-0 z-50 h-76 glass-panel border-t border-white/20 p-8 flex flex-col justify-between transition-transform duration-300 translate-y-full pointer-events-none">
+    <div class="flex items-center justify-between border-b border-white/10 pb-4">
+      <div class="flex items-center gap-3">
+        <span class="text-xl">🌌</span>
+        <h3 class="font-bold text-sm text-white tracking-wide">PS7 Control Center</h3>
+      </div>
+      <button onclick="toggleControlCenter()" class="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold transition cursor-pointer border border-white/10">Close (PS / Esc)</button>
+    </div>
+    <div class="grid grid-cols-4 gap-4 my-4">
+      <div class="bg-slate-950/80 p-4 rounded-xl border border-white/10 flex flex-col justify-between cursor-pointer hover:border-cyan-500/50 transition" onclick="toggleBrowserModal()">
+        <div class="text-[10px] text-cyan-400 font-mono uppercase">OrionWeb</div>
+        <div class="font-bold text-white text-xs mt-2">Browser Suite</div>
+      </div>
+      <div class="bg-slate-950/80 p-4 rounded-xl border border-white/10 flex flex-col justify-between cursor-pointer hover:border-amber-500/50 transition" onclick="toggleEpochModal()">
+        <div class="text-[10px] text-amber-400 font-mono uppercase">Epoch Arcade</div>
+        <div class="font-bold text-white text-xs mt-2">10 Eras Simulation</div>
+      </div>
+      <div class="bg-slate-950/80 p-4 rounded-xl border border-white/10 flex flex-col justify-between cursor-pointer hover:border-purple-500/50 transition" onclick="toggleTrophyRoomModal()">
+        <div class="text-[10px] text-purple-400 font-mono uppercase">Trophies</div>
+        <div class="font-bold text-white text-xs mt-2">Milestone Vault</div>
+      </div>
+      <div class="bg-slate-950/80 p-4 rounded-xl border border-white/10 flex flex-col justify-between cursor-pointer hover:border-emerald-500/50 transition" onclick="toggleMappingModal()">
+        <div class="text-[10px] text-emerald-400 font-mono uppercase">Controls</div>
+        <div class="font-bold text-white text-xs mt-2">Haptics & Remapping</div>
+      </div>
+    </div>
+    <div class="text-[11px] text-slate-500 font-mono flex justify-between items-center">
+      <span>PS7 Control Center v15.00</span>
+      <span>Press PS Button / ` to Toggle</span>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT ENGINE & LIQUID AWARENESS 3D SYSTEM -->
+  <script>
+    let currentTileIndex = 0;
+    const tiles = document.querySelectorAll('.ps7-card');
+    const totalTiles = tiles.length;
+    let controlCenterActive = false;
+    let browserModalActive = false;
+    let epochModalActive = false;
+    let trophyRoomModalActive = false;
+    let mappingModalActive = false;
+    let bookmarksModalActive = false;
+    let vaultModalActive = false;
+
+    // ================= THREE.JS LIQUID AWARENESS 3D ENTITY =================
+    let scene, camera, renderer, liquidMesh, particleSystem;
+    let mouseX = 0, mouseY = 0;
+    let targetX = 0, targetY = 0;
+    let liquidFlux = 1.00;
+
+    function initLiquidAwarenessSystem() {
+      const container = document.getElementById('webgl-bg');
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.z = 5;
+
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      container.appendChild(renderer.domElement);
+
+      // Ambient & Directional Lighting for 3D Entity
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+      scene.add(ambientLight);
+      const pointLight = new THREE.PointLight(0x00a2ff, 3, 50);
+      pointLight.position.set(2, 3, 4);
+      scene.add(pointLight);
+
+      // Create Interactive 3D Liquid Entity (Deformable Icosahedron Sphere)
+      const geometry = new THREE.IcosahedronGeometry(1.4, 64);
+      const material = new THREE.MeshStandardMaterial({
+        color: 0x00a2ff,
+        wireframe: false,
+        roughness: 0.15,
+        metalness: 0.85,
+        emissive: 0x003366,
+        emissiveIntensity: 0.4
+      });
+      liquidMesh = new THREE.Mesh(geometry, material);
+      scene.add(liquidMesh);
+
+      // Background Quantum Particle Field
+      const particleGeo = new THREE.BufferGeometry();
+      const count = 1200;
+      const positions = new Float32Array(count * 3);
+      for (let i = 0; i < count * 3; i += 3) {
+        positions[i] = (Math.random() - 0.5) * 20;
+        positions[i+1] = (Math.random() - 0.5) * 12;
+        positions[i+2] = (Math.random() - 0.5) * 10;
+      }
+      particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      const particleMat = new THREE.PointsMaterial({ color: 0x38bdf8, size: 0.04, transparent: true, opacity: 0.7 });
+      particleSystem = new THREE.Points(particleGeo, particleMat);
+      scene.add(particleSystem);
+
+      // Track Mouse/Pointer for Liquid Awareness Interaction
+      window.addEventListener('mousemove', (e) => {
+        mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+        mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
+        liquidFlux = 1.25;
+        document.getElementById('liquid-flux-stat').textContent = "1.25x (Active)";
+        setTimeout(() => {
+          liquidFlux = 1.00;
+          document.getElementById('liquid-flux-stat').textContent = "1.00x";
+        }, 800);
+      });
+
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      animateLiquidSystem();
+    }
+
+    function animateLiquidSystem() {
+      requestAnimationFrame(animateLiquidSystem);
+      const time = Date.now() * 0.002;
+
+      // Smooth interpolation for mouse interaction
+      targetX += (mouseX - targetX) * 0.05;
+      targetY += (mouseY - targetY) * 0.05;
+
+      // Rotate liquid mesh based on user awareness
+      liquidMesh.rotation.y = time * 0.3 + targetX * 1.5;
+      liquidMesh.rotation.x = time * 0.2 + targetY * 1.5;
+
+      // Liquid Awareness Vertex Displacement (Organic Wave Motion)
+      const positionAttribute = liquidMesh.geometry.attributes.position;
+      const vertex = new THREE.Vector3();
+      for (let i = 0; i < positionAttribute.count; i++) {
+        vertex.fromBufferAttribute(positionAttribute, i);
+        let normal = vertex.clone().normalize();
+        
+        // Sine wave displacement modulated by liquid flux and time
+        let distance = 1.4 + Math.sin(vertex.x * 3 + time * 2) * Math.cos(vertex.y * 3 + time * 2) * 0.15 * liquidFlux;
+        vertex.copy(normal).multiplyScalar(distance);
+        positionAttribute.setXYZ(i, vertex.x, vertex.y, vertex.z);
+      }
+      positionAttribute.needsUpdate = true;
+      liquidMesh.geometry.computeVertexNormals();
+
+      particleSystem.rotation.y -= 0.0008;
+
+      renderer.render(scene, camera);
+    }
+    initLiquidAwarenessSystem();
+
+    // ================= ORIONWEB BROWSER ENGINE & TABS =================
+    let tabs = [];
+    let activeTabId = null;
+    let nextTabId = 1;
+    let bookmarks = JSON.parse(localStorage.getItem('ps7_bookmarks')) || [
+      { title: 'Example Domain', url: 'https://example.com' },
+      { title: 'Wikipedia', url: 'https://wikipedia.org' }
+    ];
+
+    function toggleBrowserModal() {
+      playSound('select');
+      browserModalActive = !browserModalActive;
+      const modal = document.getElementById('browser-modal');
+      modal.style.opacity = browserModalActive ? '1' : '0';
+      modal.style.pointerEvents = browserModalActive ? 'auto' : 'none';
+      if (browserModalActive && tabs.length === 0) {
+        createNewTab('https://example.com');
+      }
+    }
+
+    function createNewTab(initialUrl = 'https://example.com') {
+      const id = nextTabId++;
+      const tab = { id, title: 'New Tab', url: initialUrl, history: [initialUrl], historyIndex: 0, iframe: null };
+      const iframe = document.createElement('iframe');
+      iframe.className = 'w-full h-full border-none bg-white absolute inset-0 hidden';
+      iframe.setAttribute('sandbox', 'allow-scripts allow-forms allow-same-origin');
+      document.getElementById('viewport-container').appendChild(iframe);
+      tab.iframe = iframe;
+      tabs.push(tab);
+      switchTab(id);
+      navigateTab(id, initialUrl);
+    }
+
+    function closeTab(id, event) {
+      if (event) event.stopPropagation();
+      if (tabs.length === 1) { navigateTab(id, 'https://example.com'); return; }
+      const idx = tabs.findIndex(t => t.id === id);
+      if (idx !== -1) {
+        tabs[idx].iframe.remove();
+        tabs.splice(idx, 1);
+        if (activeTabId === id) switchTab(tabs[Math.max(0, idx - 1)].id);
+        else renderTabBar();
+      }
+    }
+
+    function switchTab(id) {
+      activeTabId = id;
+      tabs.forEach(t => {
+        if (t.id === id) { t.iframe.classList.remove('hidden'); document.getElementById('url-input').value = t.url; }
+        else t.iframe.classList.add('hidden');
+      });
+      renderTabBar();
+    }
+
+    function renderTabBar() {
+      const tabBar = document.getElementById('tab-bar');
+      const newTabBtnHTML = tabBar.lastElementChild.outerHTML;
+      let html = tabs.map(t => `
+        <div onclick="switchTab(${t.id})" class="tab-item ${t.id === activeTabId ? 'active' : 'bg-slate-900 border-white/10 text-slate-400'} px-4 py-2 rounded-t-xl border border-b-0 text-xs font-mono flex items-center gap-3 cursor-pointer mb-1 max-w-[200px] flex-shrink-0">
+          <span class="truncate">${t.title}</span>
+          <button onclick="closeTab(${t.id}, event)" class="hover:text-rose-400 text-slate-500 font-bold px-1">×</button>
+        </div>
+      `).join('');
+      tabBar.innerHTML = html + newTabBtnHTML;
+    }
+
+    function getCurrentTab() { return tabs.find(t => t.id === activeTabId); }
+
+    function handleNavigate(e) {
+      e.preventDefault();
+      let url = document.getElementById('url-input').value.trim();
+      navigateTab(activeTabId, url);
+    }
+
+    async function navigateTab(tabId, url) {
+      const tab = tabs.find(t => t.id === tabId);
+      if (!tab) return;
+      if (!url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url;
+      tab.url = url;
+      tab.title = url.replace('https://', '').replace('http://', '').split('/')[0];
+      if (tabId === activeTabId) document.getElementById('url-input').value = url;
+      renderTabBar();
+
+      if (tab.historyIndex === -1 || tab.history[tab.historyIndex] !== url) {
+        tab.history = tab.history.slice(0, tab.historyIndex + 1);
+        tab.history.push(url);
+        tab.historyIndex = tab.history.length - 1;
+      }
+
+      if (tabId === activeTabId) {
+        const loader = document.getElementById('loader');
+        loader.style.opacity = '1'; loader.style.pointerEvents = 'auto';
+        try {
+          const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`);
+          if (!res.ok) throw new Error();
+          const html = await res.text();
+          tab.iframe.src = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+        } catch {
+          tab.iframe.src = URL.createObjectURL(new Blob([`<div style="background:#020617;color:#fff;padding:40px;text-align:center;"><h2>⚠️ Proxy Gateway Restricted</h2><p>${url}</p></div>`], { type: 'text/html' }));
+        } finally {
+          loader.style.opacity = '0'; loader.style.pointerEvents = 'none';
+        }
+      }
+    }
+
+    function goBack() { const t = getCurrentTab(); if (t && t.historyIndex > 0) { t.historyIndex--; navigateTab(t.id, t.history[t.historyIndex]); } }
+    function goForward() { const t = getCurrentTab(); if (t && t.historyIndex < t.history.length - 1) { t.historyIndex++; navigateTab(t.id, t.history[t.historyIndex]); } }
+    function reloadPage() { const t = getCurrentTab(); if (t) navigateTab(t.id, t.url); }
+
+    // ================= BOOKMARKS & OPFS VAULT =================
+    function toggleBookmarkCurrentPage() {
+      const t = getCurrentTab();
+      if (!t) return;
+      bookmarks.push({ title: t.title, url: t.url });
+      localStorage.setItem('ps7_bookmarks', JSON.stringify(bookmarks));
+      alert(`Bookmarked: ${t.title}`);
+    }
+
+    function toggleBookmarksModal() {
+      bookmarksModalActive = !bookmarksModalActive;
+      const m = document.getElementById('bookmarks-modal');
+      m.style.opacity = bookmarksModalActive ? '1' : '0';
+      m.style.pointerEvents = bookmarksModalActive ? 'auto' : 'none';
+      if (bookmarksModalActive) {
+        document.getElementById('bookmarks-list').innerHTML = bookmarks.map((b, i) => `
+          <div class="bg-slate-950 p-3 rounded-xl border border-white/10 flex justify-between items-center">
+            <div><div class="text-white font-bold">${b.title}</div><div class="text-[10px] text-cyan-400">${b.url}</div></div>
+            <button onclick="navigateTab(activeTabId, '${b.url}'); toggleBookmarksModal();" class="px-3 py-1 bg-cyan-600 text-white rounded-lg text-xs">Open</button>
+          </div>
+        `).join('');
+      }
+    }
+
+    async function saveCurrentPageToOPFS() {
+      const t = getCurrentTab();
+      if (!t) return;
+      const root = await navigator.storage.getDirectory();
+      const fh = await root.getFileHandle(`snapshot_${Date.now()}.html`, { create: true });
+      const writable = await fh.createWritable();
+      await writable.write(`URL: ${t.url}`);
+      await writable.close();
+      alert("Successfully saved page snapshot to OPFS vault.");
+    }
+
+    async function toggleVaultModal() {
+      vaultModalActive = !vaultModalActive;
+      const m = document.getElementById('vault-modal');
+      m.style.opacity = vaultModalActive ? '1' : '0';
+      m.style.pointerEvents = vaultModalActive ? 'auto' : 'none';
+      if (vaultModalActive) await refreshOPFSFileList();
+    }
+
+    async function refreshOPFSFileList() {
+      const root = await navigator.storage.getDirectory();
+      let files = [];
+      for await (const [name, handle] of root.entries()) {
+        if (handle.kind === 'file') { const f = await handle.getFile(); files.push({ name, size: f.size }); }
+      }
+      document.getElementById('vault-file-count').textContent = `${files.length} Files`;
+      document.getElementById('vault-file-list').innerHTML = files.map(f => `
+        <div class="bg-slate-950 p-3 rounded-xl border border-white/10 flex justify-between items-center">
+          <span class="text-white">${f.name}</span><span class="text-emerald-400">${f.size} bytes</span>
+        </div>
+      `).join('') || '<div class="text-slate-500 italic">Vault is empty.</div>';
+    }
+
+    // ================= EPOCH ARCADE =================
+    const epochEras = [
+      { year: "1962", title: "Spacewar!", icon: "🚀", mechanic: "Orbital Gravity", subtitle: "Dawn of Digital Combat", type: "spacewar" },
+      { year: "1984", title: "Tetris", icon: "🧱", mechanic: "Spatial Grid Physics", subtitle: "Puzzle Phenomenon", type: "tetris" }
+    ];
+    let selectedEpochIndex = 0, activeGameLoop = null;
+
+    function renderEpochList() {
+      document.getElementById('epoch-list').innerHTML = epochEras.map((e, idx) => `
+        <div onclick="selectEpochEra(${idx})" class="p-3 rounded-xl border ${idx === selectedEpochIndex ? 'border-cyan-500 bg-cyan-500/10' : 'border-white/10 bg-slate-950'} cursor-pointer flex items-center gap-3">
+          <span class="text-2xl">${e.icon}</span><div><div class="text-xs font-bold text-white">${e.title}</div><div class="text-[10px] text-cyan-400 font-mono">${e.year}</div></div>
+        </div>
+      `).join('');
+    }
+
+    function selectEpochEra(idx) {
+      selectedEpochIndex = idx;
+      if (activeGameLoop) { cancelAnimationFrame(activeGameLoop); activeGameLoop = null; }
+      const e = epochEras[idx];
+      document.getElementById('epoch-era-year').textContent = e.year;
+      document.getElementById('epoch-era-title').textContent = e.title;
+      document.getElementById('epoch-era-mechanic').textContent = `Mechanic: ${e.mechanic}`;
+      document.getElementById('epoch-era-icon').textContent = e.icon;
+      document.getElementById('epoch-overlay').style.display = 'flex';
+      renderEpochList();
+    }
+
+    function toggleEpochModal() {
+      epochModalActive = !epochModalActive;
+      const m = document.getElementById('epoch-modal');
+      m.style.opacity = epochModalActive ? '1' : '0';
+      m.style.pointerEvents = epochModalActive ? 'auto' : 'none';
+      if (epochModalActive) { renderEpochList(); selectEpochEra(0); }
+    }
+
+    function bootActiveEpochGame() {
+      document.getElementById('epoch-overlay').style.display = 'none';
+      const canvas = document.getElementById('epoch-canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = canvas.parentElement.clientWidth;
+      canvas.height = canvas.parentElement.clientHeight;
+      let y = 0;
+      function loop() {
+        if (!epochModalActive) return;
+        y = (y + 2) % canvas.height;
+        ctx.fillStyle = '#020617'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#00a2ff'; ctx.fillRect(canvas.width/2 - 20, y, 40, 40);
+        activeGameLoop = requestAnimationFrame(loop);
+      }
+      loop();
+    }
+
+    // ================= MODAL & AUDIO ENGINE =================
+    function toggleTrophyRoomModal() {
+      trophyRoomModalActive = !trophyRoomModalActive;
+      const m = document.getElementById('trophy-room-modal');
+      m.style.opacity = trophyRoomModalActive ? '1' : '0';
+      m.style.pointerEvents = trophyRoomModalActive ? 'auto' : 'none';
+    }
+
+    function toggleMappingModal() {
+      mappingModalActive = !mappingModalActive;
+      const m = document.getElementById('mapping-modal');
+      m.style.opacity = mappingModalActive ? '1' : '0';
+      m.style.pointerEvents = mappingModalActive ? 'auto' : 'none';
+      if (mappingModalActive) {
+        document.getElementById('mapping-list').innerHTML = `
+          <div class="p-3 bg-slate-950 rounded-xl border border-white/10 flex justify-between items-center text-xs"><span class="text-slate-300">Select / Confirm</span><span class="text-cyan-400 font-mono">Button 0</span></div>
+          <div class="p-3 bg-slate-950 rounded-xl border border-white/10 flex justify-between items-center text-xs"><span class="text-slate-300">Back / Cancel</span><span class="text-cyan-400 font-mono">Button 1</span></div>
+        `;
+      }
+    }
+
+    function testRumble(type) {
+      const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+      for (let gp of gamepads) {
+        if (gp && gp.vibrationActuator) {
+          gp.vibrationActuator.playEffect("dual-rumble", { duration: 400, strongMagnitude: type === 'strong' ? 1.0 : 0.4, weakMagnitude: 0.8 });
+        }
+      }
+      alert(`Triggered ${type} haptic rumble test.`);
+    }
+
+    let audioCtx = null;
+    function playSound(type = 'nav') {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      const now = audioCtx.currentTime;
+      osc.frequency.setValueAtTime(type === 'nav' ? 800 : 300, now);
+      gain.gain.setValueAtTime(0.05, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+      osc.start(now); osc.stop(now + 0.05);
+    }
+
+    function selectTile(index) {
+      if (currentTileIndex !== index) playSound('nav');
+      currentTileIndex = index;
+      tiles.forEach((t, i) => t.classList.toggle('selected', i === currentTileIndex));
+    }
+
+    function toggleControlCenter() {
+      controlCenterActive = !controlCenterActive;
+      const cc = document.getElementById('control-center');
+      cc.className = controlCenterActive ? "fixed inset-x-0 bottom-0 z-50 h-76 glass-panel border-t border-white/20 p-8 flex flex-col justify-between transition-transform duration-300 translate-y-0 pointer-events-auto" : "fixed inset-x-0 bottom-0 z-50 h-76 glass-panel border-t border-white/20 p-8 flex flex-col justify-between transition-transform duration-300 translate-y-full pointer-events-none";
+    }
+
+    setInterval(() => {
+      document.getElementById('live-clock').textContent = new Date().toTimeString().split(' ')[0].substring(0, 5);
+    }, 1000);
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === '`' || e.key === 'Escape') {
+        if (browserModalActive) toggleBrowserModal();
+        else if (epochModalActive) toggleEpochModal();
+        else if (trophyRoomModalActive) toggleTrophyRoomModal();
+        else if (mappingModalActive) toggleMappingModal();
+        else if (bookmarksModalActive) toggleBookmarksModal();
+        else if (vaultModalActive) toggleVaultModal();
+        else toggleControlCenter();
+        return;
+      }
+      if (!browserModalActive && !epochModalActive && !trophyRoomModalActive && !mappingModalActive && !controlCenterActive) {
+        if (e.key === 'ArrowRight' || e.key === 'd') { currentTileIndex = (currentTileIndex + 1) % totalTiles; selectTile(currentTileIndex); }
+        else if (e.key === 'ArrowLeft' || e.key === 'a') { currentTileIndex = (currentTileIndex - 1 + totalTiles) % totalTiles; selectTile(currentTileIndex); }
+        else if (e.key === 'Enter') {
+          if (currentTileIndex === 0) toggleBrowserModal();
+          else if (currentTileIndex === 1) toggleEpochModal();
+          else if (currentTileIndex === 2) toggleTrophyRoomModal();
+          else if (currentTileIndex === 3) toggleMappingModal();
+        }
+      }
+    });
+  </script>
+</body>
+</html>
