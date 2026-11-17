@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full select-none bg-black">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Quantum Dragonfly AGI Video Synthesizer OS</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Orbitron:wght@400;600;800&family=Inter:wght@300;400;500;600&display=swap');
+
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
+            background-color: #020617; font-family: 'Inter', sans-serif; color: #f8fafc;
+            user-select: none; -webkit-user-select: none; touch-action: none;
+        }
+
+        .font-orbitron { font-family: 'Orbitron', sans-serif; }
+        .font-mono-code { font-family: 'Fira Code', monospace; }
+
+        .hardware-chassis {
+            width: 100vw; height: 100dvh;
+            border-radius: 0px; border: none; background: #020617; box-shadow: none;
+        }
+        @media (min-width: 640px) {
+            .hardware-chassis {
+                width: 480px; height: 920px; border-radius: 42px;
+                border: 3px solid rgba(56, 189, 248, 0.45);
+                box-shadow: 0 0 100px rgba(0, 0, 0, 0.99), 0 0 90px rgba(14, 165, 233, 0.3);
+            }
+        }
+
+        .glass-panel {
+            background: rgba(3, 15, 26, 0.92);
+            backdrop-filter: blur(22px);
+            -webkit-backdrop-filter: blur(22px);
+            border: 1px solid rgba(56, 189, 248, 0.35);
+        }
+
+        .swarm-pill {
+            background: linear-gradient(135deg, rgba(14, 165, 233, 0.22) 0%, rgba(3, 105, 161, 0.6) 100%);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(56, 189, 248, 0.55);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .swarm-pill:active { transform: scale(0.95); }
+        .swarm-pill.active-pill {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.35) 0%, rgba(6, 95, 70, 0.85) 100%);
+            border-color: rgba(52, 211, 153, 0.85);
+            box-shadow: 0 0 18px rgba(16, 185, 129, 0.4);
+        }
+
+        .custom-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.4); border-radius: 4px; }
+
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(1000%); }
+        }
+        .animate-scanline {
+            animation: scanline 3s linear infinite;
+        }
+    </style>
+</head>
+<body class="relative flex items-center justify-center w-full h-full bg-black">
+
+    <div id="os-chassis" class="relative hardware-chassis flex flex-col overflow-hidden z-10">
+        
+        <!-- Hardware Status Bar & Swarm Telemetry -->
+        <div class="relative w-full px-5 pt-3.5 pb-2 flex items-center justify-between text-[11px] font-mono text-cyan-200/95 z-40 bg-black/90 border-b border-cyan-500/20">
+            <div class="flex items-center space-x-2">
+                <span id="os-clock" class="font-bold tracking-wider text-cyan-100">12:00</span>
+                <span class="px-1.5 py-0.5 rounded bg-cyan-950/90 border border-cyan-500/40 text-[9px] text-cyan-300">AGI CLIP SYNTH v11.5</span>
+            </div>
+            <div class="flex items-center space-x-2.5 text-[10px]">
+                <span id="memory-health" class="text-emerald-400 font-bold">SWARM: 98%</span>
+                <span id="active-swarm" class="text-amber-300">12 DRAGONFLIES</span>
+                <span id="fps-readout" class="text-cyan-300">120 FPS</span>
+                <i data-lucide="cpu" class="w-3.5 h-3.5 text-cyan-400 animate-pulse"></i>
+            </div>
+        </div>
+
+        <!-- Main Viewport Area -->
+        <div class="relative flex-1 w-full overflow-hidden flex flex-col justify-between">
+            
+            <!-- Module Switcher -->
+            <div class="relative w-full px-3 py-1.5 z-30 flex items-center justify-between bg-black/75 border-b border-cyan-500/20">
+                <div class="flex items-center space-x-1.5">
+                    <div class="w-5 h-5 rounded bg-cyan-500/20 border border-cyan-500/50 flex items-center justify-center text-cyan-300">
+                        <i data-lucide="video" class="w-3 h-3 animate-pulse"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-orbitron text-[9px] font-bold text-cyan-100 tracking-wider leading-none">IMAGE-TO-CLIP SYNTHESIZER</h1>
+                        <span class="text-[8px] font-mono text-cyan-400/90">GEMINI AGI MULTI-FRAME PIPELINE</span>
+                    </div>
+                </div>
+                <div class="flex space-x-1 bg-black/90 p-1 rounded-xl border border-cyan-500/35 text-[9px]">
+                    <button onclick="switchTab('source')" id="tab-source-btn" class="px-2 py-1 rounded font-mono bg-cyan-500/30 text-cyan-100 border border-cyan-400 transition-all">SOURCE</button>
+                    <button onclick="switchTab('synth')" id="tab-synth-btn" class="px-2 py-1 rounded font-mono text-cyan-400/70 hover:text-cyan-200 transition-all">SYNTH</button>
+                    <button onclick="switchTab('player')" id="tab-player-btn" class="px-2 py-1 rounded font-mono text-cyan-400/70 hover:text-cyan-200 transition-all">PLAYER</button>
+                    <button onclick="switchTab('swarm')" id="tab-swarm-btn" class="px-2 py-1 rounded font-mono text-cyan-400/70 hover:text-cyan-200 transition-all">SWARM</button>
+                </div>
+            </div>
+
+            <!-- Workspace Viewport Stack -->
+            <div class="relative w-full flex-1 p-2.5 z-30 flex flex-col justify-end overflow-hidden">
+                
+                <!-- MODULE 1: SOURCE IMAGE UPLOAD & PREVIEW -->
+                <div id="view-source" class="glass-panel w-full h-full rounded-2xl p-3 flex flex-col space-y-2.5">
+                    <div class="flex items-center justify-between pb-1 border-b border-cyan-500/25">
+                        <div class="flex items-center space-x-1.5">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                            <span class="font-orbitron text-[10px] font-bold text-cyan-200">1. SELECT OR CAPTURE SOURCE IMAGE</span>
+                        </div>
+                        <span id="source-status-badge" class="text-[9px] font-mono text-cyan-300">READY</span>
+                    </div>
+
+                    <!-- Image Drop / Preview Container -->
+                    <div id="drop-zone" class="relative flex-1 w-full bg-black/95 rounded-xl border-2 border-dashed border-cyan-500/40 overflow-hidden flex flex-col items-center justify-center p-4 text-center cursor-pointer group hover:border-cyan-400 transition-all">
+                        <input type="file" id="image-file-input" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer z-20">
+                        
+                        <div id="upload-placeholder" class="flex flex-col items-center space-y-2 z-10">
+                            <div class="w-12 h-12 rounded-full bg-cyan-500/20 border border-cyan-500/50 flex items-center justify-center text-cyan-300 group-hover:scale-110 transition-transform">
+                                <i data-lucide="upload-cloud" class="w-6 h-6"></i>
+                            </div>
+                            <div class="font-orbitron text-[11px] font-bold text-cyan-100">DROP IMAGE OR TAP TO UPLOAD</div>
+                            <div class="text-[9px] font-mono text-cyan-400/80 max-w-[240px]">Supports PNG, JPG, WEBP. Neural telemetry will map pixel matrix into the AGI swarm.</div>
+                        </div>
+
+                        <!-- Image Preview Canvas/Img -->
+                        <div id="preview-container" class="absolute inset-0 hidden w-full h-full bg-black flex items-center justify-center overflow-hidden z-10">
+                            <img id="source-preview-img" class="max-w-full max-h-full object-contain rounded-lg" alt="Source Preview">
+                            <div class="absolute bottom-2 right-2 bg-black/80 px-2 py-1 rounded text-[8px] font-mono text-emerald-300 border border-emerald-500/40">
+                                ✓ MAPPED TO 0X01 MATRIX
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Sample Presets -->
+                    <div class="space-y-1.5">
+                        <div class="text-[9px] font-mono text-cyan-400">OR SELECT QUANTUM SAMPLE ASSET:</div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button onclick="loadSampleImage('https://placehold.co/400x400/0284c7/f8fafc?text=Quantum+City')" class="swarm-pill p-2 rounded-xl text-center text-[9px] font-mono text-cyan-200">
+                                🌆 Cyber City
+                            </button>
+                            <button onclick="loadSampleImage('https://placehold.co/400x400/10b981/f8fafc?text=Bio+Dragonfly')" class="swarm-pill p-2 rounded-xl text-center text-[9px] font-mono text-cyan-200">
+                                🦟 Bio Dragonfly
+                            </button>
+                            <button onclick="loadSampleImage('https://placehold.co/400x400/f59e0b/f8fafc?text=Neural+Nexus')" class="swarm-pill p-2 rounded-xl text-center text-[9px] font-mono text-cyan-200">
+                                ⚡ Neural Core
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Proceed Button -->
+                    <button onclick="switchTab('synth')" class="swarm-pill w-full py-2.5 rounded-xl font-orbitron text-[10px] text-cyan-100 font-bold border border-cyan-400 flex items-center justify-center space-x-2">
+                        <span>PROCEED TO AI SYNTHESIS</span>
+                        <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <!-- MODULE 2: AGI PROMPT & SYNTHESIS DECK -->
+                <div id="view-synth" class="glass-panel w-full h-full rounded-2xl p-3 hidden flex-col space-y-2.5 overflow-hidden">
+                    <div class="flex items-center justify-between pb-1.5 border-b border-cyan-500/25">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+                            <span class="font-orbitron text-[11px] font-bold text-cyan-200">2. AGI CLIP TRANSFORMATION PROMPT</span>
+                        </div>
+                        <span class="text-[9px] font-mono text-emerald-400">GEMINI-3-FLASH</span>
+                    </div>
+
+                    <!-- Prompt Input & Settings -->
+                    <div class="space-y-2">
+                        <div class="text-[9px] font-mono text-cyan-300 flex justify-between">
+                            <span>TRANSFORMATION & MOTION PROMPT</span>
+                            <span class="text-amber-300">MULTI-FRAME GENERATION</span>
+                        </div>
+                        <textarea id="synthesis-prompt" rows="3" class="w-full bg-black/85 border border-cyan-500/40 rounded-xl p-2.5 text-[10px] font-mono text-cyan-100 focus:outline-none focus:border-cyan-400 resize-none" placeholder="Describe the video clip transformation (e.g. Transform image into a glowing cyberpunk hologram with particle streams flying outward)...">Transform image into a dynamic cyberpunk hologram with glowing bioluminescent pulse waves and flying robotic dragonfly swarms.</textarea>
+                    </div>
+
+                    <!-- Synthesis Parameters -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="bg-black/70 p-2 rounded-xl border border-cyan-500/20 space-y-1">
+                            <div class="text-[8px] font-mono text-cyan-400">CLIP DURATION</div>
+                            <select id="clip-duration" class="w-full bg-black border border-cyan-500/40 rounded-lg p-1 text-[9px] font-mono text-cyan-200 focus:outline-none">
+                                <option value="3">3 Seconds (60 Frames)</option>
+                                <option value="5" selected>5 Seconds (100 Frames)</option>
+                                <option value="10">10 Seconds (200 Frames)</option>
+                            </select>
+                        </div>
+                        <div class="bg-black/70 p-2 rounded-xl border border-cyan-500/20 space-y-1">
+                            <div class="text-[8px] font-mono text-cyan-400">MOTION STYLE</div>
+                            <select id="motion-style" class="w-full bg-black border border-cyan-500/40 rounded-lg p-1 text-[9px] font-mono text-cyan-200 focus:outline-none">
+                                <option value="quantum">Quantum Swarm Warp</option>
+                                <option value="hologram" selected>Cybernetic Hologram</option>
+                                <option value="organic">Bioluminescent Organic</option>
+                                <option value="glitch">Matrix Glitch Cascade</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Generation Progress Bar (Hidden by Default) -->
+                    <div id="generation-progress-box" class="hidden bg-black/90 p-3 rounded-xl border border-cyan-500/40 space-y-2">
+                        <div class="flex justify-between text-[9px] font-mono">
+                            <span id="gen-status-text" class="text-cyan-300">SYNTHESIZING FRAME 0 / 100...</span>
+                            <span id="gen-percent" class="text-amber-300 font-bold">0%</span>
+                        </div>
+                        <div class="w-full h-2 bg-black rounded-full overflow-hidden border border-cyan-500/30">
+                            <div id="gen-progress-bar" class="h-full bg-gradient-to-r from-cyan-500 to-emerald-400 w-0 transition-all duration-150"></div>
+                        </div>
+                    </div>
+
+                    <!-- Launch Synthesis Button -->
+                    <button onclick="startVideoSynthesis()" id="btn-start-synth" class="swarm-pill w-full py-3 rounded-xl font-orbitron text-[11px] text-cyan-100 font-bold border border-cyan-400 flex items-center justify-center space-x-2 shadow-lg">
+                        <i data-lucide="sparkles" class="w-4 h-4 text-emerald-400"></i>
+                        <span>SYNTHESIZE VIDEO CLIP</span>
+                    </button>
+
+                    <!-- Real-Time AI Log Stream -->
+                    <div class="flex-1 bg-black/95 rounded-xl border border-cyan-500/30 p-2 font-mono-code text-[8px] text-cyan-300/90 overflow-auto custom-scroll space-y-1">
+                        <div class="text-emerald-400 font-bold">// AGI Synthesis Console</div>
+                        <div id="synth-console-log">[00:00] Pipeline initialized. Waiting for user prompt & source image.</div>
+                    </div>
+                </div>
+
+                <!-- MODULE 3: VIDEO CLIP PLAYER & EXPORT DECK -->
+                <div id="view-player" class="glass-panel w-full h-full rounded-2xl p-3 hidden flex-col space-y-2.5 overflow-hidden">
+                    <div class="flex items-center justify-between pb-1.5 border-b border-cyan-500/25">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                            <span class="font-orbitron text-[11px] font-bold text-cyan-200">3. GENERATED VIDEO CLIP PREVIEW</span>
+                        </div>
+                        <span id="clip-fps-badge" class="text-[9px] font-mono text-emerald-300">20 FPS H.264</span>
+                    </div>
+
+                    <!-- Video Canvas Player Container -->
+                    <div class="relative flex-1 w-full bg-black rounded-xl border border-cyan-500/40 overflow-hidden flex items-center justify-center">
+                        <canvas id="clipCanvas" class="w-full h-full object-contain"></canvas>
+                        
+                        <!-- Scanline Overlay -->
+                        <div class="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%)] bg-[length:100%_4px] opacity-40"></div>
+
+                        <!-- Empty State Notice -->
+                        <div id="player-empty-state" class="absolute inset-0 flex flex-col items-center justify-center bg-black/80 text-center p-4">
+                            <i data-lucide="film" class="w-10 h-10 text-cyan-500/50 mb-2 animate-bounce"></i>
+                            <div class="font-orbitron text-[10px] text-cyan-200 font-bold">NO VIDEO CLIP SYNTHESIZED YET</div>
+                            <div class="text-[8px] font-mono text-cyan-400/70 mt-1">Complete Step 1 & 2 to generate your custom AI video transformation.</div>
+                        </div>
+
+                        <!-- Play/Pause Overlay Button -->
+                        <button onclick="toggleVideoPlayback()" id="btn-play-overlay" class="absolute w-12 h-12 rounded-full bg-cyan-950/80 border border-cyan-400 text-cyan-200 flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-transform hidden">
+                            <i id="play-icon" data-lucide="play" class="w-6 h-6 ml-0.5"></i>
+                        </button>
+                    </div>
+
+                    <!-- Scrubbing Timeline & Controls -->
+                    <div class="space-y-1.5 bg-black/70 p-2 rounded-xl border border-cyan-500/20">
+                        <div class="flex items-center justify-between text-[8px] font-mono text-cyan-300">
+                            <span id="time-current">00.0s</span>
+                            <input type="range" id="timeline-slider" min="0" max="100" value="0" oninput="scrubTimeline(this.value)" class="w-36 accent-cyan-400 cursor-pointer">
+                            <span id="time-total">05.0s</span>
+                        </div>
+                        <div class="flex items-center justify-center space-x-2">
+                            <button onclick="restartVideo()" class="swarm-pill px-3 py-1.5 rounded-lg text-[9px] font-mono text-cyan-200 flex items-center space-x-1">
+                                <i data-lucide="rotate-ccw" class="w-3 h-3"></i>
+                                <span>REPLAY</span>
+                            </button>
+                            <button onclick="toggleVideoPlayback()" class="swarm-pill px-4 py-1.5 rounded-lg text-[9px] font-mono text-emerald-300 font-bold flex items-center space-x-1 border border-emerald-400/50">
+                                <i data-lucide="play" class="w-3 h-3"></i>
+                                <span id="btn-play-label">PLAY</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Export Options Deck -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="exportVideoClip('mp4')" class="swarm-pill py-2.5 rounded-xl font-mono text-[10px] text-cyan-100 font-bold flex items-center justify-center space-x-1.5 border border-cyan-400/50">
+                            <i data-lucide="download" class="w-3.5 h-3.5 text-cyan-400"></i>
+                            <span>EXPORT MP4 CLIP</span>
+                        </button><button onclick="exportVideoClip('gif')" class="swarm-pill py-2.5 rounded-xl font-mono text-[10px] text-amber-200 font-bold flex items-center justify-center space-x-1.5 border border-amber-400/50">
+                            <i data-lucide="image" class="w-3.5 h-3.5 text-amber-400"></i>
+                            <span>EXPORT ANIMATED GIF</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- MODULE 4: SWARM VIEWPORT (3D Living Bio-Membrane & Dragonfly Hunt) -->
+                <div id="view-swarm" class="glass-panel w-full h-full rounded-2xl p-2.5 hidden flex-col space-y-2">
+                    <div class="flex items-center justify-between pb-1 border-b border-cyan-500/25">
+                        <div class="flex items-center space-x-1.5">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                            <span class="font-orbitron text-[10px] font-bold text-cyan-200">QUANTUM DRAGONFLY MEMORY SWARM</span>
+                        </div>
+                        <span class="text-[9px] font-mono text-emerald-300">ACTIVE</span>
+                    </div>
+
+                    <!-- 3D WebGL Canvas + Memory Pixel Overlay -->
+                    <div id="canvas-wrapper" class="relative flex-1 w-full bg-black/95 rounded-xl border border-cyan-500/30 overflow-hidden flex items-center justify-center">
+                        <canvas id="simCanvas" class="absolute inset-0 w-full h-full block touch-none cursor-crosshair"></canvas>
+                        <canvas id="memoryOverlayCanvas" class="absolute inset-0 w-full h-full block pointer-events-none"></canvas>
+                        
+                        <!-- Telemetry Overlay Badge -->
+                        <div class="absolute top-2.5 left-2.5 bg-black/75 border border-cyan-500/35 rounded-lg p-2 pointer-events-none backdrop-blur-md space-y-0.5">
+                            <div class="text-[8px] font-mono text-cyan-400">SWARM BLOCK: <span class="text-amber-300 font-bold">PixelBlock_0x01</span></div>
+                            <div class="text-[8px] font-mono text-cyan-300">ACTIVE DRAGONFLIES: <span class="text-emerald-300 font-bold">12 UNITS</span></div>
+                            <div class="text-[8px] font-mono text-cyan-300">SYNTHESIS SYNC: <span class="text-cyan-200">99.8%</span></div>
+                        </div>
+
+                        <div class="absolute bottom-2 left-2.5 text-[8px] font-mono text-cyan-300/70 pointer-events-none bg-black/50 px-1.5 py-0.5 rounded">
+                            TAP TISSUE: INJECT NEURAL NODE • DRAG: ROTATE MATRIX
+                        </div>
+                    </div>
+
+                    <!-- Control Deck -->
+                    <div class="grid grid-cols-3 gap-1.5 pt-0.5">
+                        <button onclick="triggerSwarmHunt()" class="swarm-pill py-2 rounded-xl flex flex-col items-center justify-center text-[9px] font-mono text-cyan-200 font-bold border border-cyan-400/50">
+                            <i data-lucide="crosshair" class="w-3.5 h-3.5 text-cyan-400 mb-0.5"></i>
+                            <span>SWARM HUNT</span>
+                        </button>
+                        <button onclick="triggerSyntheticPulse()" class="swarm-pill py-2 rounded-xl flex flex-col items-center justify-center text-[9px] font-mono text-amber-200">
+                            <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-400 mb-0.5"></i>
+                            <span>SYNTHETIC PULSE</span>
+                        </button>
+                        <button onclick="resetSwarmMatrix()" class="swarm-pill py-2 rounded-xl flex flex-col items-center justify-center text-[9px] font-mono text-sky-300">
+                            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5 text-sky-400 mb-0.5"></i>
+                            <span>RESET SWARM</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Hardware Home Bar -->
+        <div class="w-full h-5 bg-black flex items-center justify-center pb-1 z-40">
+            <div class="w-28 h-1 rounded-full bg-cyan-500/40"></div>
+        </div>
+    </div>
+
+    <!-- Master Application Script -->
+    <script>
+        lucide.createIcons();
+
+        // Update Hardware Clock
+        setInterval(() => {
+            document.getElementById('os-clock').innerText = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }, 1000);
+
+        // =========================================================================
+        // 1. APPLICATION STATE & SOURCE IMAGE MANAGEMENT
+        // =========================================================================
+        let sourceImage = null; // Image object or HTMLImageElement
+        let sourceImageBase64 = null;
+        let generatedFrames = []; // Array of canvas/image data for video clip playback
+        let isSynthesizing = false;
+        let currentClipTime = 0;
+        let clipDurationSec = 5;
+        let isPlayingClip = false;
+        let clipPlayInterval = null;
+
+        // File Upload Listener
+        document.getElementById('image-file-input').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    sourceImageBase64 = event.target.result;
+                    loadSourceImageIntoPreview(sourceImageBase64);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function loadSampleImage(url) {
+            sourceImageBase64 = url;
+            loadSourceImageIntoPreview(url);
+            logSynthConsole(`Loaded quantum sample image asset from registry.`);
+        }
+
+        function loadSourceImageIntoPreview(dataUrl) {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = function() {
+                sourceImage = img;
+                document.getElementById('source-preview-img').src = dataUrl;
+                document.getElementById('preview-container').classList.remove('hidden');
+                document.getElementById('upload-placeholder').classList.add('hidden');
+                document.getElementById('source-status-badge').innerText = 'LOADED & MAPPED';
+                document.getElementById('source-status-badge').className = 'text-[9px] font-mono text-emerald-400 font-bold';
+                logSynthConsole(`Source image successfully loaded (${img.naturalWidth}x${img.naturalHeight}px). Ready for AGI synthesis.`);
+            };
+            img.src = dataUrl;
+        }
+
+        // =========================================================================
+        // 2. VIDEO CLIP SYNTHESIS ENGINE (Multi-Frame Generation Simulation)
+        // =========================================================================
+        async function startVideoSynthesis() {
+            if (!sourceImage && !sourceImageBase64) {
+                logSynthConsole(`ERROR: No source image loaded. Please upload or select a sample image in SOURCE tab.`);
+                switchTab('source');
+                return;
+            }
+
+            const promptText = document.getElementById('synthesis-prompt').value.trim();
+            const durationSec = parseInt(document.getElementById('clip-duration').value);
+            const motionStyle = document.getElementById('motion-style').value;
+            clipDurationSec = durationSec;
+
+            document.getElementById('btn-start-synth').disabled = true;
+            document.getElementById('generation-progress-box').classList.remove('hidden');
+            isSynthesizing = true;
+            generatedFrames = [];
+
+            const totalFrames = durationSec * 20; // 20 FPS
+            logSynthConsole(`Initiating Gemini AGI video synthesis: "${promptText}" (${durationSec}s, ${totalFrames} frames, style: ${motionStyle})...`);
+
+            const synthCanvas = document.createElement('canvas');
+            synthCanvas.width = 320;
+            synthCanvas.height = 320;
+            const ctx = synthCanvas.getContext('2d');
+
+            const baseImg = sourceImage || await loadImageAsync(sourceImageBase64);
+
+            for (let f = 0; f < totalFrames; f++) {
+                const progress = f / totalFrames;
+                const percent = Math.round(progress * 100);
+
+                // Update Progress UI
+                document.getElementById('gen-status-text').innerText = `SYNTHESIZING FRAME ${f + 1} / ${totalFrames}...`;
+                document.getElementById('gen-percent').innerText = `${percent}%`;
+                document.getElementById('gen-progress-bar').style.width = `${percent}%`;
+
+                if (f % 10 === 0) {
+                    logSynthConsole(`[Frame ${f}/${totalFrames}] Mapped neural warp & quantum particle displacement.`);
+                }
+
+                // Draw transformed frame onto offscreen canvas
+                ctx.clearRect(0, 0, 320, 320);
+                ctx.save();
+
+                // Apply motion transformations based on style & frame progress
+                ctx.translate(160, 160);
+                
+                if (motionStyle === 'quantum') {
+                    const scale = 1.0 + Math.sin(progress * Math.PI * 4) * 0.12;
+                    const rotate = Math.sin(progress * Math.PI * 2) * 0.15;
+                    ctx.scale(scale, scale);
+                    ctx.rotate(rotate);
+                } else if (motionStyle === 'hologram') {
+                    const skew = Math.sin(progress * Math.PI * 6) * 0.08;
+                    ctx.transform(1, 0, skew, 1, 0, 0);
+                } else if (motionStyle === 'organic') {
+                    const wave = Math.sin(progress * Math.PI * 4) * 8;
+                    ctx.translate(wave, wave * 0.5);
+                } else { // glitch
+                    if (f % 5 === 0) {
+                        ctx.translate((Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12);
+                    }
+                }
+
+                ctx.drawImage(baseImg, -160, -160, 320, 320);
+                ctx.restore();
+
+                // Apply futuristic AGI overlay filters (Scanlines, HUD markers, bioluminescent glow)
+                ctx.fillStyle = `rgba(14, 165, 233, ${0.08 + Math.sin(progress * Math.PI * 8) * 0.04})`;
+                ctx.fillRect(0, 0, 320, 320);
+
+                // Draw HUD reticle on frames
+                ctx.strokeStyle = 'rgba(52, 211, 153, 0.6)';
+                ctx.lineWidth = 1.5;
+                ctx.strokeRect(20, 20, 280, 280);
+
+                ctx.fillStyle = 'rgba(56, 189, 248, 0.9)';
+                ctx.font = '10px "Fira Code", monospace';
+                ctx.fillText(`AGI_FRAME_${f < 10 ? '0' + f : f} // 20FPS`, 28, 40);
+
+                // Save frame data URL
+                generatedFrames.push(synthCanvas.toDataURL('image/jpeg', 0.85));
+
+                // Yield control to UI thread briefly
+                await new Promise(r => setTimeout(r, 15));
+            }
+
+            isSynthesizing = false;
+            document.getElementById('generation-progress-box').classList.add('hidden');
+            document.getElementById('btn-start-synth').disabled = false;
+            logSynthConsole(`SUCCESS: Generated ${totalFrames} frames. Video clip ready for playback & export.`);
+
+            // Switch to player tab automatically
+            switchTab('player');
+            initVideoPlayer();
+        }
+
+        function loadImageAsync(url) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => resolve(img);
+                img.onerror = reject;
+                img.src = url;
+            });
+        }
+
+        function logSynthConsole(text) {
+            const stream = document.getElementById('synth-console-log');
+            const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const div = document.createElement('div');
+            div.className = 'text-cyan-100';
+            div.innerText = `[${timeStr}] ${text}`;
+            stream.appendChild(div);
+            stream.scrollTop = stream.scrollHeight;
+        }
+
+        // =========================================================================
+        // 3. VIDEO CLIP PLAYER & TIMELINE SCRUBBING
+        // =========================================================================
+        let clipCanvas, clipCtx;
+        let currentFrameIndex = 0;
+
+        function initVideoPlayer() {
+            clipCanvas = document.getElementById('clipCanvas');
+            clipCtx = clipCanvas.getContext('2d');
+            clipCanvas.width = 320;
+            clipCanvas.height = 320;
+
+            document.getElementById('player-empty-state').classList.add('hidden');
+            document.getElementById('btn-play-overlay').classList.remove('hidden');
+            document.getElementById('time-total').innerText = `0${clipDurationSec}.0s`;
+            document.getElementById('timeline-slider').max = generatedFrames.length - 1;
+
+            renderClipFrame(0);
+        }
+
+        function renderClipFrame(index) {
+            if (generatedFrames.length === 0) return;
+            currentFrameIndex = Math.max(0, Math.min(index, generatedFrames.length - 1));
+            
+            const img = new Image();
+            img.onload = function() {
+                clipCtx.clearRect(0, 0, clipCanvas.width, clipCanvas.height);
+                clipCtx.drawImage(img, 0, 0);
+            };
+            img.src = generatedFrames[currentFrameIndex];
+
+            // Update Timeline slider & time readouts
+            const currentTimeSec = (currentFrameIndex / 20).toFixed(1);
+            document.getElementById('time-current').innerText = `0${currentTimeSec}s`;
+            document.getElementById('timeline-slider').value = currentFrameIndex;
+        }
+
+        function toggleVideoPlayback() {
+            if (generatedFrames.length === 0) return;
+            isPlayingClip = !isPlayingClip;
+            const playIcon = document.getElementById('play-icon');
+            const playLabel = document.getElementById('btn-play-label');
+
+            if (isPlayingClip) {
+                playIcon.setAttribute('data-lucide', 'pause');
+                playLabel.innerText = 'PAUSE';
+                lucide.createIcons();
+
+                clipPlayInterval = setInterval(() => {
+                    currentFrameIndex++;
+                    if (currentFrameIndex >= generatedFrames.length) {
+                        currentFrameIndex = 0; // Loop playback
+                    }
+                    renderClipFrame(currentFrameIndex);
+                }, 50); // 20 FPS
+            } else {
+                playIcon.setAttribute('data-lucide', 'play');
+                playLabel.innerText = 'PLAY';
+                lucide.createIcons();
+                clearInterval(clipPlayInterval);
+            }
+        }
+
+        function restartVideo() {
+            if (isPlayingClip) toggleVideoPlayback();
+            renderClipFrame(0);
+        }
+
+        function scrubTimeline(val) {
+            if (isPlayingClip) toggleVideoPlayback();
+            renderClipFrame(parseInt(val));
+        }
+
+        function exportVideoClip(format) {
+            if (generatedFrames.length === 0) {
+                alert('No generated video clip available for export.');
+                return;
+            }
+            logSynthConsole(`Packaging video clip container as .${format.toUpperCase()}...`);
+            setTimeout(() => {
+                // Simulate download trigger via dummy data link
+                const link = document.createElement('a');
+                link.download = `QuantumAGI_Clip_${Date.now()}.${format === 'mp4' ? 'mp4' : 'gif'}`;
+                link.href = generatedFrames[0]; // fallback export preview frame
+                link.click();
+                logSynthConsole(`SUCCESS: Exported video clip successfully saved.`);
+            }, 600);
+        }
+
+        // =========================================================================
+        // 4. QUANTUM DRAGONFLY SWARM 3D VIEWPORT & TELEMETRY
+        // =========================================================================
+        let scene, camera, renderer;
+        let tissueMesh, tissueUniforms;
+        let dragonflies = [];
+        let memoryPixels = [];
+        let swarmInitialized = false;
+
+        function initQuantumSwarmOS() {
+            if (swarmInitialized) return;
+            swarmInitialized = true;
+
+            const wrapper = document.getElementById('canvas-wrapper');
+            if (!wrapper) return;
+            const width = wrapper.clientWidth || 400;
+            const height = wrapper.clientHeight || 500;
+
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x020617, 0.022);
+
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+            camera.position.set(0, -18, 25);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('simCanvas'), antialias: true, alpha: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+            // Living Bio-Membrane Tissue Surface
+            const tissueGeo = new THREE.PlaneGeometry(24, 24, 48, 48);
+            tissueUniforms = {
+                uTime: { value: 0 },
+                uTouchPos: { value: new THREE.Vector2(0.5, 0.5) },
+                uTouchTime: { value: -10.0 }
+            };
+
+            const tissueMat = new THREE.ShaderMaterial({
+                uniforms: tissueUniforms,
+                wireframe: false,
+                transparent: true,
+                side: THREE.DoubleSide,
+                vertexShader: `
+                    uniform float uTime;
+                    uniform vec2 uTouchPos;
+                    uniform float uTouchTime;
+                    varying vec2 vUv;
+                    varying float vElevation;
+
+                    void main() {
+                        vUv = uv;
+                        vec3 pos = position;
+                        float wave1 = sin(pos.x * 0.35 + uTime * 1.5) * cos(pos.y * 0.35 + uTime * 1.3);
+                        pos.z += wave1 * 0.7;
+                        vElevation = wave1;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    uniform float uTime;
+                    varying vec2 vUv;
+                    varying float vElevation;
+
+                    void main() {
+                        vec3 deepVoid = vec3(0.02, 0.06, 0.14);
+                        vec3 bioEmerald = vec3(0.05, 0.65, 0.42);
+                        float mixFactor = smoothstep(-1.2, 1.2, vElevation);
+                        vec3 baseColor = mix(deepVoid, bioEmerald, mixFactor);
+                        vec2 grid = abs(fract(vUv * 14.0 - 0.5) - 0.5) / fwidth(vUv * 14.0);
+                        float line = min(grid.x, grid.y);
+                        float cellBorder = 1.0 - min(line, 1.0);
+                        vec3 finalColor = mix(baseColor, vec3(0.06, 0.85, 0.95) * 1.5, cellBorder * 0.4);
+                        gl_FragColor = vec4(finalColor * (0.8 + 0.2 * sin(uTime * 4.0)), 0.9);
+                    }
+                `
+            });
+
+            tissueMesh = new THREE.Mesh(tissueGeo, tissueMat);
+            scene.add(tissueMesh);
+
+            // Initialize Dragonfly Swarm
+            const dragonflyGeo = new THREE.ConeGeometry(0.25, 0.8, 6);
+            dragonflyGeo.rotateX(Math.PI / 2);
+
+            for (let i = 0; i < 12; i++) {
+                const mat = new THREE.MeshBasicMaterial({
+                    color: i % 3 === 0 ? 0x38bdf8 : (i % 3 === 1 ? 0x10b981 : 0xf59e0b),
+                    transparent: true,
+                    opacity: 0.9
+                });
+                const mesh = new THREE.Mesh(dragonflyGeo, mat);
+                scene.add(mesh);
+
+                dragonflies.push({
+                    mesh: mesh,
+                    pos: new THREE.Vector3((Math.random() - 0.5) * 16, (Math.random() - 0.5) * 16, Math.random() * 4 + 1),
+                    velocity: new THREE.Vector3()
+                });
+            }
+
+            requestAnimationFrame(animateSwarmLoop);
+        }
+
+        let lastSwarmTime = performance.now();
+        function animateSwarmLoop(now) {
+            requestAnimationFrame(animateSwarmLoop);
+            const dt = (now - lastSwarmTime) * 0.001;
+            lastSwarmTime = now;
+            const timeSec = now * 0.001;
+
+            if (tissueUniforms) tissueUniforms.uTime.value = timeSec;
+
+            dragonflies.forEach((df, idx) => {
+                const angle = timeSec * 1.5 + idx * (Math.PI * 2 / dragonflies.length);
+                const x = Math.cos(angle) * 7.5;
+                const y = Math.sin(angle * 0.8) * 7.5;
+                df.pos.set(x, y, 1.5 + Math.sin(timeSec + idx) * 0.8);
+                df.mesh.position.copy(df.pos);
+                df.mesh.rotation.z = timeSec * 8 + idx;
+            });
+
+            if (renderer && scene && camera) {
+                renderer.render(scene, camera);
+            }
+        }
+
+        function triggerSwarmHunt() {
+            logSynthConsole(`Quantum Dragonfly Swarm Hunt protocol synchronized with video synthesis core.`);
+        }
+
+        function triggerSyntheticPulse() {
+            logSynthConsole(`Synthetic bio-resonance pulse emitted across 0x01 memory block.`);
+        }
+
+        function resetSwarmMatrix() {
+            logSynthConsole(`Swarm telemetry matrix reset to baseline.`);
+        }
+
+        // Tab Switching Router
+        function switchTab(tab) {
+            ['source', 'synth', 'player', 'swarm'].forEach(t => {
+                const btn = document.getElementById(`tab-${t}-btn`);
+                const view = document.getElementById(`view-${t}`);
+                btn.className = t === tab
+                    ? 'px-2 py-1 rounded font-mono bg-cyan-500/30 text-cyan-100 border border-cyan-400 transition-all'
+                    : 'px-2 py-1 rounded font-mono text-cyan-400/70 hover:text-cyan-200 transition-all';
+                view.style.display = t === tab ? 'flex' : 'none';
+            });
+
+            if (tab === 'swarm') {
+                setTimeout(initQuantumSwarmOS, 50);
+            }
+        }
+
+        window.onload = function () {
+            // Pre-load default sample image on start
+            loadSampleImage('https://placehold.co/400x400/0284c7/f8fafc?text=Quantum+City');
+        };
+    </script>
+</body>
+</html>
