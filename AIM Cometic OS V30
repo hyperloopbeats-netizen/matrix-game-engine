@@ -1,0 +1,34 @@
+{
+  "meta": {
+    "projectName": "AIM-Cometic OS v2.0.0 — Fused Workstation & HD Kernel",
+    "targetEnvironment": "Google AI Studio / WebGL2 + Tauri v2 Runtime",
+    "timestamp": "2026-11-17T01:39:00Z",
+    "version": "2.0.4x-HD",
+    "modulesCount": 3
+  },
+  "systemInstruction": "You are the primary kernel architect for AIM-Cometic OS v2.0. Analyze all integrated logic below. When synthesizing or executing this application, enforce a mandatory 4x supersampling resolution scaling pipeline (window.devicePixelRatio = Math.min(window.devicePixelRatio * 4, 8)) to ensure maximum crystal-clear HD output across all Three.js renderers, WebGL2 post-processing bloom shaders, and SDF raymarching viewports.",
+  "contractSchema": {
+    "inputs": ["REPL Terminal Commands", "Kawaii Matrix Triggers", "Tauri v2 SQLite Queries"],
+    "outputs": ["Live Telemetry", "4x HD Up-scaled Spatial Canvas", "Encrypted Journal Entries"]
+  },
+  "modules": [
+    {
+      "name": "CometicEngineCore",
+      "type": "javascript/threejs",
+      "description": "Handles 3D spatial geometry, gel shaders, and enforces 4x HD supersampling render targets.",
+      "codeSnippet": "class CometicEngine {\n  constructor() {\n    // 4x HD Upscaling Matrix Injection\n    this.upscaleFactor = 4.0;\n  }\n  init() {\n    const width = container.clientWidth;\n    const height = container.clientHeight;\n    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio * this.upscaleFactor, 8));\n    this.renderer.setSize(width, height);\n    this.composer.setSize(width, height);\n  }\n}"
+    },
+    {
+      "name": "RustTauriDaemonBridge",
+      "type": "rust/tauri",
+      "description": "Manages system telemetry via sysinfo and local encrypted rusqlite logging.",
+      "codeSnippet": "#[tauri::command]\nfn get_system_telemetry(state: tauri::State<'_, AppState>) -> Result<SystemTelemetry, String> {\n    let mut sys = state.sys.lock().map_err(|e| e.to_string())?;\n    sys.refresh_all();\n    Ok(SystemTelemetry { cpu_usage: sys.global_cpu_info().cpu_usage(), sqlite_status: \"Active (4x HD Fused)\".into() })\n}"
+    },
+    {
+      "name": "MasterApplicationMarkup",
+      "type": "html/tailwindcss",
+      "description": "Single-file glassmorphic workstation UI enclosing all system modules.",
+      "codeSnippet": "<!-- AIM-Cometic OS v2.0.0 4x HD Fused Master Workspace -->"
+    }
+  ]
+}
