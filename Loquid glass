@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Aether Dragonfly: Wetland Protocol // HTML5 3D Arcade Game</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Three.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Orbitron:wght@600;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+            orbitron: ['Orbitron', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    :root {
+      --glass-blur: 24px;
+      --glass-bg: rgba(15, 23, 42, 0.85);
+      --glass-border: rgba(56, 189, 248, 0.35);
+      --glass-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.7);
+    }
+    * { box-sizing: border-box; user-select: none; }
+    body {
+      margin: 0; padding: 0; overflow: hidden; width: 100vw; height: 100vh;
+      font-family: 'Inter', sans-serif; color: #f8fafc; background-color: #020617;
+    }
+    #game-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 1; display: block; }
+    .glass-panel {
+      background: var(--glass-bg);
+      backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+      -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--glass-shadow);
+    }
+  </style>
+</head>
+<body class="select-none">
+
+  <!-- Three.js Render Canvas -->
+  <canvas id="game-canvas"></canvas>
+
+  <!-- Glassmorphic HUD Overlay -->
+  <div id="hud-overlay" class="absolute inset-0 z-10 pointer-events-none p-6 flex flex-col justify-between hidden">
+    <!-- Top Telemetry Bar -->
+    <div class="flex justify-between items-center w-full max-w-5xl mx-auto">
+      <div class="glass-panel px-5 py-3 rounded-2xl flex items-center gap-4 text-xs font-mono">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
+          <span class="text-cyan-300 font-bold font-orbitron tracking-wider">AETHER DRAGONFLY</span>
+        </div>
+        <span class="opacity-40">|</span>
+        <div>SCORE: <span id="hud-score" class="text-cyan-400 font-bold text-sm">0</span></div>
+        <span class="opacity-40">|</span>
+        <div>ENERGY: <span id="hud-energy" class="text-emerald-400 font-bold text-sm">100%</span></div>
+      </div>
+
+      <div class="glass-panel px-5 py-3 rounded-2xl flex items-center gap-4 text-xs font-mono">
+        <div>SPEED: <span id="hud-speed" class="text-cyan-300">0.0 m/s</span></div>
+        <span class="opacity-40">|</span>
+        <div>ALT: <span id="hud-alt" class="text-cyan-300">8.0m</span></div>
+      </div>
+    </div>
+
+    <!-- Bottom Flight Instructions -->
+    <div class="flex justify-center pb-2">
+      <div class="glass-panel px-6 py-2.5 rounded-2xl text-[11px] font-mono text-slate-300 flex items-center gap-6 shadow-2xl">
+        <span><strong class="text-cyan-400">[W / S]</strong> Throttle</span>
+        <span><strong class="text-cyan-400">[A / D]</strong> Bank & Steer</span>
+        <span><strong class="text-cyan-400">[AUDIO]</strong> Procedural DSP Synth Active</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Start Menu Modal -->
+  <div id="start-screen" class="absolute inset-0 z-20 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4">
+    <div class="glass-panel p-8 rounded-3xl max-w-md w-full text-center space-y-6 shadow-2xl border border-cyan-500/30">
+      <div class="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/30">
+        <i data-lucide="compass" class="w-8 h-8 text-white animate-spin" style="animation-duration: 10s;"></i>
+      </div>
+      <div class="space-y-2">
+        <h1 class="text-2xl font-bold font-orbitron tracking-wide text-cyan-300">AETHER DRAGONFLY</h1>
+        <p class="text-xs text-slate-400">Wetland Protocol // Biomorphic Flight & Collection Arcade</p>
+      </div>
+      <div class="p-4 rounded-2xl bg-black/40 text-left text-xs font-mono space-y-2 border border-white/10 text-slate-300">
+        <div>🎯 <strong>Objective:</strong> Navigate the wetland canyon, collect glowing bioluminescent pollen nodes, and avoid obsidian obstacles.</div>
+        <div>🎮 <strong>Controls:</strong> W/S (Throttle), A/D (Steering).</div>
+      </div>
+      <button onclick="startGame()" class="w-full py-4 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 font-bold text-white tracking-wider font-orbitron shadow-lg shadow-cyan-500/25 hover:brightness-110 transition cursor-pointer">
+        INITIATE FLIGHT PROTOCOL
+      </button>
+    </div>
+  </div>
+
+  <!-- Game Over Modal -->
+  <div id="gameover-screen" class="absolute inset-0 z-20 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4 hidden">
+    <div class="glass-panel p-8 rounded-3xl max-w-md w-full text-center space-y-6 shadow-2xl border border-rose-500/30">
+      <div class="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-rose-500 to-red-700 flex items-center justify-center shadow-lg shadow-rose-500/30">
+        <i data-lucide="alert-triangle" class="w-8 h-8 text-white"></i>
+      </div>
+      <div class="space-y-2">
+        <h1 class="text-2xl font-bold font-orbitron tracking-wide text-rose-400">FLIGHT TERMINATED</h1>
+        <p class="text-xs text-slate-400">Biological hull integrity compromised by obstacle impact.</p>
+      </div>
+      <div class="p-4 rounded-2xl bg-black/40 text-sm font-mono space-y-1 border border-white/10">
+        <div class="text-slate-400">Final Score: <span id="final-score" class="text-cyan-400 font-bold text-lg">0</span></div>
+      </div>
+      <button onclick="restartGame()" class="w-full py-4 rounded-2xl bg-gradient-to-r from-rose-500 to-red-600 font-bold text-white tracking-wider font-orbitron shadow-lg shadow-rose-500/25 hover:brightness-110 transition cursor-pointer">
+        RE-INITIALIZE DRAGONFLY
+      </button>
+    </div>
+  </div>
+
+  <!-- Game Engine Script -->
+  <script>
+    lucide.createIcons();
+
+    // --- Web Audio DSP Synthesizer ---
+    class ArcadeAudioEngine {
+      constructor() {
+        this.ctx = null;
+        this.isPlaying = false;
+      }
+      init() {
+        if (this.ctx) return;
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new AudioContext();
+        this.master = this.ctx.createGain();
+        this.master.gain.value = 0.4;
+        this.master.connect(this.ctx.destination);
+
+        // Wing Hum
+        this.wingOsc = this.ctx.createOscillator();
+        this.wingOsc.type = 'sawtooth';
+        this.wingOsc.frequency.value = 140;
+        this.wingGain = this.ctx.createGain();
+        this.wingGain.gain.value = 0.1;
+        this.wingOsc.connect(this.wingGain);
+        this.wingGain.connect(this.master);
+        this.wingOsc.start();
+
+        // Sub Drone
+        this.drone = this.ctx.createOscillator();
+        this.drone.type = 'sine';
+        this.drone.frequency.value = 55;
+        this.droneGain = this.ctx.createGain();
+        this.droneGain.gain.value = 0.15;
+        this.drone.connect(this.droneGain);
+        this.droneGain.connect(this.master);
+        this.drone.start();
+
+        this.isPlaying = true;
+      }
+      updateWing(speed, throttle) {
+        if (!this.isPlaying || !this.ctx) return;
+        this.wingOsc.frequency.setTargetAtTime(110 + (throttle * 80) + (speed * 2.5), this.ctx.currentTime, 0.05);
+      }
+      playCollectSound() {
+        if (!this.isPlaying || !this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(440, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(880, this.ctx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+        osc.connect(gain); gain.connect(this.master);
+        osc.start(); osc.stop(this.ctx.currentTime + 0.15);
+      }
+      playCrashSound() {
+        if (!this.isPlaying || !this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(120, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.4);
+        gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.4);
+        osc.connect(gain); gain.connect(this.master);
+        osc.start(); osc.stop(this.ctx.currentTime + 0.4);
+      }
+    }
+
+    const audioEngine = new ArcadeAudioEngine();
+
+    // --- 3D Dragonfly Kinematic Rig ---
+    class DragonflyRig {
+      constructor(scene) {
+        this.rootGroup = new THREE.Group();
+        scene.add(this.rootGroup);
+
+        this.chitinMat = new THREE.MeshPhysicalMaterial({ color: 0x0a2333, roughness: 0.2, metalness: 0.8, clearcoat: 1.0 });
+        this.wingMat = new THREE.MeshPhysicalMaterial({ color: 0xc8f0ff, roughness: 0.1, transmission: 0.85, transparent: true, opacity: 0.75, side: THREE.DoubleSide });
+
+        this.buildAnatomy();
+        this.flightTime = 0;
+      }
+
+      buildAnatomy() {
+        const thoraxGeo = new THREE.CapsuleGeometry(0.7, 2.0, 16, 16);
+        thoraxGeo.rotateX(Math.PI / 2);
+        this.thorax = new THREE.Mesh(thoraxGeo, this.chitinMat);
+        this.rootGroup.add(this.thorax);
+
+        const headGroup = new THREE.Group();
+        headGroup.position.set(0, 0, 1.5);
+        headGroup.add(new THREE.Mesh(new THREE.SphereGeometry(0.6, 16, 16), this.chitinMat));
+        
+        const eyeMat = new THREE.MeshPhysicalMaterial({ color: 0x00f3ff, roughness: 0.1, emissive: 0x004455 });
+        const leftEye = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 12), eyeMat); leftEye.position.set(0.4, 0.1, 0.25); headGroup.add(leftEye);
+        const rightEye = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 12), eyeMat); rightEye.position.set(-0.4, 0.1, 0.25); headGroup.add(rightEye);
+        this.thorax.add(headGroup);
+
+        // Abdomen
+        this.abdomenSegments = [];
+        let parent = this.thorax;
+        for (let i = 0; i < 6; i++) {
+          const segGeo = new THREE.CylinderGeometry(0.44 - (i * 0.05), 0.44 - ((i + 1) * 0.05), 0.8, 10);
+          segGeo.rotateX(Math.PI / 2);
+          const mesh = new THREE.Mesh(segGeo, this.chitinMat);
+          const connector = new THREE.Group();
+          connector.position.set(0, 0, -0.8);
+          connector.add(mesh);
+          parent.add(connector);
+          this.abdomenSegments.push(connector);
+          parent = connector;
+        }
+
+        // Wings
+        const wingShape = new THREE.Shape();
+        wingShape.moveTo(0, 0); wingShape.bezierCurveTo(0.5, 1.5, 1.0, 3.5, 0.2, 4.5); wingShape.bezierCurveTo(-0.2, 3.5, -0.5, 1.5, 0, 0);
+        const wingGeo = new THREE.ExtrudeGeometry(wingShape, { depth: 0.02, bevelEnabled: false });
+        wingGeo.center();
+
+        this.wings = {
+          leftFore: this.createWing(wingGeo, 0.7, 0.3, 0.4, 1),
+          rightFore: this.createWing(wingGeo, -0.7, 0.3, 0.4, -1),
+          leftHind: this.createWing(wingGeo, 0.8, 0.1, -0.4, 1),
+          rightHind: this.createWing(wingGeo, -0.8, 0.1, -0.4, -1)
+        };
+      }
+
+      createWing(geo, x, y, z, mirror) {
+        const pivot = new THREE.Group();
+        pivot.position.set(x, y, z);
+        const mesh = new THREE.Mesh(geo, this.wingMat);
+        mesh.scale.set(mirror, 1, 1);
+        mesh.position.set(mirror * 1.4, 0, 2.2);
+        pivot.add(mesh);
+        this.thorax.add(pivot);
+        return pivot;
+      }
+
+      update(delta, speed) {
+        this.flightTime += delta * (20 + speed * 1.5);
+        const flap = Math.sin(this.flightTime) * 0.8;
+        this.wings.leftFore.rotation.z = flap;
+        this.wings.rightFore.rotation.z = -flap;
+        this.wings.leftHind.rotation.z = flap - 0.3;
+        this.wings.rightHind.rotation.z = -(flap - 0.3);
+
+        this.abdomenSegments.forEach((seg, i) => {
+          seg.rotation.y = Math.sin(this.flightTime * 0.4 - i * 0.25) * 0.08;
+        });
+      }
+    }
+
+    // --- Main Game Engine ---
+    let gameActive = false;
+    let score = 0;
+    let energy = 100;
+    let renderer, scene, camera, dragonfly, flightController;
+    let obstacles = [];
+    let collectables = [];
+    let keys = { w: false, s: false, a: false, d: false };
+
+    window.addEventListener('keydown', e => {
+      if (['w','s','a','d','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key.toLowerCase())) {
+        if (e.key === 'w' || e.key === 'ArrowUp') keys.w = true;
+        if (e.key === 's' || e.key === 'ArrowDown') keys.s = true;
+        if (e.key === 'a' || e.key === 'ArrowLeft') keys.a = true;
+        if (e.key === 'd' || e.key === 'ArrowRight') keys.d = true;
+      }
+    });
+    window.addEventListener('keyup', e => {
+      if (e.key === 'w' || e.key === 'ArrowUp') keys.w = false;
+      if (e.key === 's' || e.key === 'ArrowDown') keys.s = false;
+      if (e.key === 'a' || e.key === 'ArrowLeft') keys.a = false;
+      if (e.key === 'd' || e.key === 'ArrowRight') keys.d = false;
+    });
+
+    function initThreeScene() {
+      const canvas = document.getElementById('game-canvas');
+      renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x020617);
+      scene.fog = new THREE.FogExp2(0x020617, 0.02);
+
+      camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+      // Lighting
+      scene.add(new THREE.AmbientLight(0xd9f6ff, 0.7));
+      const sun = new THREE.DirectionalLight(0x00f3ff, 1.2);
+      sun.position.set(20, 50, 20);
+      scene.add(sun);
+
+      // Wetland Water Floor
+      const water = new THREE.Mesh(new THREE.PlaneGeometry(500, 500, 32, 32), new THREE.MeshStandardMaterial({ color: 0x03101c, roughness: 0.1, metalness: 0.8 }));
+      water.rotation.x = -Math.PI / 2;
+      scene.add(water);
+
+      dragonfly = new DragonflyRig(scene);
+    }
+
+    function startGame() {
+      document.getElementById('start-screen').classList.add('hidden');
+      document.getElementById('hud-overlay').classList.remove('hidden');
+      audioEngine.init();
+
+      score = 0;
+      energy = 100;
+      obstacles.forEach(o => scene.remove(o));
+      collectables.forEach(c => scene.remove(c));
+      obstacles = [];
+      collectables = [];
+
+      dragonfly.rootGroup.position.set(0, 8, 0);
+      gameActive = true;
+
+      // Spawn initial world entities
+      for (let i = 0; i < 15; i++) spawnObstacle(i * -25 - 20);
+      for (let i = 0; i < 10; i++) spawnCollectable(i * -20 - 10);
+    }
+
+    function spawnObstacle(zPos) {
+      const geo = new THREE.CylinderGeometry(1.2, 1.8, 14, 8);
+      const mat = new THREE.MeshStandardMaterial({ color: 0x0d2838, roughness: 0.4, metalness: 0.6 });
+      const obs = new THREE.Mesh(geo, mat);
+      const xPos = (Math.random() - 0.5) * 24;
+      obs.position.set(xPos, 7, zPos);
+      scene.add(obs);
+      obstacles.push(obs);
+    }
+
+    function spawnCollectable(zPos) {
+      const geo = new THREE.SphereGeometry(0.6, 16, 16);
+      const mat = new THREE.MeshBasicMaterial({ color: 0x00f3ff });
+      const orb = new THREE.Mesh(geo, mat);
+      const xPos = (Math.random() - 0.5) * 20;
+      const yPos = 4 + Math.random() * 6;
+      orb.position.set(xPos, yPos, zPos);
+      scene.add(orb);
+      collectables.push(orb);
+    }
+
+    function restartGame() {
+      document.getElementById('gameover-screen').classList.add('hidden');
+      startGame();
+    }
+
+    // Flight Physics State
+    let pos = new THREE.Vector3(0, 8, 0);
+    let vel = new THREE.Vector3(0, 0, -12);
+    let heading = 0;
+    let throttle = 0.75;
+
+    function updateGame(delta) {
+      if (!gameActive) return;
+
+      // Input handling
+      if (keys.w) throttle = Math.min(1.2, throttle + delta * 0.8);
+      if (keys.s) throttle = Math.max(0.3, throttle - delta * 0.8);
+      if (keys.a) heading += delta * 2.2;
+      if (keys.d) heading -= delta * 2.2;
+
+      // Forward velocity vector
+      const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), heading);
+      const targetSpeed = throttle * 18.0;
+      vel.lerp(forward.multiplyScalar(targetSpeed), 0.1);
+      pos.add(vel.clone().multiplyScalar(delta));
+
+      // Floor boundary
+      if (pos.y < 3.0) pos.y = 3.0;
+      if (pos.x < -15) pos.x = -15; if (pos.x > 15) pos.x = 15;
+
+      // Update Rig transform
+      dragonfly.rootGroup.position.copy(pos);
+      dragonfly.rootGroup.rotation.set(0, 0, 0);
+      dragonfly.rootGroup.rotation.y = heading;
+      dragonfly.rootGroup.rotation.z = - (heading - dragonfly.rootGroup.rotation.y) * 0.5;
+      dragonfly.update(delta, targetSpeed);
+
+      audioEngine.updateWing(targetSpeed, throttle);
+
+      // Camera Follow
+      const camTarget = pos.clone().add(new THREE.Vector3(0, 3.5, 9).applyAxisAngle(new THREE.Vector3(0,1,0), heading));
+      camera.position.lerp(camTarget, 0.15);
+      camera.lookAt(pos.clone().add(new THREE.Vector3(0, 1, 0)));
+
+      // Obstacle recycling & collision
+      obstacles.forEach(obs => {
+        if (obs.position.z > pos.z + 10) {
+          obs.position.z = pos.z - 350 - Math.random() * 50;
+          obs.position.x = (Math.random() - 0.5) * 24;
+        }
+        // Collision check
+        if (pos.distanceTo(obs.position) < 2.0) {
+          audioEngine.playCrashSound();
+          gameActive = false;
+          document.getElementById('final-score').textContent = score;
+          document.getElementById('gameover-screen').classList.remove('hidden');
+          document.getElementById('hud-overlay').classList.add('hidden');
+        }
+      });
+
+      // Collectable recycling & pickup
+      collectables.forEach(orb => {
+        orb.rotation.y += delta * 3;
+        if (orb.position.z > pos.z + 10) {
+          orb.position.z = pos.z - 200 - Math.random() * 40;
+          orb.position.x = (Math.random() - 0.5) * 20;
+          orb.position.y = 4 + Math.random() * 6;
+        }
+        if (pos.distanceTo(orb.position) < 2.2) {
+          audioEngine.playCollectSound();
+          score += 150;
+          energy = Math.min(100, energy + 15);
+          orb.position.z = pos.z - 250 - Math.random() * 40;
+          orb.position.x = (Math.random() - 0.5) * 20;
+        }
+      });
+
+      // Update HUD text
+      document.getElementById('hud-score').textContent = score;
+      document.getElementById('hud-energy').textContent = energy + '%';
+      document.getElementById('hud-speed').textContent = targetSpeed.toFixed(1) + ' m/s';
+      document.getElementById('hud-alt').textContent = pos.y.toFixed(1) + 'm';
+    }
+
+    const clock = new THREE.Clock();
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = Math.min(clock.getDelta(), 0.1);
+      if (gameActive) updateGame(delta);
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initThreeScene();
+      animate();
+    });
+  </script>
+</body>
+</html>
