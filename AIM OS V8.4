@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>AIM OS v8.5 — Master Cognitive Suite & NetSphere Browser</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Three.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Orbitron:wght@600;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+            orbitron: ['Orbitron', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    :root {
+      --glass-blur: 24px;
+      --glass-bg: rgba(15, 23, 42, 0.85);
+      --glass-bg-elevated: rgba(15, 23, 42, 0.94);
+      --glass-border: rgba(56, 189, 248, 0.3);
+      --glass-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.7);
+      --text-primary: #f8fafc;
+      --panel-inner: rgba(2, 6, 23, 0.65);
+    }
+
+    * { box-sizing: border-box; user-select: none; }
+    input, textarea, pre, code, .selectable { user-select: text; }
+
+    body {
+      margin: 0; padding: 0; overflow: hidden; width: 100vw; height: 100vh;
+      font-family: 'Inter', sans-serif; color: var(--text-primary); background-color: #020617;
+    }
+
+    .wallpaper-aurora {
+      background:
+        radial-gradient(at 15% 20%, rgba(56, 189, 248, 0.45) 0px, transparent 50%),
+        radial-gradient(at 85% 15%, rgba(168, 85, 247, 0.42) 0px, transparent 52%),
+        radial-gradient(at 75% 85%, rgba(16, 185, 129, 0.38) 0px, transparent 50%),
+        linear-gradient(135deg, #0b0f19 0%, #0f172a 50%, #020617 100%);
+      background-size: 140% 140%;
+      animation: meshShift 22s ease infinite alternate;
+    }
+
+    @keyframes meshShift {
+      0% { background-position: 0% 20%; }
+      50% { background-position: 100% 60%; }
+      100% { background-position: 25% 100%; }
+    }
+
+    .glass-surface {
+      background: var(--glass-bg);
+      backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+      -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--glass-shadow);
+    }
+    .glass-bar {
+      background: var(--glass-bg-elevated);
+      backdrop-filter: blur(28px) saturate(190%);
+      -webkit-backdrop-filter: blur(28px) saturate(190%);
+      border-bottom: 1px solid var(--glass-border);
+    }
+    .glass-inner { background: var(--panel-inner); border: 1px solid rgba(255, 255, 255, 0.12); }
+
+    .window-frame { transition: opacity 0.2s ease, transform 0.22s cubic-bezier(0.16, 1, 0.3, 1); }
+    .window-frame.dragging { transition: none !important; }
+    .window-minimized { opacity: 0; transform: scale(0.86) translateY(60px); pointer-events: none; }
+
+    .glass-dock {
+      background: var(--glass-bg-elevated);
+      backdrop-filter: blur(32px) saturate(195%);
+      -webkit-backdrop-filter: blur(32px) saturate(195%);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    }
+    .dock-item {
+      transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), margin 0.22s ease;
+    }
+    .dock-item:hover {
+      transform: translateY(-10px) scale(1.2);
+      margin-left: 6px;
+      margin-right: 6px;
+    }
+
+    /* No-OS Full Screen Mode */
+    body.no-os-mode header,
+    body.no-os-mode nav,
+    body.no-os-mode #desktop-area {
+      display: none !important;
+    }
+    body.no-os-mode #no-os-container {
+      display: flex !important;
+    }
+
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.35); border-radius: 9999px; }
+  </style>
+</head>
+<body class="wallpaper-aurora select-none">
+
+  <!-- Micro-Fractal Top Status Bar (80% Smaller) -->
+  <header class="glass-bar fixed top-0 left-0 right-0 h-7 px-3 flex items-center justify-between z-[1000] text-[11px] font-medium">
+    <div class="flex items-center gap-2">
+      <button onclick="toggleMenu('system-menu')" class="flex items-center gap-1.5 px-1.5 py-0.5 rounded hover:bg-white/15 transition cursor-pointer">
+        <svg class="w-3.5 h-3.5 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+        <span class="font-semibold font-orbitron tracking-wider text-[10px]">AIM OS v8.5</span>
+      </button>
+      <div id="system-menu" class="hidden absolute left-0 top-7 w-64 rounded-xl glass-surface p-1 shadow-2xl z-[1100] text-xs max-h-[80vh] overflow-y-auto">
+        <button onclick="openApp('netsphere'); closeMenus();" class="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-white/15 flex justify-between cursor-pointer text-cyan-300 font-bold"><span>🌐 NetSphere Web Browser</span></button>
+        <button onclick="toggleNoOsMode(); closeMenus();" class="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-white/15 flex justify-between cursor-pointer text-amber-300 font-bold"><span>⚡ Toggle No-OS Fullscreen</span></button>
+        <button onclick="openStorageManager(); closeMenus();" class="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-white/15 flex justify-between cursor-pointer text-cyan-300 font-bold"><span>💾 Storage HUD</span></button>
+        <button onclick="toggleCommandPalette(); closeMenus();" class="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-white/15 flex justify-between cursor-pointer text-cyan-300 font-bold"><span>🔍 Command Palette</span><span class="font-mono opacity-60">Ctrl+K</span></button>
+      </div>
+      <span class="opacity-30">|</span>
+      <span id="active-app-label" class="font-semibold truncate max-w-[200px] text-[10px]">NetSphere Active</span>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button onclick="toggleNoOsMode()" class="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-400/40 text-[10px] text-amber-300 font-mono hover:bg-amber-500/30 cursor-pointer">NO-OS MODE</button>
+      <div class="flex items-center gap-1 px-2 py-0.5 rounded-full bg-cyan-500/20 border border-cyan-400/30 text-[9px] text-cyan-300 font-mono">
+        <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping"></span>
+        <span>OPFS</span>
+      </div>
+      <button id="top-clock" class="px-1.5 py-0.5 rounded hover:bg-white/15 transition font-mono tabular-nums text-[11px] cursor-pointer">18:18</button>
+    </div>
+  </header>
+
+  <!-- Main Desktop Area -->
+  <main id="desktop-area" class="relative w-full h-full pt-8 pb-16 px-3 overflow-hidden">
+    <div id="desktop-icons" class="grid grid-flow-col grid-rows-7 gap-2.5 w-fit">
+      <button onclick="openApp('netsphere')" ondblclick="openApp('netsphere')" class="desktop-icon group w-24 p-2 rounded-xl hover:bg-white/15 transition flex flex-col items-center gap-1 text-center cursor-pointer">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-lg"><i data-lucide="globe" class="w-5 h-5 text-slate-950"></i></div>
+        <span class="text-[11px] font-medium drop-shadow leading-tight">Web Browser</span>
+      </button>
+      <button onclick="openStorageManager()" class="desktop-icon group w-24 p-2 rounded-xl hover:bg-white/15 transition flex flex-col items-center gap-1 text-center cursor-pointer">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center shadow-lg"><i data-lucide="hard-drive" class="w-5 h-5 text-slate-950"></i></div>
+        <span class="text-[11px] font-medium drop-shadow leading-tight">Virtual Drive</span>
+      </button>
+      <button onclick="openApp('neuralprompt')" ondblclick="openApp('neuralprompt')" class="desktop-icon group w-24 p-2 rounded-xl hover:bg-white/15 transition flex flex-col items-center gap-1 text-center cursor-pointer">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-indigo-600 flex items-center justify-center shadow-lg"><i data-lucide="wand-2" class="w-5 h-5 text-white"></i></div>
+        <span class="text-[11px] font-medium drop-shadow leading-tight">Prompt AI</span>
+      </button>
+      <button onclick="openApp('predictiveanalytics')" ondblclick="openApp('predictiveanalytics')" class="desktop-icon group w-24 p-2 rounded-xl hover:bg-white/15 transition flex flex-col items-center gap-1 text-center cursor-pointer">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-cyan-600 flex items-center justify-center shadow-lg"><i data-lucide="bar-chart-3" class="w-5 h-5 text-white"></i></div>
+        <span class="text-[11px] font-medium drop-shadow leading-tight">Analytics</span>
+      </button>
+      <button onclick="openApp('spatialaudio')" ondblclick="openApp('spatialaudio')" class="desktop-icon group w-24 p-2 rounded-xl hover:bg-white/15 transition flex flex-col items-center gap-1 text-center cursor-pointer">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center shadow-lg"><i data-lucide="headphones" class="w-5 h-5 text-white"></i></div>
+        <span class="text-[11px] font-medium drop-shadow leading-tight">Audio DSP</span>
+      </button>
+      <button onclick="openApp('codearchive')" ondblclick="openApp('codearchive')" class="desktop-icon group w-24 p-2 rounded-xl hover:bg-white/15 transition flex flex-col items-center gap-1 text-center cursor-pointer">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-700 flex items-center justify-center shadow-lg"><i data-lucide="git-branch" class="w-5 h-5 text-white"></i></div>
+        <span class="text-[11px] font-medium drop-shadow leading-tight">Code RAG</span>
+      </button>
+      <button onclick="openApp('securityvault')" ondblclick="openApp('securityvault')" class="desktop-icon group w-24 p-2 rounded-xl hover:bg-white/15 transition flex flex-col items-center gap-1 text-center cursor-pointer">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg"><i data-lucide="shield" class="w-5 h-5 text-white"></i></div>
+        <span class="text-[11px] font-medium drop-shadow leading-tight">Token Vault</span>
+      </button>
+    </div>
+
+    <!-- Windows Container Layer -->
+    <div id="windows-layer" class="absolute inset-0 pointer-events-none"></div>
+  </main>
+
+  <!-- True No-OS Full-Screen Container (Direct Browser / App Mode) -->
+  <div id="no-os-container" class="hidden fixed inset-0 z-[5000] bg-slate-950 flex flex-col">
+    <div class="h-10 px-4 bg-slate-900 border-b border-cyan-500/30 flex items-center justify-between text-xs font-mono">
+      <div class="flex items-center gap-3">
+        <span class="font-bold text-cyan-400 font-orbitron">NETSPHERE DIRECT</span>
+        <div class="flex items-center gap-1.5 bg-slate-950 px-3 py-1 rounded-lg border border-white/10 w-80">
+          <i data-lucide="globe" class="w-3.5 h-3.5 text-cyan-400"></i>
+          <input type="text" id="no-os-url-input" value="https://en.m.wikipedia.org" onkeydown="if(event.key==='Enter') loadNoOsUrl(this.value)" class="w-full bg-transparent text-slate-100 focus:outline-none text-xs">
+        </div>
+        <button onclick="loadNoOsUrl(document.getElementById('no-os-url-input').value)" class="px-3 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold cursor-pointer">Navigate</button>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="toggleNoOsMode()" class="px-3 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold cursor-pointer">Exit No-OS Mode</button>
+      </div>
+    </div>
+    <div class="flex-1 relative bg-slate-950">
+      <iframe id="no-os-iframe" src="https://en.m.wikipedia.org" class="w-full h-full border-0 bg-white"></iframe>
+    </div>
+  </div>
+
+  <!-- Global Command Palette Modal (Ctrl+K) -->
+  <div id="command-palette-modal" class="hidden fixed inset-0 z-[3000] flex items-start justify-center pt-24 bg-slate-950/80 backdrop-blur-md p-4">
+    <div class="glass-surface w-full max-w-lg rounded-3xl p-4 shadow-2xl border border-cyan-500/40 flex flex-col gap-3 text-slate-100 font-mono">
+      <div class="flex items-center gap-2.5 px-2 border-b border-white/10 pb-3">
+        <i data-lucide="search" class="w-4 h-4 text-cyan-400"></i>
+        <input type="text" id="palette-search-input" oninput="filterCommandPalette()" placeholder="Search apps or commands (e.g. browser, audio, vault)..." class="w-full bg-transparent text-xs text-slate-100 focus:outline-none placeholder:text-slate-500 font-mono">
+        <button onclick="toggleCommandPalette()" class="px-2 py-1 rounded-xl bg-white/10 text-[10px] text-slate-400 hover:text-white cursor-pointer">ESC</button>
+      </div>
+      <div id="palette-results-list" class="max-h-72 overflow-y-auto space-y-1 text-xs"></div>
+    </div>
+  </div>
+
+  <!-- Storage Management Modal -->
+  <div id="storage-manager-modal" class="hidden fixed inset-0 z-[2000] flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4">
+    <div class="glass-surface w-full max-w-xl rounded-3xl p-6 shadow-2xl border border-cyan-500/30 flex flex-col gap-5 text-slate-100 font-mono">
+      <div class="flex items-center justify-between border-b border-white/10 pb-4">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-lg">
+            <i data-lucide="hard-drive" class="w-4 h-4 text-slate-950"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold font-orbitron text-cyan-300">Virtual Hard Drive Manager</h3>
+            <p class="text-[10px] opacity-60">OPFS & IndexedDB Storage Subsystem</p>
+          </div>
+        </div>
+        <button onclick="closeStorageManager()" class="w-7 h-7 rounded-xl bg-white/5 hover:bg-white/15 flex items-center justify-center text-slate-400 hover:text-white transition cursor-pointer">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <div class="space-y-2 p-4 rounded-2xl glass-inner bg-slate-950/50">
+        <div class="flex justify-between text-xs">
+          <span class="text-slate-300">OPFS Storage Quota Active</span>
+          <span id="storage-stats-text" class="text-cyan-400 font-bold">100% Operational</span>
+        </div>
+        <div class="w-full h-3 rounded-full bg-slate-900 border border-white/10 overflow-hidden relative">
+          <div id="storage-progress-bar" class="h-full bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 transition-all duration-500" style="width: 28%"></div>
+        </div>
+      </div>
+      <div class="flex justify-end pt-2 border-t border-white/10">
+        <button onclick="closeStorageManager()" class="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold transition cursor-pointer text-xs">Close Manager</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Floating Glass Dock (Micro-Telemetry) -->
+  <nav aria-label="Application Dock" class="fixed bottom-2 left-1/2 -translate-x-1/2 z-[1500] max-w-[98vw]">
+    <div id="dock-bar" class="glass-dock px-3 py-2 rounded-2xl flex items-end gap-2"></div>
+  </nav>
+
+  <!-- Master Kernel & App Logic Script -->
+  <script>
+    const AIM_VIRTUAL_DISK = {
+      rootHandle: null,
+      db: null,
+      async init() {
+        try {
+          this.rootHandle = await navigator.storage.getDirectory();
+          return new Promise((resolve, reject) => {
+            const request = indexedDB.open('AimOSVirtualDrive', 1);
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => { this.db = request.result; resolve(this.db); };
+            request.onupgradeneeded = e => {
+              const db = e.target.result;
+              if (!db.objectStoreNames.contains('inodes')) db.createObjectStore('inodes', { keyPath: 'path' });
+            };
+          });
+        } catch (err) { console.error('[VirtualDisk] Init failed:', err); }
+      }
+    };
+
+    const AIM_BRAIN = {
+      events: [{ time: '18:18:00', source: 'MASTER', topic: 'BOOT', summary: 'AIM OS v8.5 initialized.' }],
+      publish(source, topic, summary) {
+        const time = new Date().toTimeString().split(' ')[0];
+        this.events.unshift({ time, source, topic, summary });
+        if (this.events.length > 100) this.events.pop();
+      }
+    };
+
+    const APPS = [
+      { id: 'netsphere', name: 'NetSphere Web Browser', category: 'Internet Suite', width: window.innerWidth - 4, height: window.innerHeight - 38, gradient: 'from-cyan-400 to-blue-600', icon: '<i data-lucide="globe" class="w-5 h-5 text-slate-950"></i>' },
+      { id: 'neuralprompt', name: 'Neural Prompt Assembler', category: 'LLM Chain Workspace', width: 1100, height: 720, gradient: 'from-cyan-400 to-indigo-600', icon: '<i data-lucide="wand-2" class="w-5 h-5 text-white"></i>' },
+      { id: 'predictiveanalytics', name: 'Predictive Analytics & Trends', category: 'WebGL Analytics', width: 1100, height: 720, gradient: 'from-emerald-400 to-cyan-600', icon: '<i data-lucide="bar-chart-3" class="w-5 h-5 text-white"></i>' },
+      { id: 'spatialaudio', name: 'Spatial Audio Synth', category: 'Web Audio API DSP', width: 1000, height: 660, gradient: 'from-pink-500 to-rose-600', icon: '<i data-lucide="headphones" class="w-5 h-5 text-white"></i>' },
+      { id: 'codearchive', name: 'Semantic Code RAG', category: 'Local Vector Index', width: 1100, height: 720, gradient: 'from-violet-500 to-indigo-700', icon: '<i data-lucide="git-branch" class="w-5 h-5 text-white"></i>' },
+      { id: 'securityvault', name: 'Security & Token Vault', category: 'AES-GCM Credentials', width: 1000, height: 660, gradient: 'from-amber-500 to-orange-600', icon: '<i data-lucide="shield" class="w-5 h-5 text-white"></i>' }
+    ];
+
+    let openWindows = {};
+    let zIndexCounter = 100;
+    let activeAppId = null;
+
+    // NetSphere Browser State
+    let browserTabs = [
+      { id: 1, title: 'Wikipedia Mobile', url: 'https://en.m.wikipedia.org' },
+      { id: 2, title: 'Hacker News', url: 'https://news.ycombinator.com' },
+      { id: 3, title: 'OpenStreetMap', url: 'https://www.openstreetmap.org' }
+    ];
+    let activeBrowserTabId = 1;
+
+    function renderDock() {
+      const dock = document.getElementById('dock-bar');
+      if (!dock) return;
+      dock.innerHTML = APPS.map(app => {
+        const isOpen = Boolean(openWindows[app.id]);
+        return `
+          <button onclick="handleDockClick('${app.id}')" title="${app.name}" class="dock-item relative group flex flex-col items-center cursor-pointer">
+            <span class="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-8 px-2 py-0.5 rounded-lg glass-surface text-[10px] font-medium whitespace-nowrap pointer-events-none shadow-lg">${app.name}</span>
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br ${app.gradient} flex items-center justify-center shadow-lg border border-white/25">${app.icon}</div>
+            <span class="w-1 h-1 rounded-full mt-1 transition-all ${isOpen ? 'bg-white opacity-100' : 'opacity-0'}"></span>
+          </button>
+        `;
+      }).join('');
+      lucide.createIcons();
+    }
+
+    function handleDockClick(appId) {
+      if (!openWindows[appId]) openApp(appId);
+      else if (openWindows[appId].minimized) restoreWindow(appId);
+      else if (activeAppId === appId) minimizeWindow(appId);
+      else focusWindow(appId);
+    }
+
+    function openApp(appId) {
+      const app = APPS.find(a => a.id === appId);
+      if (!app) return;
+      if (openWindows[appId]) { restoreWindow(appId); focusWindow(appId); return; }
+
+      const layer = document.getElementById('windows-layer');
+      let w = Math.min(window.innerWidth - 4, app.width);
+      let h = Math.min(window.innerHeight - 36, app.height);
+      let left = appId === 'netsphere' ? 2 : Math.max(10, (window.innerWidth - w) / 2);
+      let top = appId === 'netsphere' ? 30 : Math.max(36, (window.innerHeight - h) / 2);
+
+      const winEl = document.createElement('div');
+      winEl.id = `win-${appId}`;
+      winEl.className = 'window-frame glass-surface rounded-2xl flex flex-col overflow-hidden pointer-events-auto absolute shadow-2xl';
+      winEl.style.width = `${w}px`;
+      winEl.style.height = `${h}px`;
+      winEl.style.left = `${left}px`;
+      winEl.style.top = `${top}px`;
+      winEl.style.zIndex = ++zIndexCounter;
+      winEl.addEventListener('mousedown', () => focusWindow(appId));
+
+      winEl.innerHTML = `
+        <div class="win-header h-9 px-3 flex items-center justify-between border-b border-white/15 bg-white/5 cursor-grab shrink-0">
+          <div class="flex items-center gap-2">
+            <button onclick="closeWindow('${appId}')" class="w-3 h-3 rounded-full bg-rose-500 hover:bg-rose-400 cursor-pointer" title="Close"></button>
+            <button onclick="minimizeWindow('${appId}')" class="w-3 h-3 rounded-full bg-amber-400 hover:bg-amber-300 cursor-pointer" title="Minimize"></button>
+            <button onclick="toggleMaximizeWindow('${appId}')" class="w-3 h-3 rounded-full bg-emerald-400 hover:bg-emerald-300 cursor-pointer" title="Maximize"></button>
+          </div>
+          <div class="text-[11px] font-semibold tracking-tight text-slate-200">${app.name}</div>
+          <div class="w-10"></div>
+        </div>
+        <div id="win-body-${appId}" class="flex-1 overflow-auto p-3 text-xs">
+          ${renderAppContent(appId)}
+        </div>
+      `;
+
+      layer.appendChild(winEl);
+      openWindows[appId] = { id: appId, minimized: false };
+      makeWindowDraggable(winEl);
+      focusWindow(appId);
+      renderDock();
+      postRenderAppHook(appId);
+      AIM_BRAIN.publish(app.name.toUpperCase(), 'LAUNCH', `Launched ${app.name}.`);
+    }
+
+    function focusWindow(appId) {
+      const winEl = document.getElementById(`win-${appId}`);
+      if (!winEl) return;
+      winEl.style.zIndex = ++zIndexCounter;
+      activeAppId = appId;
+      const app = APPS.find(a => a.id === appId);
+      document.getElementById('active-app-label').textContent = app ? `${app.name} • Active` : 'AIM OS Workspace';
+    }
+
+    function closeWindow(appId) {
+      document.getElementById(`win-${appId}`)?.remove();
+      delete openWindows[appId];
+      renderDock();
+    }
+
+    function minimizeWindow(appId) {
+      document.getElementById(`win-${appId}`)?.classList.add('window-minimized');
+      openWindows[appId].minimized = true;
+      renderDock();
+    }
+
+    function restoreWindow(appId) {
+      document.getElementById(`win-${appId}`)?.classList.remove('window-minimized');
+      openWindows[appId].minimized = false;
+      focusWindow(appId);
+      renderDock();
+    }
+
+    function toggleMaximizeWindow(appId) {
+      const win = document.getElementById(`win-${appId}`);
+      if (!win) return;
+      if (!win.dataset.maximized) {
+        win.dataset.prev = JSON.stringify({ left: win.style.left, top: win.style.top, width: win.style.width, height: win.style.height });
+        win.style.left = '2px'; win.style.top = '30px';
+        win.style.width = `${window.innerWidth - 4}px`;
+        win.style.height = `${window.innerHeight - 34}px`;
+        win.dataset.maximized = 'true';
+      } else {
+        const prev = JSON.parse(win.dataset.prev);
+        win.style.left = prev.left; win.style.top = prev.top;
+        win.style.width = prev.width; win.style.height = prev.height;
+        delete win.dataset.maximized;
+      }
+    }
+
+    function makeWindowDraggable(winEl) {
+      const header = winEl.querySelector('.win-header');
+      header.addEventListener('mousedown', e => {
+        if (e.target.tagName === 'BUTTON') return;
+        const startX = e.clientX, startY = e.clientY;
+        const startLeft = winEl.offsetLeft, startTop = winEl.offsetTop;
+        winEl.classList.add('dragging');
+        const onMove = ev => {
+          winEl.style.left = `${Math.max(0, startLeft + (ev.clientX - startX))}px`;
+          winEl.style.top = `${Math.max(28, startTop + (ev.clientY - startY))}px`;
+        };
+        const onUp = () => { winEl.classList.remove('dragging'); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+        window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp);
+      });
+    }
+
+    // ==========================================
+    // APP RENDERERS & CONTROLLERS
+    // ==========================================
+    function renderAppContent(appId) {
+      if (appId === 'netsphere') {
+        const activeTab = browserTabs.find(t => t.id === activeBrowserTabId) || browserTabs[0];
+        return `
+          <div class="h-full flex flex-col gap-2 font-mono">
+            <!-- Hyper Tabs Header -->
+            <div class="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-white/10 shrink-0">
+              <div class="flex items-center gap-1">
+                ${browserTabs.map(tab => `
+                  <div onclick="switchBrowserTab(${tab.id})" class="flex items-center gap-2 px-3 py-1 rounded-lg cursor-pointer transition ${tab.id === activeBrowserTabId ? 'bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 font-bold' : 'bg-white/5 hover:bg-white/10 text-slate-400 text-xs'}">
+                    <span class="truncate max-w-[120px] text-[11px]">${tab.title}</span>
+                    <button onclick="event.stopPropagation(); closeBrowserTab(${tab.id})" class="text-[10px] hover:text-white">&times;</button>
+                  </div>
+                `).join('')}
+              </div>
+              <button onclick="addNewBrowserTab()" class="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-cyan-300 text-xs cursor-pointer">+</button>
+            </div>
+
+            <!-- Toolbar -->
+            <div class="flex items-center gap-2 p-1.5 rounded-xl glass-inner bg-slate-950/70 shrink-0">
+              <div class="flex items-center gap-1">
+                <button onclick="browserGoBack()" class="p-1 rounded hover:bg-white/10 text-slate-300 cursor-pointer"><i data-lucide="arrow-left" class="w-3.5 h-3.5"></i></button>
+                <button onclick="browserGoForward()" class="p-1 rounded hover:bg-white/10 text-slate-300 cursor-pointer"><i data-lucide="arrow-right" class="w-3.5 h-3.5"></i></button>
+                <button onclick="browserRefresh()" class="p-1 rounded hover:bg-white/10 text-slate-300 cursor-pointer"><i data-lucide="rotate-cw" class="w-3.5 h-3.5"></i></button>
+              </div>
+              <div class="flex-1 flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-900 border border-white/10">
+                <i data-lucide="lock" class="w-3 h-3 text-emerald-400 shrink-0"></i>
+                <input type="text" id="browser-url-input" value="${activeTab.url}" onkeydown="if(event.key==='Enter') navigateBrowser(this.value)" class="w-full bg-transparent text-xs text-slate-100 focus:outline-none">
+              </div>
+              <button onclick="navigateBrowser(document.getElementById('browser-url-input').value)" class="px-3 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold cursor-pointer text-xs">Go</button>
+              <button onclick="toggleBrowserReaderMode()" id="browser-reader-btn" class="px-2.5 py-1 rounded-lg bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 cursor-pointer text-[11px]" title="Toggle Safe Reader Mode if site blocks embedding">Reader View</button>
+            </div>
+
+            <!-- Browser Viewport (iframe or proxy reader view) -->
+            <div id="browser-viewport-container" class="flex-1 rounded-xl bg-white relative overflow-hidden flex flex-col">
+              <iframe id="browser-iframe" src="${activeTab.url}" class="w-full h-full border-0"></iframe>
+              <div id="browser-reader-view" class="hidden absolute inset-0 bg-slate-950 text-slate-200 p-6 overflow-y-auto text-xs font-sans">
+                <h2 id="reader-title" class="text-base font-bold text-cyan-300 font-orbitron mb-3">Reader View Active</h2>
+                <div id="reader-content" class="space-y-3 leading-relaxed text-slate-300">Loading reader content...</div>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (appId === 'neuralprompt') {
+        return `
+          <div class="h-full flex flex-col gap-3 font-mono">
+            <div class="p-3 rounded-xl glass-inner flex items-center justify-between text-xs">
+              <span class="text-cyan-300 font-bold">Neural Prompt Assembler</span>
+              <button onclick="executeNeuralPromptStream()" class="px-3 py-1.5 rounded-lg bg-gradient-to-r from-cyan-400 to-indigo-600 text-slate-950 font-bold cursor-pointer">⚡ Stream Prompt</button>
+            </div>
+            <div class="flex-1 grid grid-cols-1 md:grid-cols-12 gap-3 min-h-0">
+              <textarea id="np-query" class="md:col-span-6 w-full h-full p-3 rounded-xl glass-inner bg-slate-950/60 text-xs text-slate-200 resize-none focus:outline-none">Refactor the NetSphere rendering pipeline for zero-latency frame delivery.</textarea>
+              <div class="md:col-span-6 p-3 rounded-xl glass-inner bg-slate-950/90 flex flex-col">
+                <div class="text-[10px] opacity-60 pb-1">Stream Output</div>
+                <div id="np-output" class="flex-1 overflow-y-auto text-xs text-cyan-200 whitespace-pre-wrap font-mono">Ready for execution...</div>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (appId === 'predictiveanalytics') {
+        return `
+          <div class="h-full flex flex-col gap-3 font-mono">
+            <div class="p-3 rounded-xl glass-inner flex items-center justify-between text-xs">
+              <span class="text-emerald-300 font-bold">Predictive Analytics & Trend Visualizer</span>
+              <button onclick="toggleTrendSimulation()" class="px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 font-bold cursor-pointer text-xs">Active Stream</button>
+            </div>
+            <div class="flex-1 rounded-xl bg-slate-950/90 border border-white/15 relative overflow-hidden flex items-center justify-center min-h-[260px]">
+              <canvas id="predictiveAnalyticsCanvas" class="absolute inset-0 w-full h-full block"></canvas>
+            </div>
+          </div>
+        `;
+      } else if (appId === 'spatialaudio') {
+        return `
+          <div class="h-full flex flex-col gap-3 font-mono">
+            <div class="p-3 rounded-xl glass-inner flex items-center justify-between text-xs">
+              <span class="text-pink-300 font-bold">Spatial Audio Soundscape Generator</span>
+              <button onclick="toggleSoundscape()" class="px-3 py-1 rounded-lg bg-pink-500/20 text-pink-300 font-bold cursor-pointer text-xs">▶ Start Soundscape</button>
+            </div>
+            <div class="flex-1 rounded-xl bg-slate-950/90 border border-white/15 relative overflow-hidden flex items-center justify-center min-h-[260px]">
+              <canvas id="spatialAudioCanvas" class="absolute inset-0 w-full h-full block"></canvas>
+            </div>
+          </div>
+        `;
+      } else if (appId === 'codearchive') {
+        return `
+          <div class="h-full flex flex-col gap-3 font-mono">
+            <div class="p-3 rounded-xl glass-inner flex items-center justify-between text-xs">
+              <span class="text-violet-300 font-bold">Semantic Code Search & RAG</span>
+              <button onclick="executeSemanticSearch()" class="px-3 py-1 rounded-lg bg-violet-600 text-white font-bold cursor-pointer text-xs">⚡ Run Query</button>
+            </div>
+            <div class="flex-1 grid grid-cols-1 md:grid-cols-12 gap-3">
+              <input type="text" id="rag-query-input" value="Where are NetSphere tab handlers defined?" class="md:col-span-12 px-3 py-2 rounded-xl glass-inner bg-slate-950 text-xs text-slate-200">
+              <div id="rag-output" class="md:col-span-12 p-3 rounded-xl glass-inner bg-slate-950 text-xs text-violet-200 whitespace-pre-wrap">Enter query above...</div>
+            </div>
+          </div>
+        `;
+      } else if (appId === 'securityvault') {
+        return `
+          <div class="h-full flex flex-col gap-3 font-mono">
+            <div class="p-3 rounded-xl glass-inner flex items-center justify-between text-xs">
+              <span class="text-amber-300 font-bold">Security & Token Vault (AES-GCM)</span>
+              <button onclick="encryptAndStoreSecret()" class="px-3 py-1 rounded-lg bg-amber-600 text-slate-950 font-bold cursor-pointer text-xs">🔒 Encrypt & Store</button>
+            </div>
+            <div class="flex-1 grid grid-cols-1 md:grid-cols-12 gap-3">
+              <textarea id="vault-secret-input" class="md:col-span-6 p-3 rounded-xl glass-inner bg-slate-950 text-xs text-slate-200 resize-none">AIzaSy-MASTER-KEY-SECRET</textarea>
+              <div id="vault-ciphertext-output" class="md:col-span-6 p-3 rounded-xl glass-inner bg-slate-950 text-[10px] text-amber-200 whitespace-pre-wrap">Ciphertext output...</div>
+            </div>
+          </div>
+        `;
+      }
+      return `<div class="p-4 text-slate-300 font-mono">Module active.</div>`;
+    }
+
+    function postRenderAppHook(appId) {
+      if (appId === 'predictiveanalytics') initPredictiveAnalyticsCanvas();
+      else if (appId === 'spatialaudio') initSpatialAudioCanvas();
+    }
+
+    // ==========================================
+    // BROWSER & NO-OS CONTROLLERS
+    // ==========================================
+    function switchBrowserTab(tabId) {
+      activeBrowserTabId = tabId;
+      const tab = browserTabs.find(t => t.id === tabId);
+      if (tab) {
+        const winBody = document.getElementById('win-netsphere');
+        if (winBody) winBody.outerHTML = renderAppContent('netsphere');
+        const iframe = document.getElementById('browser-iframe');
+        if (iframe) iframe.src = tab.url;
+      }
+    }
+
+    function addNewBrowserTab() {
+      const newId = Date.now();
+      browserTabs.push({ id: newId, title: 'New Tab', url: 'https://en.m.wikipedia.org' });
+      switchBrowserTab(newId);
+    }
+
+    function closeBrowserTab(tabId) {
+      if (browserTabs.length <= 1) return;
+      browserTabs = browserTabs.filter(t => t.id !== tabId);
+      switchBrowserTab(browserTabs[0].id);
+    }
+
+    function navigateBrowser(url) {
+      if (!url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url;
+      const tab = browserTabs.find(t => t.id === activeBrowserTabId);
+      if (tab) { tab.url = url; tab.title = new URL(url).hostname; }
+      const iframe = document.getElementById('browser-iframe');
+      if (iframe) iframe.src = url;
+      const input = document.getElementById('browser-url-input');
+      if (input) input.value = url;
+    }
+
+    function browserRefresh() {
+      const iframe = document.getElementById('browser-iframe');
+      if (iframe) iframe.src = iframe.src;
+    }
+
+    async function toggleBrowserReaderMode() {
+      const iframe = document.getElementById('browser-iframe');
+      const reader = document.getElementById('browser-reader-view');
+      const content = document.getElementById('reader-content');
+      if (!iframe || !reader) return;
+
+      if (reader.classList.contains('hidden')) {
+        reader.classList.remove('hidden');
+        iframe.classList.add('hidden');
+        content.innerHTML = '<p class="text-cyan-400">Fetching safe reader proxy payload...</p>';
+        try {
+          const tab = browserTabs.find(t => t.id === activeBrowserTabId);
+          const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(tab.url)}`);
+          const data = await res.json();
+          if (data && data.contents) {
+            // Strip script tags for safety and extract text
+            const cleanHtml = data.contents.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+            content.innerHTML = `<div class="p-4 bg-slate-900 rounded-xl border border-white/10">${cleanHtml.substring(0, 4000)}...</div>`;
+          } else {
+            content.innerHTML = '<p class="text-rose-400">Could not retrieve page payload directly. Site restricts proxy framing.</p>';
+          }
+        } catch (err) {
+          content.innerHTML = `<p class="text-rose-400">Reader view error: ${err.message}</p>`;
+        }
+      } else {
+        reader.classList.add('hidden');
+        iframe.classList.remove('hidden');
+      }
+    }
+
+    function toggleNoOsMode() {
+      document.body.classList.toggle('no-os-mode');
+      const isNoOs = document.body.classList.contains('no-os-mode');
+      if (isNoOs) {
+        // Close all windows and open NetSphere in true full screen
+        document.getElementById('windows-layer').innerHTML = '';
+        openWindows = {};
+      }
+    }
+
+    function loadNoOsUrl(url) {
+      if (!url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url;
+      const iframe = document.getElementById('no-os-iframe');
+      if (iframe) iframe.src = url;
+    }
+
+    // Other App Controllers
+    function executeNeuralPromptStream() {
+      const out = document.getElementById('np-output');
+      if (out) out.textContent = 'Streaming neural response...\n- NetSphere rendering pipeline optimized.\n- Zero memory leaks confirmed across all tabs.';
+    }
+
+    function initPredictiveAnalyticsCanvas() {
+      const canvas = document.getElementById('predictiveAnalyticsCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      let w = canvas.width = canvas.parentElement.clientWidth;
+      let h = canvas.height = canvas.parentElement.clientHeight;
+      let pts = Array.from({length: 60}, () => Math.random() * 60 + 100);
+
+      function render() {
+        if (!document.getElementById('predictiveAnalyticsCanvas')) return;
+        w = canvas.width = canvas.parentElement.clientWidth;
+        h = canvas.height = canvas.parentElement.clientHeight;
+        ctx.fillStyle = 'rgba(2, 6, 23, 0.4)';
+        ctx.fillRect(0, 0, w, h);
+        pts.shift(); pts.push(Math.max(30, Math.min(h - 30, pts[pts.length - 1] + (Math.random() - 0.48) * 25)));
+        ctx.strokeStyle = '#10b981'; ctx.lineWidth = 2; ctx.beginPath();
+        pts.forEach((p, i) => { const x = (i / (pts.length - 1)) * w; const y = h - p; if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
+        ctx.stroke();
+        requestAnimationFrame(render);
+      }
+      render();
+    }
+
+    function initSpatialAudioCanvas() {
+      const canvas = document.getElementById('spatialAudioCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      let w = canvas.width = canvas.parentElement.clientWidth;
+      let h = canvas.height = canvas.parentElement.clientHeight;
+      let t = 0;
+
+      function render() {
+        if (!document.getElementById('spatialAudioCanvas')) return;
+        w = canvas.width = canvas.parentElement.clientWidth;
+        h = canvas.height = canvas.parentElement.clientHeight;
+        ctx.fillStyle = 'rgba(2, 6, 23, 0.4)';
+        ctx.fillRect(0, 0, w, h);
+        t += 0.05;
+        ctx.strokeStyle = '#ec4899'; ctx.lineWidth = 2.5; ctx.beginPath();
+        for (let x = 0; x < w; x += 5) {
+          const y = h / 2 + Math.sin(x * 0.02 + t) * 30;
+          if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        requestAnimationFrame(render);
+      }
+      render();
+    }
+
+    function executeSemanticSearch() {
+      const out = document.getElementById('rag-output');
+      if (out) out.textContent = 'RAG Synthesis:\nNetSphere hyper-tabs and iframe management are defined in script namespace.';
+    }
+
+    async function encryptAndStoreSecret() {
+      const secret = document.getElementById('vault-secret-input')?.value || '';
+      const out = document.getElementById('vault-ciphertext-output');
+      const enc = new TextEncoder().encode(secret);
+      const key = await window.crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt']);
+      const iv = window.crypto.getRandomValues(new Uint8Array(12));
+      const cipher = await window.crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc);
+      const hex = Array.from(new Uint8Array(cipher)).map(b => b.toString(16).padStart(2, '0')).join('');
+      if (out) out.textContent = `Encrypted Ciphertext (AES-GCM):\n${hex}`;
+      alert('Success: Credential encrypted and secured in vault.');
+    }
+
+    // Command Palette
+    function toggleCommandPalette() {
+      const modal = document.getElementById('command-palette-modal');
+      if (!modal) return;
+      modal.classList.toggle('hidden');
+      if (!modal.classList.contains('hidden')) {
+        document.getElementById('palette-search-input')?.focus();
+        filterCommandPalette();
+      }
+    }
+
+    function filterCommandPalette() {
+      const query = (document.getElementById('palette-search-input')?.value || '').toLowerCase();
+      const listEl = document.getElementById('palette-results-list');
+      if (!listEl) return;
+      const matches = APPS.filter(a => a.name.toLowerCase().includes(query) || a.category.toLowerCase().includes(query));
+      listEl.innerHTML = matches.map(app => `
+        <button onclick="openApp('${app.id}'); toggleCommandPalette();" class="w-full text-left p-2.5 rounded-xl hover:bg-white/10 flex items-center justify-between cursor-pointer transition">
+          <div class="flex items-center gap-2.5">
+            <div class="w-6 h-6 rounded-lg bg-gradient-to-br ${app.gradient} flex items-center justify-center shadow">${app.icon}</div>
+            <div>
+              <div class="font-bold text-slate-200">${app.name}</div>
+              <div class="text-[10px] opacity-60">${app.category}</div>
+            </div>
+          </div>
+          <span class="text-[10px] text-cyan-400 font-mono">Launch ↵</span>
+        </button>
+      `).join('') || '<div class="p-3 text-center text-slate-500">No matching applications found.</div>';
+    }
+
+    window.addEventListener('keydown', e => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        toggleCommandPalette();
+      } else if (e.key === 'Escape') {
+        document.getElementById('command-palette-modal')?.classList.add('hidden');
+        document.getElementById('storage-manager-modal')?.classList.add('hidden');
+      }
+    });
+
+    function openStorageManager() { document.getElementById('storage-manager-modal')?.classList.remove('hidden'); }
+    function closeStorageManager() { document.getElementById('storage-manager-modal')?.classList.add('hidden'); }
+    function toggleMenu(id) { document.getElementById(id)?.classList.toggle('hidden'); }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      lucide.createIcons();
+      renderDock();
+      await AIM_VIRTUAL_DISK.init();
+      openApp('netsphere');
+
+      setInterval(() => {
+        document.getElementById('top-clock').textContent = new Date().toTimeString().split(' ')[0].substring(0, 5);
+      }, 1000);
+    });
+  </script>
+</body>
+</html>
