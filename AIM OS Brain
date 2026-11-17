@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AIM OS Desktop v1.0.0 — Unified App Brain & Modular Suite</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+        }
+      }
+    }
+  </script>
+  <style>
+    :root {
+      --glass-blur: 24px;
+      --glass-bg: rgba(255, 255, 255, 0.14);
+      --glass-bg-elevated: rgba(255, 255, 255, 0.22);
+      --glass-border: rgba(255, 255, 255, 0.28);
+      --glass-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.45);
+      --text-primary: #ffffff;
+      --panel-inner: rgba(15, 23, 42, 0.36);
+    }
+
+    body.light-glass {
+      --glass-bg: rgba(255, 255, 255, 0.62);
+      --glass-bg-elevated: rgba(255, 255, 255, 0.78);
+      --glass-border: rgba(255, 255, 255, 0.85);
+      --glass-shadow: 0 24px 48px -12px rgba(15, 23, 42, 0.18);
+      --text-primary: #0f172a;
+      --panel-inner: rgba(255, 255, 255, 0.55);
+    }
+
+    * { box-sizing: border-box; user-select: none; }
+    input, textarea, pre, code, .selectable { user-select: text; }
+    body { margin: 0; padding: 0; overflow: hidden; width: 100vw; height: 100vh; font-family: 'Inter', sans-serif; color: var(--text-primary); transition: color 0.3s ease; }
+
+    /* Wallpapers */
+    .wallpaper-aurora {
+      background:
+        radial-gradient(at 15% 20%, rgba(56, 189, 248, 0.55) 0px, transparent 50%),
+        radial-gradient(at 85% 15%, rgba(168, 85, 247, 0.52) 0px, transparent 52%),
+        radial-gradient(at 75% 85%, rgba(236, 72, 153, 0.45) 0px, transparent 50%),
+        radial-gradient(at 20% 80%, rgba(16, 185, 129, 0.42) 0px, transparent 50%),
+        linear-gradient(135deg, #090d16 0%, #111827 50%, #0f172a 100%);
+      background-size: 140% 140%;
+      animation: meshShift 22s ease infinite alternate;
+    }
+
+    @keyframes meshShift {
+      0% { background-position: 0% 20%; }
+      50% { background-position: 100% 60%; }
+      100% { background-position: 25% 100%; }
+    }
+
+    .glass-surface {
+      background: var(--glass-bg);
+      backdrop-filter: blur(var(--glass-blur)) saturate(175%);
+      -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(175%);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--glass-shadow);
+    }
+    .glass-bar {
+      background: var(--glass-bg-elevated);
+      backdrop-filter: blur(calc(var(--glass-blur) + 6px)) saturate(185%);
+      border-bottom: 1px solid var(--glass-border);
+    }
+    .glass-dock {
+      background: var(--glass-bg-elevated);
+      backdrop-filter: blur(calc(var(--glass-blur) + 8px)) saturate(190%);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    }
+    .glass-inner { background: var(--panel-inner); border: 1px solid rgba(255, 255, 255, 0.14); }
+    .window-frame { transition: opacity 0.2s ease, transform 0.22s cubic-bezier(0.16, 1, 0.3, 1); }
+    .window-frame.dragging, .window-frame.resizing { transition: none !important; }
+    .window-minimized { opacity: 0; transform: scale(0.86) translateY(60px); pointer-events: none; }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.24); border-radius: 9999px; }
+    .dock-item { transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), margin 0.22s ease; }
+    .dock-item:hover { transform: translateY(-10px) scale(1.22); margin-left: 6px; margin-right: 6px; }
+    input[type="range"] { -webkit-appearance: none; appearance: none; height: 6px; border-radius: 999px; background: rgba(255, 255, 255, 0.25); outline: none; }
+    input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #ffffff; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35); cursor: pointer; }
+  </style>
+</head>
+<body class="wallpaper-aurora select-none">
+
+  <!-- Sleep / Lock Screen -->
+  <div id="sleep-screen" class="fixed inset-0 z-[9999] hidden flex-col items-center justify-center backdrop-blur-3xl bg-slate-950/75 text-white">
+    <div class="text-center space-y-4">
+      <div id="lock-time" class="text-7xl font-light tracking-tight">18:04</div>
+      <button onclick="wakeSystem()" class="px-6 py-3 rounded-2xl glass-surface hover:bg-white/25 transition flex items-center gap-3 mx-auto text-sm font-medium shadow-lg">
+        <span class="w-2.5 h-2.5 rounded-full bg-sky-400 animate-pulse"></span>
+        Click to Unlock AIM OS
+      </button>
+    </div>
+  </div>
+
+  <!-- Top Status Bar -->
+  <header class="glass-bar fixed top-0 left-0 right-0 h-9 px-4 flex items-center justify-between z-[1000] text-xs font-medium">
+    <div class="flex items-center gap-3">
+      <button onclick="toggleMenu('system-menu')" class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-white/15 transition">
+        <svg class="w-4 h-4 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        <span class="font-semibold">AIM OS • App Brain</span>
+      </button>
+      <div id="system-menu" class="hidden absolute left-0 mt-2 w-64 rounded-2xl glass-surface p-1.5 shadow-2xl z-[1100] text-xs">
+        <button onclick="openApp('brain'); closeMenus()" class="w-full text-left px-3 py-2 rounded-xl hover:bg-white/15 font-semibold text-purple-300">App Brain Neural Ledger</button>
+        <div class="my-1 border-t border-white/15"></div>
+        <button onclick="openApp('floorplan'); closeMenus()" class="w-full text-left px-3 py-2 rounded-xl hover:bg-white/15">Conduit & Floor Plan</button>
+        <button onclick="openApp('crypto'); closeMenus()" class="w-full text-left px-3 py-2 rounded-xl hover:bg-white/15">Crypto & Asset Terminal</button>
+        <button onclick="openApp('rfmon'); closeMenus()" class="w-full text-left px-3 py-2 rounded-xl hover:bg-white/15">RF Telemetry Monitor</button>
+        <button onclick="openApp('player'); closeMenus()" class="w-full text-left px-3 py-2 rounded-xl hover:bg-white/15">AiM Audio Deck</button>
+      </div>
+      <span class="opacity-30">|</span>
+      <span id="active-app-label" class="font-semibold">Finder • Desktop</span>
+    </div>
+    <div class="flex items-center gap-3">
+      <span class="font-mono text-[11px] text-purple-300 flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
+        Brain Bus Active
+      </span>
+      <span class="opacity-30">|</span>
+      <span id="top-clock" class="font-medium tabular-nums">Fri Nov 13 • 6:04 PM</span>
+    </div>
+  </header>
+
+  <!-- Desktop Area -->
+  <main id="desktop-area" class="relative w-full h-full pt-12 pb-24 px-4 overflow-hidden">
+    <!-- Desktop Icons Grid -->
+    <div id="desktop-icons" class="grid grid-flow-col grid-rows-5 gap-3 w-fit">
+      <button ondblclick="openApp('brain')" class="desktop-icon group w-24 p-2.5 rounded-2xl hover:bg-white/15 transition flex flex-col items-center gap-1.5 text-center">
+        <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg group-hover:scale-105 transition">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M12 12L2.5 7.5M12 12v10M12 12l9.5-4.5"/></svg>
+        </div>
+        <span class="text-xs font-medium drop-shadow leading-tight">App Brain Core</span>
+      </button>
+
+      <button ondblclick="openApp('floorplan')" class="desktop-icon group w-24 p-2.5 rounded-2xl hover:bg-white/15 transition flex flex-col items-center gap-1.5 text-center">
+        <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg group-hover:scale-105 transition">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg>
+        </div>
+        <span class="text-xs font-medium drop-shadow leading-tight">Floor Plan</span>
+      </button>
+
+      <button ondblclick="openApp('crypto')" class="desktop-icon group w-24 p-2.5 rounded-2xl hover:bg-white/15 transition flex flex-col items-center gap-1.5 text-center">
+        <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center shadow-lg group-hover:scale-105 transition">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v12M15 9.5H9.5a2.5 2.5 0 0 0 0 5H14.5a2.5 2.5 0 0 1 0 5H9"/></svg>
+        </div>
+        <span class="text-xs font-medium drop-shadow leading-tight">Crypto Terminal</span>
+      </button>
+
+      <button ondblclick="openApp('rfmon')" class="desktop-icon group w-24 p-2.5 rounded-2xl hover:bg-white/15 transition flex flex-col items-center gap-1.5 text-center">
+        <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-lg group-hover:scale-105 transition">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0 1 14.08 0M1.42 9a16 16 0 0 1 21.16 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/></svg>
+        </div>
+        <span class="text-xs font-medium drop-shadow leading-tight">RF Monitor</span>
+      </button>
+
+      <button ondblclick="openApp('player')" class="desktop-icon group w-24 p-2.5 rounded-2xl hover:bg-white/15 transition flex flex-col items-center gap-1.5 text-center">
+        <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center shadow-lg group-hover:scale-105 transition">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        </div>
+        <span class="text-xs font-medium drop-shadow leading-tight">Audio Deck</span>
+      </button>
+    </div>
+
+    <!-- Windows Container -->
+    <div id="windows-layer" class="absolute inset-0 pointer-events-none"></div>
+  </main>
+
+  <div id="toast-container" class="fixed top-12 right-4 z-[3000] flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Dock -->
+  <nav class="fixed bottom-3 left-1/2 -translate-x-1/2 z-[1500] max-w-[96vw]">
+    <div id="dock-bar" class="glass-dock px-3 py-2 rounded-3xl flex items-end gap-3"></div>
+  </nav>
+
+  <audio id="main-audio-element" crossorigin="anonymous"></audio>
+
+  <script>
+    // =========================================================================
+    // THE APP BRAIN (CENTRAL PUB/SUB EVENT BUS)
+    // =========================================================================
+    const AIM_BRAIN = {
+      events: [
+        { time: '18:04:00', source: 'CORE', topic: 'INIT', summary: 'AIM OS App Brain initialized with 4 active modules.' }
+      ],
+      subscribers: {},
+      publish(source, topic, summary, payload = {}) {
+        const time = new Date().toTimeString().split(' ')[0];
+        const ev = { time, source, topic, summary, payload };
+        this.events.unshift(ev);
+        if (this.events.length > 60) this.events.pop();
+
+        // Dispatch to subscribers
+        if (this.subscribers[topic]) {
+          this.subscribers[topic].forEach(cb => cb(ev));
+        }
+
+        // Broadcast to Neural Ledger UI if open
+        updateBrainLedgerUI();
+        showToast(`[${source}] ${topic}`, summary, source === 'RF' ? 'cyan' : source === 'CRYPTO' ? 'amber' : source === 'FLOOR' ? 'blue' : 'purple');
+      },
+      subscribe(topic, cb) {
+        if (!this.subscribers[topic]) this.subscribers[topic] = [];
+        this.subscribers[topic].push(cb);
+      }
+    };
+
+    // =========================================================================
+    // APPS REGISTRY
+    // =========================================================================
+    const APPS = [
+      {
+        id: 'brain',
+        name: 'App Brain Core',
+        crate: 'pub/sub event bus',
+        gradient: 'from-purple-500 to-indigo-600',
+        width: 820,
+        height: 520,
+        icon: `<svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M12 12L2.5 7.5M12 12v10M12 12l9.5-4.5"/></svg>`
+      },
+      {
+        id: 'floorplan',
+        name: 'Conduit & Floor Plan',
+        crate: 'rusqlite spatial',
+        gradient: 'from-blue-500 to-indigo-600',
+        width: 880,
+        height: 540,
+        icon: `<svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg>`
+      },
+      {
+        id: 'crypto',
+        name: 'Crypto Terminal',
+        crate: 'reqwest + serde_json',
+        gradient: 'from-amber-400 to-orange-600',
+        width: 860,
+        height: 540,
+        icon: `<svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v12M15 9.5H9.5a2.5 2.5 0 0 0 0 5H14.5a2.5 2.5 0 0 1 0 5H9"/></svg>`
+      },
+      {
+        id: 'rfmon',
+        name: 'RF & UHF Monitor',
+        crate: 'tokio-serial 5.4',
+        gradient: 'from-cyan-400 to-blue-600',
+        width: 840,
+        height: 520,
+        icon: `<svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0 1 14.08 0M1.42 9a16 16 0 0 1 21.16 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/></svg>`
+      },
+      {
+        id: 'player',
+        name: 'AiM Audio Deck',
+        crate: 'rodio + cpal audio',
+        gradient: 'from-pink-500 to-rose-600',
+        width: 820,
+        height: 540,
+        icon: `<svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`
+      }
+    ];
+
+    // Module States
+    let floorNodes = [
+      { id: 1, type: 'Antenna Node', zone: 'Roof Level', x: 160, y: 90, status: 'Active' },
+      { id: 2, type: 'UHF Repeater', zone: 'Penthouse Rack', x: 310, y: 110, status: 'Active' }
+    ];
+    let selectedNodeType = 'Antenna Node';
+
+    let cryptoAssets = [
+      { symbol: 'BTC', name: 'Bitcoin', price: 92450.00, change24h: +3.42, momentum: 88 },
+      { symbol: 'AIM', name: 'AiM Token', price: 14.50, change24h: +18.40, momentum: 96 }
+    ];
+    let eliminationThreshold = 60;
+
+    let rfChannels = [
+      { id: 1, freq: '450.250 MHz', name: 'North Shore Repeater 1', rssi: -72, status: 'Locked' },
+      { id: 2, freq: '770.125 MHz', name: 'E-Comm Main Dispatch', rssi: -65, status: 'Active' }
+    ];
+
+    let playlist = [{ id: 1, title: 'Drive (Deep House Mix)', artist: 'AiM Vancouver', duration: '3:45', url: 'https://upload.wikimedia.org/wikipedia/commons/b/b2/Beethoven_Moonlight_1st_movement.ogg' }];
+    let currentTrackIndex = 0;
+    let isPlaying = false;
+
+    let openWindows = {};
+    let zIndexCounter = 100;
+    let activeAppId = null;
+
+    window.addEventListener('DOMContentLoaded', () => {
+      renderDock();
+      updateClock();
+      // Open App Brain Core on load
+      setTimeout(() => openApp('brain'), 150);
+    });
+
+    // =========================================================================
+    // RENDERERS FOR ALL 5 MODULES
+    // =========================================================================
+    function renderBrainApp() {
+      return `
+        <div class="h-full flex flex-col gap-3">
+          <div class="flex items-center justify-between p-2.5 rounded-2xl glass-inner">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-purple-400 animate-pulse"></span>
+              <span class="font-mono text-[11px] text-purple-300">AIM OS Central Event Bus & Pub/Sub Neural Ledger</span>
+            </div>
+            <button onclick="AIM_BRAIN.publish('CORE', 'PING', 'Manual system health check dispatched.');" class="px-3 py-1.5 rounded-xl bg-purple-500/30 hover:bg-purple-500/45 border border-purple-400/40 text-xs font-semibold transition">
+              Dispatch Ping
+            </button>
+          </div>
+          <div class="flex-1 p-3 rounded-2xl glass-inner flex flex-col min-h-0">
+            <div class="text-[10px] uppercase tracking-wider opacity-60 pb-2">Live Cross-Module Event Stream (${AIM_BRAIN.events.length} messages)</div>
+            <div id="brain-events-list" class="flex-1 overflow-y-auto space-y-2 font-mono text-[11px]">
+              ${AIM_BRAIN.events.map(ev => `
+                <div class="p-2 rounded-xl bg-white/5 border-l-2 border-purple-400 space-y-1">
+                  <div class="flex justify-between text-[10px] opacity-70">
+                    <span>${ev.time} • <strong class="text-purple-300">[${ev.source}]</strong></span>
+                    <span class="text-sky-300">${ev.topic}</span>
+                  </div>
+                  <div>${ev.summary}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function updateBrainLedgerUI() {
+      const listEl = document.getElementById('brain-events-list');
+      if (!listEl) return;
+      listEl.innerHTML = AIM_BRAIN.events.map(ev => `
+        <div class="p-2 rounded-xl bg-white/5 border-l-2 border-purple-400 space-y-1">
+          <div class="flex justify-between text-[10px] opacity-70">
+            <span>${ev.time} • <strong class="text-purple-300">[${ev.source}]</strong></span>
+            <span class="text-sky-300">${ev.topic}</span>
+          </div>
+          <div>${ev.summary}</div>
+        </div>
+      `).join('');
+    }
+
+    function renderFloorPlanApp() {
+      return `
+        <div class="h-full flex flex-col gap-3">
+          <div class="flex items-center justify-between p-2.5 rounded-2xl glass-inner">
+            <span class="font-mono text-[11px] text-blue-300">rusqlite::spatial_index</span>
+            <div class="flex items-center gap-2">
+              <select onchange="selectedNodeType=this.value" class="px-3 py-1.5 rounded-xl bg-blue-500/30 text-xs font-semibold text-blue-200 outline-none">
+                <option value="Antenna Node">Antenna Node</option>
+                <option value="UHF Repeater">UHF Repeater</option>
+                <option value="Fiber Junction">Fiber Junction</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex-1 rounded-2xl bg-slate-950/70 border border-white/15 relative overflow-hidden cursor-crosshair flex items-center justify-center p-3" onclick="handleCanvasClick(event)" id="blueprint-canvas-box">
+            <div class="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:32px_32px] opacity-40"></div>
+            ${floorNodes.map(node => `
+              <div class="absolute px-2.5 py-1.5 rounded-xl glass-surface border border-blue-400/60 shadow-lg flex items-center gap-2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none" style="left: ${node.x}px; top: ${node.y}px;">
+                <span class="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
+                <div class="text-[10px] font-mono leading-tight">
+                  <div class="font-semibold text-blue-200">${node.type}</div>
+                  <div class="opacity-60">${node.zone}</div>
+                </div>
+              </div>
+            `).join('')}
+            <div class="absolute bottom-3 left-3 text-[10px] font-mono opacity-60">Click anywhere on canvas to drop node & broadcast to App Brain.</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function handleCanvasClick(e) {
+      const box = document.getElementById('blueprint-canvas-box');
+      if (!box) return;
+      const rect = box.getBoundingClientRect();
+      const x = Math.round(e.clientX - rect.left);
+      const y = Math.round(e.clientY - rect.top);
+      const newNode = { id: floorNodes.length + 1, type: selectedNodeType, zone: 'Sector Alpha', x, y, status: 'Active' };
+      floorNodes.unshift(newNode);
+      
+      AIM_BRAIN.publish('FLOOR', 'NODE_PLACED', `${newNode.type} dropped at spatial coordinates (${x}, ${y}).`, { node: newNode });
+      const body = document.getElementById('win-body-floorplan');
+      if (body) body.innerHTML = renderFloorPlanApp();
+    }
+
+    function renderCryptoApp() {
+      return `
+        <div class="h-full flex flex-col gap-3">
+          <div class="flex items-center justify-between p-2.5 rounded-2xl glass-inner">
+            <span class="font-mono text-[11px] text-amber-300">reqwest::Client + Elimination Matrix</span>
+            <button onclick="triggerCryptoAlert()" class="px-3 py-1.5 rounded-xl bg-amber-500/30 border border-amber-400/40 text-xs font-semibold">Simulate Price Spike</button>
+          </div>
+          <div class="flex-1 overflow-y-auto space-y-2">
+            ${cryptoAssets.map(a => `
+              <div class="p-3 rounded-xl bg-amber-500/15 border border-amber-400/30 flex justify-between items-center font-mono text-xs">
+                <div><strong class="text-amber-200">${a.symbol}</strong> (${a.name})</div>
+                <div>$${a.price.toLocaleString()} <span class="text-emerald-300">(+${a.change24h}%)</span></div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function triggerCryptoAlert() {
+      cryptoAssets[0].price += 1250;
+      AIM_BRAIN.publish('CRYPTO', 'PRICE_SPIKE', 'BTC surged past resistance threshold. Broadcasting to trading terminal.', { asset: 'BTC' });
+      const body = document.getElementById('win-body-crypto');
+      if (body) body.innerHTML = renderCryptoApp();
+    }
+
+    function renderRfMonApp() {
+      return `
+        <div class="h-full flex flex-col gap-3">
+          <div class="flex items-center justify-between p-2.5 rounded-2xl glass-inner">
+            <span class="font-mono text-[11px] text-cyan-300">tokio_serial::open("/dev/ttyUSB0")</span>
+            <button onclick="triggerRfWarning()" class="px-3 py-1.5 rounded-xl bg-cyan-500/30 border border-cyan-400/40 text-xs font-semibold">Simulate Signal Drop</button>
+          </div>
+          <div class="flex-1 overflow-y-auto space-y-2">
+            ${rfChannels.map(ch => `
+              <div class="p-3 rounded-xl bg-cyan-500/15 border border-cyan-400/30 flex justify-between items-center font-mono text-xs">
+                <div><strong class="text-cyan-200">${ch.name}</strong><br/><span class="text-[10px] opacity-70">${ch.freq}</span></div>
+                <div class="text-right"><span class="text-cyan-300 font-bold">${ch.rssi} dBm</span><br/><span class="text-[10px] text-emerald-300">${ch.status}</span></div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function triggerRfWarning() {
+      rfChannels[0].rssi -= 14;
+      rfChannels[0].status = 'Weak Signal Warning';
+      AIM_BRAIN.publish('RF', 'SIGNAL_DROP', `North Shore Repeater 1 dropped to ${rfChannels[0].rssi} dBm. Interference detected.`, { channel: rfChannels[0] });
+      const body = document.getElementById('win-body-rfmon');
+      if (body) body.innerHTML = renderRfMonApp();
+    }
+
+    function renderPlayerApp() {
+      const cur = playlist[currentTrackIndex];
+      return `
+        <div class="h-full flex flex-col justify-center items-center text-center space-y-4 p-4">
+          <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center shadow-lg">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+          </div>
+          <div>
+            <div class="text-sm font-bold">${cur.title}</div>
+            <div class="text-xs opacity-75">${cur.artist}</div>
+          </div>
+          <button onclick="togglePlay()" class="px-6 py-2.5 rounded-xl bg-pink-500 hover:bg-pink-400 text-slate-950 font-bold transition shadow-lg">
+            ${isPlaying ? 'Pause Audio Stream' : 'Play Audio Stream'}
+          </button>
+        </div>
+      `;
+    }
+
+    function togglePlay() {
+      isPlaying = !isPlaying;
+      const audioEl = document.getElementById('main-audio-element');
+      if (isPlaying) {
+        audioEl.src = playlist[0].url;
+        audioEl.play().catch(()=>{});
+        AIM_BRAIN.publish('AUDIO', 'PLAYBACK_START', 'AiM Audio Deck started streaming deep house track.');
+      } else {
+        audioEl.pause();
+        AIM_BRAIN.publish('AUDIO', 'PLAYBACK_PAUSE', 'AiM Audio Deck paused.');
+      }
+      const body = document.getElementById('win-body-player');
+      if (body) body.innerHTML = renderPlayerApp();
+    }
+
+    // =========================================================================
+    // WINDOW & DOCK MANAGER
+    // =========================================================================
+    function renderDock() {
+      const dock = document.getElementById('dock-bar');
+      dock.innerHTML = APPS.map(app => {
+        const isOpen = Boolean(openWindows[app.id]);
+        return `
+          <button onclick="handleDockClick('${app.id}')" title="${app.name}" class="dock-item relative group flex flex-col items-center">
+            <span class="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-9 px-2.5 py-1 rounded-xl glass-surface text-[11px] font-medium whitespace-nowrap pointer-events-none shadow-lg">${app.name}</span>
+            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br ${app.gradient} flex items-center justify-center shadow-lg border border-white/25">${app.icon}</div>
+            <span class="w-1.5 h-1.5 rounded-full mt-1 transition-all ${isOpen ? 'bg-white opacity-100' : 'opacity-0'}"></span>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function handleDockClick(appId) {
+      const win = openWindows[appId];
+      if (!win) openApp(appId);
+      else if (win.minimized) restoreWindow(appId);
+      else if (activeAppId === appId) minimizeWindow(appId);
+      else focusWindow(appId);
+    }
+
+    function openApp(appId) {
+      const app = APPS.find(a => a.id === appId);
+      if (!app) return;
+      if (openWindows[appId]) {
+        restoreWindow(appId);
+        focusWindow(appId);
+        return;
+      }
+      const layer = document.getElementById('windows-layer');
+      const w = Math.min(window.innerWidth - 60, app.width);
+      const h = Math.min(window.innerHeight - 135, app.height);
+      const left = Math.max(40, (window.innerWidth - w) / 2);
+      const top = Math.max(48, (window.innerHeight - h) / 2 - 20);
+
+      const winEl = document.createElement('div');
+      winEl.id = `win-${appId}`;
+      winEl.className = 'window-frame glass-surface rounded-3xl flex flex-col overflow-hidden pointer-events-auto absolute';
+      winEl.style.width = `${w}px`;
+      winEl.style.height = `${h}px`;
+      winEl.style.left = `${left}px`;
+      winEl.style.top = `${top}px`;
+      winEl.style.zIndex = ++zIndexCounter;
+      winEl.addEventListener('mousedown', () => focusWindow(appId));
+
+      let contentHtml = '';
+      if (appId === 'brain') contentHtml = renderBrainApp();
+      else if (appId === 'floorplan') contentHtml = renderFloorPlanApp();
+      else if (appId === 'crypto') contentHtml = renderCryptoApp();
+      else if (appId === 'rfmon') contentHtml = renderRfMonApp();
+      else if (appId === 'player') contentHtml = renderPlayerApp();
+
+      winEl.innerHTML = `
+        <div class="win-header h-11 px-4 flex items-center justify-between border-b border-white/15 bg-white/5 cursor-grab shrink-0">
+          <div class="flex items-center gap-2">
+            <button onclick="closeWindow('${appId}')" class="w-3.5 h-3.5 rounded-full bg-rose-500 hover:bg-rose-400"></button>
+            <button onclick="minimizeWindow('${appId}')" class="w-3.5 h-3.5 rounded-full bg-amber-400 hover:bg-amber-300"></button>
+          </div>
+          <span class="text-xs font-semibold">${app.name} <span class="font-mono text-[10px] opacity-75">(${app.crate})</span></span>
+          <div class="w-8"></div>
+        </div>
+        <div id="win-body-${appId}" class="flex-1 overflow-auto p-4 text-xs">
+          ${contentHtml}
+        </div>
+      `;
+
+      layer.appendChild(winEl);
+      openWindows[appId] = { id: appId, minimized: false };
+      focusWindow(appId);
+      renderDock();
+    }
+
+    function focusWindow(appId) {
+      const win = document.getElementById(`win-${appId}`);
+      if (!win) return;
+      win.style.zIndex = ++zIndexCounter;
+      activeAppId = appId;
+      const app = APPS.find(a => a.id === appId);
+      document.getElementById('active-app-label').textContent = app ? `${app.name} • ${app.crate}` : 'Finder • Desktop';
+    }
+
+    function closeWindow(appId) {
+      document.getElementById(`win-${appId}`)?.remove();
+      delete openWindows[appId];
+      renderDock();
+    }
+
+    function minimizeWindow(appId) {
+      document.getElementById(`win-${appId}`)?.classList.add('window-minimized');
+      openWindows[appId].minimized = true;
+    }
+
+    function restoreWindow(appId) {
+      document.getElementById(`win-${appId}`)?.classList.remove('window-minimized');
+      openWindows[appId].minimized = false;
+      focusWindow(appId);
+    }
+
+    function showToast(title, subtitle, accent = 'purple') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = 'glass-surface px-4 py-3 rounded-2xl shadow-xl flex items-start gap-3 w-80 transition-all duration-300 transform translate-x-4 opacity-0 pointer-events-auto';
+      const dot = accent === 'cyan' ? 'bg-cyan-400' : accent === 'amber' ? 'bg-amber-400' : accent === 'blue' ? 'bg-blue-400' : 'bg-purple-400';
+      toast.innerHTML = `<span class="w-2.5 h-2.5 rounded-full ${dot} mt-1 shrink-0"></span><div class="text-xs"><div class="font-semibold">${title}</div><div class="opacity-75 mt-0.5 truncate">${subtitle}</div></div>`;
+      container.appendChild(toast);
+      requestAnimationFrame(() => toast.classList.remove('translate-x-4', 'opacity-0'));
+      setTimeout(() => { toast.classList.add('opacity-0', 'translate-x-4'); setTimeout(() => toast.remove(), 300); }, 3500);
+    }
+
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('top-clock').textContent = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) + ' • ' + now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    }
+    setInterval(updateClock, 1000);
+    function closeMenus() { document.getElementById('system-menu')?.classList.add('hidden'); }
+    function toggleMenu(id) { document.getElementById(id)?.classList.toggle('hidden'); }
+  </script>
+</body>
+</html>
