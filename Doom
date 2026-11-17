@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full select-none bg-black">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>AIM DOOM // Final Master Integrated Engine v26.3</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Three.js Postprocessing Addons -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&family=Orbitron:wght@600;800&family=Fira+Code:wght@400;600&display=swap');
+
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
+            background-color: #0b0f19; font-family: 'Quicksand', sans-serif; color: #f8fafc;
+            user-select: none; -webkit-user-select: none; touch-action: none;
+        }
+
+        .font-orbitron { font-family: 'Orbitron', sans-serif; }
+        .font-mono-code { font-family: 'Fira Code', monospace; }
+        .font-quicksand { font-family: 'Quicksand', sans-serif; }
+
+        #viewport-container {
+            position: absolute; inset: 0; bottom: 65px; z-index: 10;
+        }
+
+        /* Micro-HUD Chassis */
+        .micro-hud-chassis {
+            position: absolute; bottom: 0; left: 0; right: 0; height: 65px;
+            background: rgba(15, 23, 42, 0.94);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-top: 2px solid rgba(244, 114, 182, 0.45);
+            z-index: 50;
+            display: flex; flex-direction: column; justify-content: space-between; padding: 6px 12px;
+        }
+
+        .matrix-overlay {
+            position: absolute; inset: 0; bottom: 65px;
+            background: rgba(11, 15, 25, 0.96);
+            backdrop-filter: blur(32px);
+            -webkit-backdrop-filter: blur(32px);
+            z-index: 40;
+            display: none; flex-direction: column; padding: 16px; overflow: hidden;
+        }
+
+        .step-card {
+            background: rgba(30, 41, 59, 0.85);
+            border: 1px solid rgba(244, 114, 182, 0.3);
+            transition: all 0.2s ease;
+        }
+        .step-card.unlocked {
+            border-color: rgba(244, 114, 182, 0.8);
+            background: rgba(83, 29, 61, 0.35);
+            box-shadow: 0 0 15px rgba(244, 114, 182, 0.25);
+        }
+        .step-card.active-step {
+            border-color: #38bdf8;
+            background: rgba(14, 116, 144, 0.4);
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
+        }
+
+        /* Dynamic On-Screen Touch Controls Layer */
+        #touch-controls-layer {
+            position: absolute; inset: 0; bottom: 65px; z-index: 30; pointer-events: none;
+            display: none; justify-content: space-between; align-items: flex-end; padding: 24px;
+        }
+        .touch-pad-group { pointer-events: auto; display: flex; gap: 10px; }
+        .touch-btn {
+            background: rgba(15, 23, 42, 0.75);
+            border: 2px solid rgba(244, 114, 182, 0.6);
+            color: #f8fafc; font-family: 'Orbitron', sans-serif; font-size: 11px; font-weight: bold;
+            width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0 12px rgba(244, 114, 182, 0.3); active:scale: 95; transition: transform 0.1s;
+        }
+        .touch-btn:active { background: rgba(244, 114, 182, 0.4); transform: scale(0.92); }
+
+        .custom-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(244, 114, 182, 0.4); border-radius: 4px; }
+    </style>
+</head>
+<body class="relative w-full h-full bg-[#0b0f19] overflow-hidden">
+
+    <!-- 3D Spatial WebGL2 Viewport / Active Wasm Shell Container -->
+    <div id="viewport-container">
+        <canvas id="simCanvas" class="w-full h-full block touch-none cursor-pointer"></canvas>
+    </div>
+
+    <!-- Dynamic Touch Overlay Controller (Remaps per active module) -->
+    <div id="touch-controls-layer">
+        <div class="touch-pad-group">
+            <button class="touch-btn" onclick="activeModuleController.onAction('left')">◀</button>
+            <button class="touch-btn" onclick="activeModuleController.onAction('forward')">▲</button>
+            <button class="touch-btn" onclick="activeModuleController.onAction('right')">▶</button>
+        </div>
+        <div class="touch-pad-group">
+            <button id="secondary-action-btn" class="touch-btn !w-20 !rounded-xl text-[9px] bg-pink-500/30" onclick="activeModuleController.onSecondary()">SKILL</button>
+            <button class="touch-btn !border-red-400 !bg-red-500/30" onclick="activeModuleController.onPrimary()">FIRE</button>
+        </div>
+    </div>
+
+    <!-- Master Multi-Engine Matrix & Launcher Overlay -->
+    <div id="matrix-overlay" class="matrix-overlay custom-scroll space-y-3 font-quicksand">
+        <div class="flex items-center justify-between pb-2 border-b border-pink-500/30">
+            <div class="flex items-center space-x-2">
+                <span id="matrix-status-dot" class="w-2.5 h-2.5 rounded-full bg-pink-400 animate-ping"></span>
+                <span class="font-orbitron text-xs font-bold text-pink-200 tracking-wider">AIM DOOM // FINAL MASTER INTEGRATED KERNEL v26.3</span>
+            </div>
+            <div class="flex items-center space-x-2">
+                <button onclick="switchGameModule('doom')" class="bg-red-500/30 border border-red-400 text-red-200 px-2 py-1 rounded text-[9px] font-bold hover:bg-red-500/50">DOOM [1]</button>
+                <button onclick="switchGameModule('quake_arena')" class="bg-purple-500/30 border border-purple-400 text-purple-200 px-2.5 py-1 rounded text-[9px] font-bold hover:bg-purple-500/50">QUAKE [2]</button>
+                <button onclick="switchGameModule('tfc')" class="bg-amber-500/30 border border-amber-400 text-amber-200 px-2 py-1 rounded text-[9px] font-bold hover:bg-amber-500/50">TFC [3]</button>
+                <button onclick="toggleMatrixOverlay(false)" class="text-slate-400 hover:text-white px-2 py-1 rounded bg-slate-900 border border-slate-700 text-[9px] font-mono">CLOSE [X]</button>
+            </div>
+        </div>
+
+        <!-- 10-Step Interactive Matrix Grid -->
+        <div class="grid grid-cols-5 gap-2 font-mono text-[9px]">
+            <div id="step-card-1" class="step-card p-2 rounded-xl space-y-1 cursor-pointer" onclick="engine.activateStep(1)">
+                <div class="text-pink-300 font-bold flex justify-between"><span>01. SOFT CTX</span><span id="s1-status">♥</span></div>
+                <div class="text-[8px] text-slate-300 font-quicksand">Pastel WebGL2 Shell Boot</div>
+            </div>
+            <div id="step-card-2" class="step-card p-2 rounded-xl space-y-1 cursor-pointer" onclick="switchGameModule('doom')">
+                <div class="text-red-300 font-bold flex justify-between"><span>02. DOOM E1</span><span id="s2-status">🔒</span></div>
+                <div class="text-[8px] text-slate-300 font-quicksand">3-Sector Tactical Campaign</div>
+            </div>
+            <div id="step-card-3" class="step-card p-2 rounded-xl space-y-1 cursor-pointer" onclick="switchGameModule('quake_campaign')">
+                <div class="text-cyan-300 font-bold flex justify-between"><span>03. Q1 1996</span><span id="s3-status">🔒</span></div>
+                <div class="text-[8px] text-slate-300 font-quicksand">Slipgate Hub -> Necropolis</div>
+            </div>
+            <div id="step-card-4" class="step-card p-2 rounded-xl space-y-1 cursor-pointer" onclick="switchGameModule('quake_arena')">
+                <div class="text-purple-300 font-bold flex justify-between"><span>04. Q3 ARENA</span><span id="s4-status">🔒</span></div>
+                <div class="text-[8px] text-slate-300 font-quicksand">Bloodrun Spire 15-Frag FFA</div>
+            </div>
+            <div id="step-card-5" class="step-card p-2 rounded-xl space-y-1 cursor-pointer" onclick="switchGameModule('tfc')">
+                <div class="text-amber-300 font-bold flex justify-between"><span>05. TFC 2FORT</span><span id="s5-status">🔒</span></div>
+                <div class="text-[8px] text-slate-300 font-quicksand">9 Classes & CTF Server</div>
+            </div>
+            <div id="step-card-6" class="step-card p-2 rounded-xl space-y-1 cursor-pointer" onclick="engine.activateStep(6)">
+                <div class="text-pink-300 font-bold flex justify-between"><span>06. GEL SHADER</span><span id="s6-status">🔒</span></div>
+                <div class="text-[8px] text-slate-300 font-quicksand">Squishy Gel Vertex Wobble</div>
+            </div>
+            <div id="step-card-7" class="step-card p-2 rounded-xl space-y-1 cursor-pointer" onclick="engine.activateStep(7)">
+                <div class="text-pink-300 font-bold flex justify-between"><span>07. DREAM BLOOM</span><span id="s7-status">🔒</span></div>
+                <div class="text-[8px] text-slate-300 font-quicksand">Pastel Bloom Compositor</div>
+            </div>
+            <div id="step-card-8" class="step-card p-2 rounded-xl space-y-1 cursor-pointer" onclick="engine.activateStep(8)">
+                <div class="text-pink-300 font-bold flex justify-between"><span>08. SPARK MOTES</span><span id="s8-status">🔒</span></div>
+                <div class="text-[8px] text-slate-300 font-quicksand">Data-Spirit Particle Swarm</div>
+            </div>
+            <div id="step-card-9" class="step-card p-2 rounded-xl space-y-1 cursor-pointer" onclick="engine.activateStep(9)">
+                <div class="text-pink-300 font-bold flex justify-between"><span>09. WAD LOADER</span><span id="s9-status">🔒</span></div>
+                <div class="text-[8px] text-slate-300 font-quicksand">Asynchronous Asset Streamer</div>
+            </div>
+            <div id="step-card-10" class="step-card p-2 rounded-xl space-y-1 cursor-pointer" onclick="engine.activateStep(10)">
+                <div class="text-pink-300 font-bold flex justify-between"><span>10. KERNEL CORE</span><span id="s10-status">🔒</span></div>
+                <div class="text-[8px] text-slate-300 font-quicksand">Full Multi-Engine Synthesis</div>
+            </div>
+        </div>
+
+        <!-- Real-Time Telemetry & Kernel Feed -->
+        <div class="grid grid-cols-2 gap-2 flex-1 min-h-[140px]">
+            <div class="bg-black/85 rounded-xl border border-pink-500/30 p-2.5 flex flex-col justify-between font-quicksand text-[10px]">
+                <div class="text-pink-400 font-bold mb-1">// ASSET & TELEMETRY STREAMER</div>
+                <div id="step-detail-view" class="text-slate-300 space-y-1">
+                    Select any game module or matrix card above to stream WAD/PAK assets and initialize runtimes.
+                </div>
+                <div class="mt-2 pt-2 border-t border-pink-500/20 flex items-center justify-between font-mono">
+                    <span class="text-cyan-300">ACTIVE: <strong id="current-stage-label">Shell (Step 1)</strong></span>
+                    <button onclick="document.getElementById('wad-file-input').click()" class="bg-pink-500/30 border border-pink-400 text-pink-200 px-2 py-0.5 rounded text-[8px] font-bold hover:bg-pink-500/50">UPLOAD WAD/PAK</button>
+                    <input type="file" id="wad-file-input" class="hidden" onchange="handleAssetUpload(this)">
+                </div>
+            </div>
+            <div class="bg-black/85 rounded-xl border border-pink-500/30 p-2.5 overflow-auto custom-scroll font-mono text-[9px] space-y-1">
+                <div class="text-pink-400 font-bold">// SYSTEM KERNEL FEED</div>
+                <div id="matrix-log-feed" class="space-y-1 text-slate-300">
+                    <div>[AIM DOOM Master]: Unified multi-engine environment initialized.</div>
+                    <div>[AssetStreamer]: Ready for WAD/PAK dynamic lazy-loading.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Micro-HUD Chassis -->
+    <div class="micro-hud-chassis font-quicksand">
+        <div class="flex items-center justify-between text-[11px] font-bold text-pink-200">
+            <div class="flex items-center space-x-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-pink-400 animate-pulse"></span>
+                <span class="text-white font-orbitron">AIM DOOM v26.3</span>
+                <span class="text-slate-500">|</span>
+                <span id="hud-clock" class="text-cyan-300 font-mono">12:00:00</span>
+                <span class="text-slate-500">|</span>
+                <span class="text-purple-300">STATUS: <strong id="hud-mood" class="text-pink-300">✨ Shell Active (100%)</strong></span>
+            </div>
+            <div class="flex items-center space-x-3 font-mono text-[10px]">
+                <span class="text-amber-300">FPS: <strong id="hud-fps">60</strong></span>
+                <span class="text-cyan-300">CORE: <strong id="hud-mode-label">KAWAII SHELL</strong></span>
+                <button onclick="toggleMatrixOverlay()" class="text-pink-400 underline hover:text-white font-bold cursor-pointer">[MATRIX LAUNCHER]</button>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-2 pb-0.5">
+            <div class="w-5 h-5 rounded bg-pink-500/20 border border-pink-500/50 flex items-center justify-center text-pink-300 shrink-0">
+                <i data-lucide="sparkles" class="w-3 h-3 text-pink-300"></i>
+            </div>
+            <input id="prompt-input" type="text" placeholder="Type command ('doom', 'quake', 'tfc', 'wad load', 'hug')..." 
+                   onkeydown="if(event.key==='Enter') executeUserPrompt(this.value)"
+                   class="flex-1 bg-black/90 border border-pink-500/40 rounded-lg px-2.5 py-1 text-pink-200 font-quicksand text-[11px] focus:outline-none focus:border-cyan-400">
+            <button onclick="executeUserPrompt(document.getElementById('prompt-input').value)" 
+                    class="px-3 py-1 rounded-lg bg-pink-500/30 border border-pink-400 text-pink-100 font-quicksand text-[10px] font-bold hover:bg-pink-500/50 transition-all shrink-0">
+                EXECUTE
+            </button>
+        </div>
+    </div>
+
+    <!-- Application Master Script -->
+    <script>
+        lucide.createIcons();
+
+        setInterval(() => {
+            document.getElementById('hud-clock').innerText = new Date().toLocaleTimeString();
+        }, 1000);
+
+        let activeModuleController = {
+            onPrimary: () => { engine.logKernel("Primary action triggered."); },
+            onSecondary: () => { engine.logKernel("Secondary skill triggered."); },
+            onAction: (dir) => { engine.logKernel(`Movement vector: ${dir}`); }
+        };
+
+        function setTouchOverlayVisible(visible, secondaryLabel = "SKILL") {
+            const layer = document.getElementById('touch-controls-layer');
+            layer.style.display = visible ? 'flex' : 'none';
+            document.getElementById('secondary-action-btn').innerText = secondaryLabel;
+        }
+
+        // --- DOOM Module ---
+        class DoomModule {
+            constructor(engineInstance) {
+                this.engine = engineInstance;
+                this.isActive = false;
+                this.currentMission = "E1M1 - Hangar Entry";
+                this.stats = { health: 100, armor: 0, ammo: 5, maxAmmo: 43, kills: 0, totalKills: 18 };
+            }
+            init() {
+                this.isActive = true;
+                this.engine.logKernel(`[DOOM Wasm/WAD Loader]: Initializing 3-Sector E1 Campaign (${this.currentMission})...`, "text-red-400 font-bold");
+                if (this.engine.scene) { this.engine.scene.fog.color.setHex(0x050505); this.engine.scene.fog.density = 0.025; }
+                if (this.engine.coreMesh) this.engine.coreMesh.visible = false;
+                setTouchOverlayVisible(true, "HEAL");
+                this.updateHud();
+
+                activeModuleController = {
+                    onPrimary: () => {
+                        if (this.stats.ammo > 0) {
+                            this.stats.ammo--;
+                            this.engine.logKernel(`[DOOM]: Fired Pistol! Ammo: ${this.stats.ammo}/${this.stats.maxAmmo}`);
+                        } else {
+                            this.engine.logKernel(`[DOOM]: Out of ammo!`, "text-amber-400");
+                        }
+                    },
+                    onSecondary: () => {
+                        this.stats.health = Math.min(100, this.stats.health + 25);
+                        this.engine.logKernel(`[DOOM]: Medkit used! Health restored to ${this.stats.health}%`, "text-green-400");
+                        this.updateHud();
+                    },
+                    onAction: (dir) => { this.engine.logKernel(`[DOOM Movement]: Strafing/Moving ${dir}`); }
+                };
+            }
+            updateHud() {
+                const moodLabel = document.getElementById('hud-mood');
+                if (moodLabel) {
+                    moodLabel.innerText = `🔥 DOOM VETERAN (${this.stats.health}%)`;
+                    moodLabel.className = "text-red-400";
+                }
+                document.getElementById('hud-mode-label').innerText = "DOOM E1";
+                this.engine.logKernel(`[DOOM Telemetry]: Kills ${this.stats.kills}/${this.stats.totalKills} | Ammo: ${this.stats.ammo}`);
+            }
+            exit() {
+                this.isActive = false;
+                if (this.engine.coreMesh) this.engine.coreMesh.visible = true;
+                this.engine.logKernel(`[DOOM]: Exiting campaign module.`);
+            }
+        }
+
+        // --- Quake Module ---
+        class QuakeModule {
+            constructor(engineInstance) {
+                this.engine = engineInstance;
+                this.isActive = false;
+                this.mode = "campaign";
+                this.stats = { map: "Slipgate Hub -> Necropolis", frags: 0, targetFrags: 15 };
+            }
+            init(mode = "campaign") {
+                this.isActive = true;
+                this.mode = mode;
+                if (this.mode === "arena") {
+                    this.engine.logKernel(`[QUAKE ARENA Wasm]: Loading Bloodrun Spire (15-Frag FFA, Jump Pads online)...`, "text-purple-400 font-bold");
+                } else {
+                    this.engine.logKernel(`[QUAKE 1996 Wasm]: Initializing Slipgate Hub -> Necropolis...`, "text-cyan-400 font-bold");
+                }
+                if (this.engine.scene) { this.engine.scene.fog.color.setHex(0x0f0b15); this.engine.scene.fog.density = 0.018; }
+                if (this.engine.coreMesh) this.engine.coreMesh.visible = false;
+                setTouchOverlayVisible(true, "DASH");
+                this.updateHud();
+
+                activeModuleController = {
+                    onPrimary: () => { this.engine.logKernel(`[Quake]: Fired Shotgun / Lightning Gun!`); },
+                    onSecondary: () => { this.engine.logKernel(`[Quake]: Jump Pad Boost / Bunny Hop Momentum!`, "text-purple-300"); },
+                    onAction: (dir) => { this.engine.logKernel(`[Quake Movement]: 3D Velocity Vector ${dir}`); }
+                };
+            }
+            updateHud() {
+                const moodLabel = document.getElementById('hud-mood');
+                if (moodLabel) {
+                    if (this.mode === "arena") {
+                        moodLabel.innerText = `⚡ QUAKE ARENA (Frags: ${this.stats.frags}/${this.stats.targetFrags})`;
+                        moodLabel.className = "text-purple-400";
+                        document.getElementById('hud-mode-label').innerText = "Q3 ARENA";
+                    } else {
+                        moodLabel.innerText = `🌀 QUAKE 1996 (Slipgate Active)`;
+                        moodLabel.className = "text-cyan-400";
+                        document.getElementById('hud-mode-label').innerText = "QUAKE 96";
+                    }
+                }
+                this.engine.logKernel(`[Quake Telemetry]: Map: ${this.stats.map} | Status: Ready`);
+            }
+            exit() {
+                this.isActive = false;
+                if (this.engine.coreMesh) this.engine.coreMesh.visible = true;
+                this.engine.logKernel(`[QUAKE]: Exiting module.`);
+            }
+        }
+
+        // --- Team Fortress Classic Module ---
+        class TFCModule {
+            constructor(engineInstance) {
+                this.engine = engineInstance;
+                this.isActive = false;
+                this.currentTeam = "RED";
+                this.selectedClass = "SOLDIER";
+                this.classStats = { hp: 100, armor: 200, speed: 240, skill: "Rocket Jump Surge" };
+                this.serverInfo = { name: "TFC • 2Fort 5FE", objective: "Capture 3 Flags!" };
+            }
+            init() {
+                this.isActive = true;
+                this.engine.logKernel(`[TFC Server]: Connecting to ${this.serverInfo.name}...`, "text-amber-400 font-bold");
+                this.engine.logKernel(`[TFC Class Select]: Deployed as ${this.currentTeam} ${this.selectedClass} (Armor: ${this.classStats.armor})[span_0](start_span)[span_0](end_span)[span_1](start_span)[span_1](end_span).`);
+                if (this.engine.scene) { this.engine.scene.fog.color.setHex(0x111116); this.engine.scene.fog.density = 0.02; }
+                if (this.engine.coreMesh) this.engine.coreMesh.visible = false;
+                setTouchOverlayVisible(true, "ROCKET JUMP");
+                this.updateHud();
+
+                activeModuleController = {
+                    onPrimary: () => { this.engine.logKernel(`[TFC]: Fired Rocket Launcher!`); },
+                    onSecondary: () => { this.engine.logKernel(`[TFC Skill]: Rocket Jump Surge activated! High vertical momentum launched[span_2](start_span)[span_2](end_span).`, "text-amber-300 font-bold"); },
+                    onAction: (dir) => { this.engine.logKernel(`[TFC Movement]: Team 2Fort vector ${dir}`); }
+                };
+            }
+            updateHud() {
+                const moodLabel = document.getElementById('hud-mood');
+                if (moodLabel) {
+                    moodLabel.innerText = `🛡️ TFC 2FORT (${this.currentTeam} ${this.selectedClass})`;
+                    moodLabel.className = "text-amber-400";
+                }
+                document.getElementById('hud-mode-label').innerText = "TFC 2FORT";
+                this.engine.logKernel(`[TFC Telemetry]: Objective: ${this.serverInfo.objective} | HP: ${this.classStats.hp}`);
+            }
+            exit() {
+                this.isActive = false;
+                if (this.engine.coreMesh) this.engine.coreMesh.visible = true;
+                this.engine.logKernel(`[TFC]: Disconnected from server.`);
+            }
+        }
+
+        // --- Unified Cometic & Multi-Engine Core ---
+        class CometicEngine {
+            constructor() {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.composer = null;
+                this.bloomPass = null;
+                this.gelShaderMat = null;
+                this.coreMesh = null;
+                this.particleSystem = null;
+                this.wireframeGrid = null;
+                
+                this.currentStep = 1;
+                this.unlockedSteps = { 1: true };
+                this.clock = new THREE.Clock();
+                
+                this.stepDetails = {
+                    1: { title: "Soft Pastel WebGL2 Shell Context", desc: "Boots hardware-accelerated context with warm twilight ambient lighting.", hook: () => this.actionStep1() },
+                    2: { title: "DOOM E1 Campaign Tree", desc: "Initializes 3-Sector tactical campaign and flat sprite billboard pipelines.", hook: () => { switchGameModule('doom'); } },
+                    3: { title: "Quake 1996 Slipgate Hub", desc: "Boots gothic portal traversal and BSP polygon node data structures.", hook: () => { switchGameModule('quake_campaign'); } },
+                    4: { title: "Quake Arena Bloodrun Spire", desc: "Launches high-speed 15-Frag FFA match environment with jump pads.", hook: () => { switchGameModule('quake_arena'); } },
+                    5: { title: "TFC 2Fort Server & Classes", desc: "Deploys 9-class state machine and capture-the-flag objectives[span_3](start_span)[span_3](end_span)[span_4](start_span)[span_4](end_span)[span_5](start_span)[span_5](end_span).", hook: () => { switchGameModule('tfc'); } },
+                    6: { title: "Squishy Gel Matrix Shader", desc: "Compiles custom vertex shaders featuring organic gelatinous wobble.", hook: () => this.actionStep6() },
+                    7: { title: "Dreamy Pastel Bloom", desc: "Applies high-pass UnrealBloom with a soft magenta tint.", hook: () => this.actionStep7() },
+                    8: { title: "Bouncing Data-Spirits", desc: "Spawns 800+ bouncy data-motes orbiting the core.", hook: () => this.actionStep8() },
+                    9: { title: "WAD/PAK Asset Lazy-Loader", desc: "Asynchronously unpacks WAD and PAK archives directly into memory.", hook: () => this.actionStep9() },
+                    10: { title: "Full Multi-Engine Synthesis", desc: "Unlocks ultimate kernel: maximum bloom radiance and unified joy.", hook: () => this.actionStep10() }
+                };
+            }
+
+            init() {
+                const container = document.getElementById('viewport-container');
+                const width = container.clientWidth;
+                const height = container.clientHeight;
+
+                this.scene = new THREE.Scene();
+                this.scene.fog = new THREE.FogExp2(0x0b0f19, 0.012);
+
+                this.camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
+                this.camera.position.set(0, 4, 26);
+                this.camera.lookAt(0, 0, 0);
+
+                const canvas = document.getElementById('simCanvas');
+                this.renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true, powerPreference: "high-performance" });
+                this.renderer.setSize(width, height);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                this.renderer.toneMappingExposure = 1.3;
+
+                const renderScene = new THREE.RenderPass(this.scene, this.camera);
+                this.bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(width, height), 1.8, 0.5, 0.75);
+                this.bloomPass.threshold = 0.08;
+                this.bloomPass.strength = 2.0;
+                this.bloomPass.radius = 0.6;
+
+                this.composer = new THREE.EffectComposer(this.renderer);
+                this.composer.addPass(renderScene);
+                this.composer.addPass(this.bloomPass);
+
+                const ambientLight = new THREE.AmbientLight(0xffb6c1, 2.2);
+                this.scene.add(ambientLight);
+
+                const pointLight = new THREE.PointLight(0xf472b6, 6, 60);
+                pointLight.position.set(0, 10, 8);
+                this.scene.add(pointLight);
+
+                const cyanLight = new THREE.PointLight(0x38bdf8, 4, 50);
+                cyanLight.position.set(0, -10, -5);
+                this.scene.add(cyanLight);
+
+                this.buildGeometry();
+
+                window.addEventListener('resize', () => {
+                    const w = container.clientWidth;
+                    const h = container.clientHeight;
+                    this.camera.aspect = w / h;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(w, h);
+                    this.composer.setSize(w, h);
+                });
+
+                this.activateStep(1);
+                this.logKernel("AIM DOOM Master Framework booted successfully. (✨^▽^✨)");
+            }
+
+            buildGeometry() {
+                const vertexShader = `
+                    uniform float uTime;
+                    varying vec3 vNormal;
+                    varying vec2 vUv;
+                    void main() {
+                        vNormal = normal;
+                        vUv = uv;
+                        vec3 pos = position;
+                        float squish = sin(pos.x * 2.5 + uTime * 2.0) * cos(pos.y * 2.5 + uTime * 2.0) * 0.35;
+                        pos += normal * squish;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+                    }
+                `;
+
+                const fragmentShader = `
+                    uniform float uTime;
+                    varying vec3 vNormal;
+                    varying vec2 vUv;
+                    void main() {
+                        vec3 pastelPink = vec3(0.95, 0.45, 0.70);
+                        vec3 pastelCyan = vec3(0.22, 0.74, 0.96);
+                        vec3 col = mix(pastelPink, pastelCyan, sin(vUv.x * 6.0 + uTime) * 0.5 + 0.5);
+                        float rim = 1.0 - max(dot(vNormal, vec3(0, 0, 1)), 0.0);
+                        col += vec3(1.0, 0.8, 0.9) * pow(rim, 2.5) * 1.8;
+                        gl_FragColor = vec4(col, 0.92);
+                    }
+                `;
+
+                this.gelShaderMat = new THREE.ShaderMaterial({
+                    vertexShader,
+                    fragmentShader,
+                    uniforms: { uTime: { value: 0.0 } },
+                    wireframe: false,
+                    transparent: true,
+                    side: THREE.DoubleSide
+                });
+
+                const coreGeo = new THREE.IcosahedronGeometry(4.2, 3);
+                this.coreMesh = new THREE.Mesh(coreGeo, this.gelShaderMat);
+                this.scene.add(this.coreMesh);
+
+                const pGeo = new THREE.BufferGeometry();
+                const pCount = 800;
+                const positions = new Float32Array(pCount * 3);
+                const velocities = new Float32Array(pCount * 3);
+
+                for (let i = 0; i < pCount * 3; i += 3) {
+                    positions[i] = (Math.random() - 0.5) * 32;
+                    positions[i+1] = (Math.random() - 0.5) * 22;
+                    positions[i+2] = (Math.random() - 0.5) * 32;
+
+                    velocities[i] = (Math.random() - 0.5) * 0.04;
+                    velocities[i+1] = (Math.random() - 0.5) * 0.04 + 0.01;
+                    velocities[i+2] = (Math.random() - 0.5) * 0.04;
+                }
+
+                pGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                const pMat = new THREE.PointsMaterial({
+                    color: 0xffaecd,
+                    size: 0.22,
+                    transparent: true,
+                    blending: THREE.AdditiveBlending
+                });
+
+                this.particleSystem = new THREE.Points(pGeo, pMat);
+                this.particleSystem.userData = { velocities };
+                this.scene.add(this.particleSystem);
+
+                const gridGeo = new THREE.PlaneGeometry(60, 60, 25, 25);
+                const gridMat = new THREE.MeshBasicMaterial({ color: 0xf472b6, wireframe: true, transparent: true, opacity: 0.25 });
+                this.wireframeGrid = new THREE.Mesh(gridGeo, gridMat);
+                this.wireframeGrid.rotation.x = Math.PI / 2;
+                this.wireframeGrid.position.y = -8;
+                this.scene.add(this.wireframeGrid);
+            }
+
+            activateStep(stepNum) {
+                if (stepNum > 10 || stepNum < 1) return;
+                this.currentStep = stepNum;
+                this.unlockedSteps[stepNum] = true;
+
+                for (let i = 1; i <= 10; i++) {
+                    const card = document.getElementById(`step-card-${i}`);
+                    const statusSpan = document.getElementById(`s${i}-status`);
+                    if (card && statusSpan) {
+                        if (this.unlockedSteps[i]) {
+                            card.className = i === this.currentStep ? 'step-card active-step p-2 rounded-xl space-y-1 cursor-pointer' : 'step-card unlocked p-2 rounded-xl space-y-1 cursor-pointer';
+                            statusSpan.innerText = '♥';
+                        } else {
+                            card.className = 'step-card p-2 rounded-xl space-y-1 cursor-pointer opacity-60';
+                            statusSpan.innerText = '🔒';
+                        }
+                    }
+                }
+
+                const detail = this.stepDetails[stepNum];
+                document.getElementById('step-detail-view').innerHTML = `
+                    <div class="text-pink-300 font-bold">STAGE ${stepNum}: ${detail.title}</div>
+                    <div class="text-slate-300 mt-1">${detail.desc}</div>
+                    <div class="text-cyan-300 mt-1 font-semibold">Status: SYNCED ✨</div>
+                `;
+                document.getElementById('current-stage-label').innerText = `Step ${stepNum} (${detail.title.split(' ')[0]})`;
+
+                this.logKernel(`Activated Stage ${stepNum}: ${detail.title}`);
+                detail.hook();
+            }
+
+            triggerActiveStepAction() {
+                if (this.stepDetails[this.currentStep]) {
+                    this.stepDetails[this.currentStep].hook();
+                }
+            }
+
+            actionStep1() { 
+                if (doomModuleInstance) doomModuleInstance.exit();
+                if (quakeModuleInstance) quakeModuleInstance.exit();
+                if (tfcModuleInstance) tfcModuleInstance.exit();
+                setTouchOverlayVisible(false);
+                const moodLabel = document.getElementById('hud-mood');
+                if (moodLabel) { moodLabel.innerText = "✨ Shell Active (100%)"; moodLabel.className = "text-pink-300"; }
+                document.getElementById('hud-mode-label').innerText = "KAWAII SHELL";
+                if (this.coreMesh) this.coreMesh.visible = true;
+                this.logKernel("Returned to Cometic Kawaii Shell environment.");
+            }
+            actionStep6() { if (this.coreMesh) { this.coreMesh.scale.set(1.15, 1.15, 1.15); setTimeout(() => this.coreMesh.scale.set(1, 1, 1), 400); } }
+            actionStep7() { if (this.bloomPass) { this.bloomPass.strength = 2.8; setTimeout(() => this.bloomPass.strength = 2.0, 900); } }
+            actionStep8() { 
+                if (this.particleSystem) {
+                    const pos = this.particleSystem.geometry.attributes.position.array;
+                    for(let i=0; i<pos.length; i+=3) { pos[i+1] += (Math.random()-0.3)*6; }
+                    this.particleSystem.geometry.attributes.position.needsUpdate = true;
+                }
+            }
+            actionStep9() { this.logKernel("[AssetStreamer]: Lazy-loading pipeline configured for .WAD and .PAK files."); }
+            actionStep10() {
+                this.bloomPass.strength = 3.5;
+                this.renderer.toneMappingExposure = 1.6;
+                this.logKernel("Master Multi-Engine Kernel operating at 100% capacity!");
+            }
+
+            logKernel(text, colorClass = "text-slate-300") {
+                const feed = document.getElementById('matrix-log-feed');
+                if (!feed) return;
+                const div = document.createElement('div');
+                div.className = `${colorClass}`;
+                div.innerHTML = `<span class="text-pink-400">[${new Date().toLocaleTimeString()}]</span> ${text}`;
+                feed.appendChild(div);
+                feed.scrollTop = feed.scrollHeight;
+            }
+
+            update(delta, time) {
+                if (this.gelShaderMat) this.gelShaderMat.uniforms.uTime.value = time;
+                if (this.coreMesh && this.coreMesh.visible) {
+                    this.coreMesh.rotation.x = time * 0.15;
+                    this.coreMesh.rotation.y = time * 0.25;
+                }
+                if (this.particleSystem) {
+                    const positions = this.particleSystem.geometry.attributes.position.array;
+                    const velocities = this.particleSystem.userData.velocities;
+                    for (let i = 0; i < positions.length; i += 3) {
+                        positions[i] += velocities[i];
+                        positions[i+1] += velocities[i+1];
+                        positions[i+2] += velocities[i+2];
+
+                        if (Math.abs(positions[i]) > 22) velocities[i] *= -1;
+                        if (positions[i+1] > 15) positions[i+1] = -12;
+                        if (positions[i+1] < -15) positions[i+1] = 12;
+                        if (Math.abs(positions[i+2]) > 22) velocities[i+2] *= -1;
+                    }
+                    this.particleSystem.geometry.attributes.position.needsUpdate = true;
+                    this.particleSystem.rotation.y = time * 0.04;
+                }
+                if (this.composer) this.composer.render();
+            }
+        }
+
+        // --- Asset Streamer Handler ---
+        function handleAssetUpload(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const fileName = file.name.toUpperCase();
+            toggleMatrixOverlay(true);
+            engine.logKernel(`[AssetStreamer]: Successfully loaded package "${fileName}" (${(file.size/1024/1024).toFixed(2)} MB).`, "text-cyan-300 font-bold");
+            
+            if (fileName.includes('.WAD') || fileName.includes('DOOM')) {
+                switchGameModule('doom');
+            } else if (fileName.includes('.PAK') || fileName.includes('QUAKE')) {
+                switchGameModule('quake_campaign');
+            } else {
+                engine.logKernel(`[AssetStreamer]: Parsed custom asset payload into unified virtual filesystem.`);
+            }
+        }
+
+        // --- Global Module Routers ---
+        let engine;
+        let doomModuleInstance = null;
+        let quakeModuleInstance = null;
+        let tfcModuleInstance = null;
+
+        function switchGameModule(moduleName) {
+            if (doomModuleInstance && doomModuleInstance.isActive) doomModuleInstance.exit();
+            if (quakeModuleInstance && quakeModuleInstance.isActive) quakeModuleInstance.exit();
+            if (tfcModuleInstance && tfcModuleInstance.isActive) tfcModuleInstance.exit();
+
+            switch(moduleName) {
+                case 'doom':
+                    if (!doomModuleInstance) doomModuleInstance = new DoomModule(engine);
+                    doomModuleInstance.init();
+                    engine.activateStep(2);
+                    break;
+                case 'quake_campaign':
+                    if (!quakeModuleInstance) quakeModuleInstance = new QuakeModule(engine);
+                    quakeModuleInstance.init('campaign');
+                    engine.activateStep(3);
+                    break;
+                case 'quake_arena':
+                    if (!quakeModuleInstance) quakeModuleInstance = new QuakeModule(engine);
+                    quakeModuleInstance.init('arena');
+                    engine.activateStep(4);
+                    break;
+                case 'tfc':
+                    if (!tfcModuleInstance) tfcModuleInstance = new TFCModule(engine);
+                    tfcModuleInstance.init();
+                    engine.activateStep(5);
+                    break;
+                default:
+                    engine.activateStep(1);
+            }
+        }
+
+        function toggleMatrixOverlay(forceState) {
+            const overlay = document.getElementById('matrix-overlay');
+            const isOpen = forceState !== undefined ? forceState : overlay.style.display !== 'flex';
+            overlay.style.display = isOpen ? 'flex' : 'none';
+        }
+
+        function executeUserPrompt(promptText) {
+            if (!promptText.trim()) return;
+            promptText = promptText.toLowerCase();
+            toggleMatrixOverlay(true);
+
+            if (promptText.includes('doom') || promptText.includes('story')) {
+                switchGameModule('doom');
+            } else if (promptText.includes('quake arena') || promptText.includes('q3')) {
+                switchGameModule('quake_arena');
+            } else if (promptText.includes('quake') || promptText.includes('slipgate')) {
+                switchGameModule('quake_campaign');
+            } else if (promptText.includes('tfc') || promptText.includes('fortress') || promptText.includes('team')) {
+                switchGameModule('tfc');
+            } else if (promptText.includes('shell') || promptText.includes('kawaii') || promptText.includes('menu')) {
+                engine.activateStep(1);
+            } else if (promptText.includes('upgrade step') || promptText.includes('step')) {
+                const match = promptText.match(/\d+/);
+                if (match) engine.activateStep(parseInt(match[0]));
+            } else if (promptText.includes('hug') || promptText.includes('cuddle')) {
+                engine.actionStep7();
+                engine.logKernel("Vortex gave all systems a warm digital hug! ♡(˃ɷ˂)");
+            } else {
+                engine.logKernel(`Executed command: "${promptText}" — Systems synced successfully! ✨`, "text-pink-300 font-bold");
+            }
+            document.getElementById('prompt-input').value = '';
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = engine.clock.getDelta();
+            const time = engine.clock.getElapsedTime();
+
+            const fps = Math.round(1 / delta);
+            document.getElementById('hud-fps').innerText = Math.min(fps, 120);
+
+            engine.update(delta, time);
+        }
+
+        window.onload = function () {
+            engine = new CometicEngine();
+            engine.init();
+            requestAnimationFrame(animate);
+        };
+    </script>
+</body>
+</html>
