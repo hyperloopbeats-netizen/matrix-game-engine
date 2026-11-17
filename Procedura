@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full select-none bg-slate-950">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AIM OS v3.8 Master Suite</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+        
+        body, html {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
+            background-color: #030712; color: #f3f4f6;
+        }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        }
+        .glass-taskbar {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glass-window {
+            background: rgba(11, 15, 25, 0.92);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7);
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.4); }
+
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 0.4; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.05); }
+        }
+        .animate-glow { animation: pulseGlow 8s infinite ease-in-out; }
+    </style>
+</head>
+<body class="relative w-full h-full overflow-hidden flex flex-col justify-between">
+
+    <!-- Wallpaper & Ambient Glows -->
+    <div class="absolute inset-0 pointer-events-none overflow-hidden z-0">
+        <div class="absolute -top-32 -left-32 w-96 h-96 bg-indigo-600/30 rounded-full blur-[120px] animate-glow"></div>
+        <div class="absolute top-1/2 -right-32 w-[30rem] h-[30rem] bg-purple-600/25 rounded-full blur-[140px] animate-glow" style="animation-delay: 3s;"></div>
+        <div class="absolute -bottom-32 left-1/3 w-96 h-96 bg-cyan-600/20 rounded-full blur-[120px] animate-glow" style="animation-delay: 6s;"></div>
+        <!-- Grid pattern overlay -->
+        <div class="absolute inset-0 opacity-[0.03]" style="background-image: linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px); background-size: 32px 32px;"></div>
+    </div>
+
+    <!-- Desktop Workspace -->
+    <div id="desktop-area" class="relative flex-1 p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 content-start z-10 overflow-hidden">
+        
+        <!-- Desktop Icon: AI Model Forge -->
+        <div onclick="os.openApp('modelForge')" class="group flex flex-col items-center justify-center w-24 h-24 p-2 rounded-2xl hover:bg-white/10 border border-transparent hover:border-white/10 cursor-pointer transition-all">
+            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform text-white">
+                <i data-lucide="cpu" class="w-6 h-6"></i>
+            </div>
+            <span class="text-xs font-medium text-slate-200 mt-2 text-center drop-shadow">AI Model Forge</span>
+        </div>
+
+        <!-- Desktop Icon: Sprite & Skin Generator -->
+        <div onclick="os.openApp('spriteGen')" class="group flex flex-col items-center justify-center w-24 h-24 p-2 rounded-2xl hover:bg-white/10 border border-transparent hover:border-white/10 cursor-pointer transition-all">
+            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform text-white">
+                <i data-lucide="palette" class="w-6 h-6"></i>
+            </div>
+            <span class="text-xs font-medium text-slate-200 mt-2 text-center drop-shadow">Sprite & Skin</span>
+        </div>
+
+        <!-- Desktop Icon: Tactical Skirmish Engine -->
+        <div onclick="os.openApp('tacticalEngine')" class="group flex flex-col items-center justify-center w-24 h-24 p-2 rounded-2xl hover:bg-white/10 border border-transparent hover:border-white/10 cursor-pointer transition-all">
+            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform text-white">
+                <i data-lucide="shield" class="w-6 h-6"></i>
+            </div>
+            <span class="text-xs font-medium text-slate-200 mt-2 text-center drop-shadow">Tactical Skirmish</span>
+        </div>
+
+        <!-- Desktop Icon: Audio DSP Synthesizer -->
+        <div onclick="os.openApp('audioSynth')" class="group flex flex-col items-center justify-center w-24 h-24 p-2 rounded-2xl hover:bg-white/10 border border-transparent hover:border-white/10 cursor-pointer transition-all">
+            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform text-white">
+                <i data-lucide="music" class="w-6 h-6"></i>
+            </div>
+            <span class="text-xs font-medium text-slate-200 mt-2 text-center drop-shadow">Audio Synth</span>
+        </div>
+
+        <!-- Desktop Icon: Local AI Copilot -->
+        <div onclick="os.openApp('aiCopilot')" class="group flex flex-col items-center justify-center w-24 h-24 p-2 rounded-2xl hover:bg-white/10 border border-transparent hover:border-white/10 cursor-pointer transition-all">
+            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform text-white">
+                <i data-lucide="bot" class="w-6 h-6"></i>
+            </div>
+            <span class="text-xs font-medium text-slate-200 mt-2 text-center drop-shadow">AI Copilot</span>
+        </div>
+
+    </div>
+
+    <!-- Window Container -->
+    <div id="window-container" class="absolute inset-0 pointer-events-none z-20"></div>
+
+    <!-- Start Menu Popover -->
+    <div id="start-menu" class="absolute bottom-16 left-3 w-80 glass-panel rounded-2xl p-4 hidden flex-col space-y-4 z-40 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+        <div class="flex items-center space-x-3 pb-3 border-b border-white/10">
+            <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-inner">AIM</div>
+            <div>
+                <div class="font-bold text-sm text-white">AIM OS v3.8</div>
+                <div class="text-[10px] text-indigo-400 font-mono">Master Suite Edition</div>
+            </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+            <button onclick="os.openApp('modelForge'); toggleStartMenu();" class="flex items-center space-x-2.5 p-2.5 rounded-xl hover:bg-white/10 transition-colors text-left">
+                <div class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center"><i data-lucide="cpu" class="w-4 h-4"></i></div>
+                <span class="text-xs font-medium text-slate-200">Model Forge</span>
+            </button>
+            <button onclick="os.openApp('spriteGen'); toggleStartMenu();" class="flex items-center space-x-2.5 p-2.5 rounded-xl hover:bg-white/10 transition-colors text-left">
+                <div class="w-8 h-8 rounded-lg bg-pink-500/20 text-pink-400 flex items-center justify-center"><i data-lucide="palette" class="w-4 h-4"></i></div>
+                <span class="text-xs font-medium text-slate-200">Sprite Gen</span>
+            </button>
+            <button onclick="os.openApp('tacticalEngine'); toggleStartMenu();" class="flex items-center space-x-2.5 p-2.5 rounded-xl hover:bg-white/10 transition-colors text-left">
+                <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center"><i data-lucide="shield" class="w-4 h-4"></i></div>
+                <span class="text-xs font-medium text-slate-200">Tactical</span>
+            </button>
+            <button onclick="os.openApp('audioSynth'); toggleStartMenu();" class="flex items-center space-x-2.5 p-2.5 rounded-xl hover:bg-white/10 transition-colors text-left">
+                <div class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center"><i data-lucide="music" class="w-4 h-4"></i></div>
+                <span class="text-xs font-medium text-slate-200">Audio Synth</span>
+            </button>
+            <button onclick="os.openApp('aiCopilot'); toggleStartMenu();" class="flex items-center space-x-2.5 p-2.5 rounded-xl hover:bg-white/10 transition-colors text-left col-span-2">
+                <div class="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center"><i data-lucide="bot" class="w-4 h-4"></i></div>
+                <span class="text-xs font-medium text-slate-200">Local AI Copilot Chat</span>
+            </button>
+        </div>
+        <div class="pt-2 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-400">
+            <span>System Status: Optimal</span>
+            <button onclick="location.reload()" class="text-rose-400 hover:text-rose-300 font-medium">Reboot OS</button>
+        </div>
+    </div>
+
+    <!-- Taskbar -->
+    <div class="glass-taskbar h-14 w-full flex items-center justify-between px-3 z-30 shadow-2xl">
+        <div class="flex items-center space-x-2">
+            <button onclick="toggleStartMenu()" class="w-10 h-10 rounded-xl bg-indigo-600/80 hover:bg-indigo-600 flex items-center justify-center text-white shadow-md transition-all active:scale-95">
+                <i data-lucide="layout-grid" class="w-5 h-5"></i>
+            </button>
+            <div id="taskbar-apps" class="flex items-center space-x-2 overflow-x-auto"></div>
+        </div>
+        <div class="flex items-center space-x-4 text-xs font-medium text-slate-300">
+            <div class="flex items-center space-x-1.5 bg-white/5 px-2.5 py-1.5 rounded-lg border border-white/5">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span class="font-mono text-[11px]" id="os-clock">12:00 PM</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- OS Application Logic & Window Manager -->
+    <script>
+        lucide.createIcons();
+
+        // Clock update
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('os-clock').innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }, 1000);
+
+        function toggleStartMenu() {
+            const menu = document.getElementById('start-menu');
+            menu.style.display = menu.style.display === 'flex' ? 'none' : 'flex';
+        }
+
+        // Close start menu on outside click
+        window.addEventListener('click', (e) => {
+            const menu = document.getElementById('start-menu');
+            if (menu.style.display === 'flex' && !e.target.closest('#start-menu') && !e.target.closest('button[onclick="toggleStartMenu()"]')) {
+                menu.style.display = 'none';
+            }
+        });
+
+        class WindowManager {
+            constructor() {
+                this.windows = {};
+                this.zIndexCounter = 100;
+            }
+
+            openApp(appId) {
+                if (this.windows[appId]) {
+                    this.focusWindow(appId);
+                    if (this.windows[appId].minimized) {
+                        this.restoreWindow(appId);
+                    }
+                    return;
+                }
+
+                const winConfig = this.getAppConfig(appId);
+                const winId = `win-${appId}`;
+                const zIndex = ++this.zIndexCounter;
+
+                const winEl = document.createElement('div');
+                winEl.id = winId;
+                winEl.className = `absolute glass-window rounded-2xl flex flex-col overflow-hidden pointer-events-auto transition-shadow shadow-2xl`;
+                winEl.style.width = winConfig.width || '650px';
+                winEl.style.height = winConfig.height || '480px';
+                winEl.style.left = winConfig.left || `${100 + Object.keys(this.windows).length * 30}px`;
+                winEl.style.top = winConfig.top || `${80 + Object.keys(this.windows).length * 30}px`;
+                winEl.style.zIndex = zIndex;
+
+                winEl.innerHTML = `
+                    <div class="h-11 bg-slate-900/60 border-b border-white/10 flex items-center justify-between px-4 cursor-grab active:cursor-grabbing select-none" onmousedown="os.startDrag(event, '${appId}')">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-6 h-6 rounded-lg ${winConfig.iconBg} flex items-center justify-center text-white text-xs">
+                                <i data-lucide="${winConfig.icon}" class="w-3.5 h-3.5"></i>
+                            </div>
+                            <span class="text-xs font-semibold text-slate-200">${winConfig.title}</span>
+                        </div>
+                        <div class="flex items-center space-x-1.5" onmousedown="event.stopPropagation()">
+                            <button onclick="os.minimizeWindow('${appId}')" class="w-7 h-7 rounded-lg hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors"><i data-lucide="minus" class="w-3.5 h-3.5"></i></button>
+                            <button onclick="os.maximizeWindow('${appId}')" class="w-7 h-7 rounded-lg hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors"><i data-lucide="square" class="w-3.5 h-3.5"></i></button>
+                            <button onclick="os.closeWindow('${appId}')" class="w-7 h-7 rounded-lg hover:bg-rose-500/20 flex items-center justify-center text-slate-400 hover:text-rose-300 transition-colors"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+                        </div>
+                    </div>
+                    <div class="flex-1 overflow-auto custom-scrollbar bg-slate-950/40 p-4 relative" id="content-${appId}">
+                        ${winConfig.content}
+                    </div>
+                `;
+
+                document.getElementById('window-container').appendChild(winEl);
+                lucide.createIcons();
+
+                this.windows[appId] = { id: winId, minimized: false, maximized: false, config: winConfig };
+                this.addTaskbarItem(appId, winConfig);
+                this.setupDrag(winEl, appId);
+
+                winEl.addEventListener('mousedown', () => this.focusWindow(appId));
+
+                // Initialize app specific logic
+                if (winConfig.init) winConfig.init();
+            }
+
+            focusWindow(appId) {
+                const win = this.windows[appId];
+                if (win) {
+                    const el = document.getElementById(win.id);
+                    el.style.zIndex = ++this.zIndexCounter;
+                }
+            }
+
+            closeWindow(appId) {
+                const win = this.windows[appId];
+                if (win) {
+                    document.getElementById(win.id).remove();
+                    delete this.windows[appId];
+                    this.removeTaskbarItem(appId);
+                }
+            }
+
+            minimizeWindow(appId) {
+                const win = this.windows[appId];
+                if (win) {
+                    document.getElementById(win.id).style.display = 'none';
+                    win.minimized = true;
+                }
+            }
+
+            restoreWindow(appId) {
+                const win = this.windows[appId];
+                if (win) {
+                    document.getElementById(win.id).style.display = 'flex';
+                    win.minimized = false;
+                    this.focusWindow(appId);
+                }
+            }
+
+            maximizeWindow(appId) {
+                const win = this.windows[appId];
+                const el = document.getElementById(win.id);
+                if (!win.maximized) {
+                    win.prevRect = { left: el.style.left, top: el.style.top, width: el.style.width, height: el.style.height };
+                    el.style.left = '0px';
+                    el.style.top = '0px';
+                    el.style.width = '100%';
+                    el.style.height = 'calc(100% - 56px)';
+                    el.style.borderRadius = '0px';
+                    win.maximized = true;
+                } else {
+                    el.style.left = win.prevRect.left;
+                    el.style.top = win.prevRect.top;
+                    el.style.width = win.prevRect.width;
+                    el.style.height = win.prevRect.height;
+                    el.style.borderRadius = '1rem';
+                    win.maximized = false;
+                }
+            }
+
+            addTaskbarItem(appId, config) {
+                const container = document.getElementById('taskbar-apps');
+                const item = document.createElement('button');
+                item.id = `taskbar-${appId}`;
+                item.onclick = () => {
+                    const win = this.windows[appId];
+                    if (win.minimized) {
+                        this.restoreWindow(appId);
+                    } else {
+                        const el = document.getElementById(win.id);
+                        if (el.style.zIndex == this.zIndexCounter) {
+                            this.minimizeWindow(appId);
+                        } else {
+                            this.focusWindow(appId);
+                        }
+                    }
+                };
+                item.className = `flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/5 transition-all text-xs text-slate-200`;
+                item.innerHTML = `<i data-lucide="${config.icon}" class="w-3.5 h-3.5"></i><span class="font-medium hidden sm:inline">${config.title}</span>`;
+                container.appendChild(item);
+                lucide.createIcons();
+            }
+
+            removeTaskbarItem(appId) {
+                const item = document.getElementById(`taskbar-${appId}`);
+                if (item) item.remove();
+            }
+
+            startDrag(e, appId) {
+                this.focusWindow(appId);
+                const winEl = document.getElementById(`win-${appId}`);
+                const startX = e.clientX - winEl.offsetLeft;
+                const startY = e.clientY - winEl.offsetTop;
+
+                const onMouseMove = (moveEvent) => {
+                    winEl.style.left = `${Math.max(0, moveEvent.clientX - startX)}px`;
+                    winEl.style.top = `${Math.max(0, moveEvent.clientY - startY)}px`;
+                };
+
+                const onMouseUp = () => {
+                    window.removeEventListener('mousemove', onMouseMove);
+                    window.removeEventListener('mouseup', onMouseUp);
+                };
+
+                window.addEventListener('mousemove', onMouseMove);
+                window.addEventListener('mouseup', onMouseUp);
+            }
+
+            setupDrag(winEl, appId) {}
+
+            getAppConfig(appId) {
+                switch(appId) {
+                    case 'modelForge':
+                        return {
+                            title: 'AI Model Forge',
+                            icon: 'cpu',
+                            iconBg: 'bg-indigo-600',
+                            width: '700px',
+                            height: '520px',
+                            content: `
+                                <div class="space-y-4 text-xs text-slate-300">
+                                    <div class="flex items-center justify-between pb-3 border-b border-white/10">
+                                        <div>
+                                            <div class="font-bold text-sm text-white">Neural Transformer Architecture</div>
+                                            <div class="text-[11px] text-slate-400">Configure hyperparameters and execute live synthetic inference.</div>
+                                        </div>
+                                        <button onclick="forgeApp.runInference()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow-lg transition-all flex items-center space-x-2">
+                                            <i data-lucide="play" class="w-3.5 h-3.5"></i><span>Run Inference</span>
+                                        </button>
+                                    </div>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div class="space-y-3 glass-panel p-3.5 rounded-2xl">
+                                            <div class="font-bold text-slate-200">Hyperparameters</div>
+                                            <div>
+                                                <div class="flex justify-between mb-1"><span>Learning Rate</span><span id="lbl-lr" class="font-mono text-indigo-400">0.0003</span></div>
+                                                <input type="range" min="0.0001" max="0.01" step="0.0001" value="0.0003" oninput="document.getElementById('lbl-lr').innerText=this.value" class="w-full accent-indigo-500">
+                                            </div>
+                                            <div>
+                                                <div class="flex justify-between mb-1"><span>Attention Heads</span><span id="lbl-heads" class="font-mono text-indigo-400">16</span></div>
+                                                <input type="range" min="4" max="64" step="4" value="16" oninput="document.getElementById('lbl-heads').innerText=this.value" class="w-full accent-indigo-500">
+                                            </div>
+                                            <div>
+                                                <div class="flex justify-between mb-1"><span>Hidden Layers</span><span id="lbl-layers" class="font-mono text-indigo-400">32</span></div>
+                                                <input type="range" min="8" max="128" step="8" value="32" oninput="document.getElementById('lbl-layers').innerText=this.value" class="w-full accent-indigo-500">
+                                            </div>
+                                        </div>
+                                        <div class="glass-panel p-3.5 rounded-2xl flex flex-col justify-between">
+                                            <div class="font-bold text-slate-200 mb-2">Inference Console / Loss Monitor</div>
+                                            <div id="forge-console" class="flex-1 bg-black/60 p-3 rounded-xl font-mono text-[11px] text-emerald-400 overflow-y-auto max-h-40 border border-white/5 space-y-1">
+                                                <div>[System]: Neural Forge v3.8 initialized. Ready.</div>
+                                                <div>[Weights]: Loaded checkpoint weights (1.2B params).</div>
+                                            </div>
+                                            <input type="text" id="forge-prompt" placeholder="Enter prompt for synthetic generation..." class="mt-3 w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                                        </div>
+                                    </div>
+                                </div>
+                            `
+                        };
+                    case 'spriteGen':
+                        return {
+                            title: 'Sprite & Skin Generator',
+                            icon: 'palette',
+                            iconBg: 'bg-pink-600',
+                            width: '640px',
+                            height: '480px',
+                            content: `
+                                <div class="space-y-4 text-xs text-slate-300">
+                                    <div class="flex items-center justify-between pb-3 border-b border-white/10">
+                                        <div>
+                                            <div class="font-bold text-sm text-white">Procedural Pixel Canvas</div>
+                                            <div class="text-[11px] text-slate-400">Design procedural game characters and armor skins.</div>
+                                        </div>
+                                        <div class="flex space-x-2">
+                                            <button onclick="spriteApp.randomize()" class="px-3 py-1.5 rounded-xl bg-pink-600/30 hover:bg-pink-600/50 text-pink-200 font-semibold border border-pink-500/30 transition-all">Randomize</button>
+                                            <button onclick="spriteApp.clearCanvas()" class="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold transition-all">Clear</button>
+                                        </div>
+                                    </div>
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                                        <div class="flex flex-col items-center justify-center glass-panel p-4 rounded-2xl md:col-span-1">
+                                            <canvas id="sprite-canvas" width="160" height="160" class="w-40 h-40 bg-black/55 rounded-xl border border-white/15 shadow-inner cursor-crosshair"></canvas>
+                                            <span class="text-[10px] text-slate-400 mt-2">16x16 Grid Matrix</span>
+                                        </div>
+                                        <div class="glass-panel p-4 rounded-2xl md:col-span-2 space-y-3">
+                                            <div class="font-bold text-slate-200">Color Palette & Brushes</div>
+                                            <div class="flex space-x-2" id="palette-colors">
+                                                <button onclick="spriteApp.setColor('#ec4899')" class="w-8 h-8 rounded-lg bg-pink-500 border-2 border-white shadow"></button>
+                                                <button onclick="spriteApp.setColor('#8b5cf6')" class="w-8 h-8 rounded-lg bg-purple-500 border-2 border-transparent"></button>
+                                                <button onclick="spriteApp.setColor('#06b6d4')" class="w-8 h-8 rounded-lg bg-cyan-500 border-2 border-transparent"></button>
+                                                <button onclick="spriteApp.setColor('#10b981')" class="w-8 h-8 rounded-lg bg-emerald-500 border-2 border-transparent"></button>
+                                                <button onclick="spriteApp.setColor('#f59e0b')" class="w-8 h-8 rounded-lg bg-amber-500 border-2 border-transparent"></button>
+                                                <button onclick="spriteApp.setColor('#000000')" class="w-8 h-8 rounded-lg bg-black border-2 border-white/20"></button>
+                                            </div>
+                                            <div class="pt-2 text-[11px] text-slate-400">
+                                                Click or drag across the pixel canvas to paint skin textures and procedural sprites instantly.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `,
+                            init: () => spriteApp.init()
+                        };
+                    case 'tacticalEngine':
+                        return {
+                            title: 'Tactical Skirmish Combat Engine',
+                            icon: 'shield',
+                            iconBg: 'bg-emerald-600',
+                            width: '740px',
+                            height: '540px',
+                            content: `
+                                <div class="space-y-4 text-xs text-slate-300">
+                                    <div class="flex items-center justify-between pb-3 border-b border-white/10">
+                                        <div>
+                                            <div class="font-bold text-sm text-white">Turn-Based Skirmish & A* Grid</div>
+                                            <div class="text-[11px] text-slate-400">Command tactical units against AI Director swarm waves.</div>
+                                        </div>
+                                        <div class="flex space-x-2">
+                                            <button onclick="tacticalApp.nextTurn()" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition-all">End Turn</button>
+                                            <button onclick="tacticalApp.spawnWave()" class="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold transition-all">Spawn Wave</button>
+                                        </div>
+                                    </div>
+                                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                        <div class="md:col-span-3 flex justify-center items-center glass-panel p-3 rounded-2xl">
+                                            <canvas id="tactical-canvas" width="400" height="320" class="bg-black/60 rounded-xl border border-white/10 cursor-pointer"></canvas>
+                                        </div>
+                                        <div class="glass-panel p-3 rounded-2xl flex flex-col justify-between">
+                                            <div>
+                                                <div class="font-bold text-slate-200 mb-2">Combat Telemetry</div>
+                                                <div class="space-y-1.5 text-[11px]">
+                                                    <div class="flex justify-between"><span>Turn:</span><span id="tac-turn" class="font-mono text-emerald-400">1</span></div>
+                                                    <div class="flex justify-between"><span>Player Units:</span><span id="tac-player" class="font-mono text-cyan-400">3</span></div>
+                                                    <div class="flex justify-between"><span>Enemy Swarm:</span><span id="tac-enemy" class="font-mono text-rose-400">4</span></div>
+                                                </div>
+                                            </div>
+                                            <div class="bg-black/50 p-2.5 rounded-xl text-[10px] text-slate-400 border border-white/5">
+                                                Click units on grid to select, then click adjacent tiles to move and engage combat.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `,
+                            init: () => tacticalApp.init()
+                        };
+                    case 'audioSynth':
+                        return {
+                            title: 'Audio DSP Synthesizer',
+                            icon: 'music',
+                            iconBg: 'bg-amber-600',
+                            width: '640px',
+                            height: '440px',
+                            content: `
+                                <div class="space-y-4 text-xs text-slate-300">
+                                    <div class="flex items-center justify-between pb-3 border-b border-white/10">
+                                        <div>
+                                            <div class="font-bold text-sm text-white">Procedural Audio DSP Generator</div>
+                                            <div class="text-[11px] text-slate-400">Synthesize custom waveforms, frequencies, and filter sweeps.</div>
+                                        </div>
+                                        <button onclick="synthApp.playTone()" class="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold shadow-lg transition-all flex items-center space-x-2">
+                                            <i data-lucide="volume-2" class="w-3.5 h-3.5"></i><span>Test Note</span>
+                                        </button>
+                                    </div>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div class="glass-panel p-4 rounded-2xl space-y-3">
+                                            <div class="font-bold text-slate-200">Oscillator Controls</div>
+                                            <div>
+                                                <div class="flex justify-between mb-1"><span>Frequency (Hz)</span><span id="synth-freq-lbl" class="font-mono text-amber-400">440 Hz</span></div>
+                                                <input type="range" min="110" max="1760" step="10" value="440" oninput="synthApp.setFreq(this.value)" class="w-full accent-amber-500">
+                                            </div>
+                                            <div>
+                                                <div class="flex justify-between mb-1"><span>Waveform</span></div>
+                                                <div class="grid grid-cols-4 gap-2">
+                                                    <button onclick="synthApp.setWave('sine')" class="py-1.5 rounded-lg bg-amber-600/30 border border-amber-500/50 text-white font-medium">Sine</button>
+                                                    <button onclick="synthApp.setWave('square')" class="py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-300 font-medium">Square</button>
+                                                    <button onclick="synthApp.setWave('sawtooth')" class="py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-300 font-medium">Saw</button>
+                                                    <button onclick="synthApp.setWave('triangle')" class="py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-300 font-medium">Tri</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="glass-panel p-4 rounded-2xl flex flex-col justify-between">
+                                            <div class="font-bold text-slate-200 mb-2">Keyboard Sequencer</div>
+                                            <div class="grid grid-cols-7 gap-1.5">
+                                                <button onclick="synthApp.playNote(261.63)" class="h-20 bg-white/10 hover:bg-white/20 rounded-xl flex items-end justify-center pb-2 text-[10px] text-white">C4</button>
+                                                <button onclick="synthApp.playNote(293.66)" class="h-20 bg-white/10 hover:bg-white/20 rounded-xl flex items-end justify-center pb-2 text-[10px] text-white">D4</button>
+                                                <button onclick="synthApp.playNote(329.63)" class="h-20 bg-white/10 hover:bg-white/20 rounded-xl flex items-end justify-center pb-2 text-[10px] text-white">E4</button>
+                                                <button onclick="synthApp.playNote(349.23)" class="h-20 bg-white/10 hover:bg-white/20 rounded-xl flex items-end justify-center pb-2 text-[10px] text-white">F4</button>
+                                                <button onclick="synthApp.playNote(392.00)" class="h-20 bg-white/10 hover:bg-white/20 rounded-xl flex items-end justify-center pb-2 text-[10px] text-white">G4</button>
+                                                <button onclick="synthApp.playNote(440.00)" class="h-20 bg-white/10 hover:bg-white/20 rounded-xl flex items-end justify-center pb-2 text-[10px] text-white">A4</button>
+                                                <button onclick="synthApp.playNote(493.88)" class="h-20 bg-white/10 hover:bg-white/20 rounded-xl flex items-end justify-center pb-2 text-[10px] text-white">B4</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `
+                        };
+                    case 'aiCopilot':
+                        return {
+                            title: 'Local AI Copilot Chat',
+                            icon: 'bot',
+                            iconBg: 'bg-cyan-600',
+                            width: '650px',
+                            height: '500px',
+                            content: `
+                                <div class="flex flex-col h-full space-y-3 text-xs text-slate-300">
+                                    <div class="flex items-center justify-between pb-2 border-b border-white/10">
+                                        <div class="font-bold text-sm text-white">AIM Copilot Assistant</div>
+                                        <div class="text-[11px] text-cyan-400 font-mono">v3.8 Neural Mode</div>
+                                    </div>
+                                    <div id="chat-messages" class="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+                                        <div class="flex items-start space-x-2">
+                                            <div class="w-7 h-7 rounded-lg bg-cyan-600 flex items-center justify-center text-white font-bold text-xs shrink-0">AI</div>
+                                            <div class="glass-panel p-3 rounded-2xl text-slate-200 max-w-[80%]">
+                                                Hello! I am your local AI Copilot integrated directly into AIM OS v3.8. How can I assist with your development tasks today?
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex space-x-2 pt-2 border-t border-white/10">
+                                        <input type="text" id="chat-input" placeholder="Type a message to AIM Copilot..." onkeydown="if(event.key==='Enter') copilotApp.sendMessage()" class="flex-1 bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
+                                        <button onclick="copilotApp.sendMessage()" class="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold transition-all">Send</button>
+                                    </div>
+                                </div>
+                            `
+                        };
+                }
+            }
+        }
+
+        const os = new WindowManager();
+
+        // App 1: AI Model Forge Logic
+        const forgeApp = {
+            runInference: () => {
+                const consoleEl = document.getElementById('forge-console');
+                const prompt = document.getElementById('forge-prompt').value || 'Hello AIM OS';
+                consoleEl.innerHTML += `<div>> Prompt: "${prompt}"</div>`;
+                consoleEl.innerHTML += `<div>[Inference]: Tokenizing input... generating response...</div>`;
+                setTimeout(() => {
+                    consoleEl.innerHTML += `<div class="text-indigo-300">> Output: Synthesized response complete. Loss: 0.0142. Confidence: 98.4%.</div>`;
+                    consoleEl.scrollTop = consoleEl.scrollHeight;
+                }, 600);
+            }
+        };
+
+        // App 2: Sprite & Skin Generator Logic
+        const spriteApp = {
+            color: '#ec4899',
+            init: () => {
+                const canvas = document.getElementById('sprite-canvas');
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                const size = 16;
+                const pixelSize = canvas.width / size;
+                let grid = Array(size).fill(0).map(() => Array(size).fill('#0b0f19'));
+
+                const draw = () => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    for (let y = 0; y < size; y++) {
+                        for (let x = 0; x < size; x++) {
+                            ctx.fillStyle = grid[y][x];
+                            ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+                            ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+                            ctx.strokeRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+                        }
+                    }
+                };
+
+                let isDrawing = false;
+                canvas.onmousedown = (e) => { isDrawing = true; paint(e); };
+                canvas.onmousemove = (e) => { if (isDrawing) paint(e); };
+                window.onmouseup = () => { isDrawing = false; };
+
+                const paint = (e) => {
+                    const rect = canvas.getBoundingClientRect();
+                    const x = Math.floor((e.clientX - rect.left) / (rect.width / size));
+                    const y = Math.floor((e.clientY - rect.top) / (rect.height / size));
+                    if (x >= 0 && x < size && y >= 0 && y < size) {
+                        grid[y][x] = spriteApp.color;
+                        draw();
+                    }
+                };
+
+                draw();
+                window.spriteGrid = grid;
+                window.drawSprite = draw;
+            },
+            setColor: (c) => { spriteApp.color = c; },
+            clearCanvas: () => {
+                if (window.spriteGrid) {
+                    window.spriteGrid = window.spriteGrid.map(row => row.fill('#0b0f19'));
+                    window.drawSprite();
+                }
+            },
+            randomize: () => {
+                if (window.spriteGrid) {
+                    const colors = ['#ec4899', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b'];
+                    window.spriteGrid = window.spriteGrid.map(row => row.map(() => Math.random() > 0.6 ? colors[Math.floor(Math.random() * colors.length)] : '#0b0f19'));
+                    window.drawSprite();
+                }
+            }
+        };
+
+        // App 3: Tactical Skirmish Engine Logic
+        const tacticalApp = {
+            init: () => {
+                const canvas = document.getElementById('tactical-canvas');
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                const cols = 10, rows = 8;
+                const cw = canvas.width / cols;
+                const ch = canvas.height / rows;
+
+                let units = [
+                    { x: 2, y: 3, type: 'player', name: 'Knight', hp: 100 },
+                    { x: 2, y: 4, type: 'player', name: 'Archer', hp: 80 },
+                    { x: 7, y: 3, type: 'enemy', name: 'Ork', hp: 90 },
+                    { x: 8, y: 4, type: 'enemy', name: 'Goblin', hp: 60 }
+                ];
+
+                let selected = null;
+
+                const draw = () => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    // Grid lines
+                    for (let r = 0; r < rows; r++) {
+                        for (let c = 0; c < cols; c++) {
+                            ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+                            ctx.strokeRect(c * cw, r * ch, cw, ch);
+                        }
+                    }
+
+                    // Draw Units
+                    units.forEach(u => {
+                        ctx.fillStyle = u.type === 'player' ? '#06b6d4' : '#f43f5e';
+                        ctx.beginPath();
+                        ctx.arc(u.x * cw + cw/2, u.y * ch + ch/2, cw/3, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.fillStyle = '#fff';
+                        ctx.font = '10px sans-serif';
+                        ctx.fillText(u.name[0], u.x * cw + cw/2 - 3, u.y * ch + ch/2 + 3);
+                    });
+                };
+
+                canvas.onclick = (e) => {
+                    const rect = canvas.getBoundingClientRect();
+                    const x = Math.floor((e.clientX - rect.left) / cw);
+                    const y = Math.floor((e.clientY - rect.top) / ch);
+
+                    const clickedUnit = units.find(u => u.x === x && u.y === y);
+                    if (clickedUnit) {
+                        selected = clickedUnit;
+                    } else if (selected) {
+                        selected.x = x;
+                        selected.y = y;
+                        selected = null;
+                    }
+                    draw();
+                };
+
+                draw();
+                window.tacticalState = { units, draw };
+            },
+            nextTurn: () => {
+                const turnEl = document.getElementById('tac-turn');
+                if (turnEl) turnEl.innerText = parseInt(turnEl.innerText) + 1;
+            },
+            spawnWave: () => {
+                if (window.tacticalState) {
+                    window.tacticalState.units.push({ x: 9, y: Math.floor(Math.random() * 8), type: 'enemy', name: 'Drone', hp: 50 });
+                    document.getElementById('tac-enemy').innerText = parseInt(document.getElementById('tac-enemy').innerText) + 1;
+                    window.tacticalState.draw();
+                }
+            }
+        };
+
+        // App 4: Audio DSP Synthesizer Logic
+        const synthApp = {
+            freq: 440,
+            wave: 'sine',
+            setFreq: (f) => {
+                synthApp.freq = f;
+                document.getElementById('synth-freq-lbl').innerText = `${f} Hz`;
+            },
+            setWave: (w) => { synthApp.wave = w; },
+            playTone: () => { synthApp.playNote(synthApp.freq); },
+            playNote: (f) => {
+                try {
+                    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = synthApp.wave;
+                    osc.frequency.setValueAtTime(f, ctx.currentTime);
+                    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.6);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.6);
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+        };
+
+        // App 5: Local AI Copilot Chat Logic
+        const copilotApp = {
+            sendMessage: () => {
+                const input = document.getElementById('chat-input');
+                const text = input.value.trim();
+                if (!text) return;
+                const container = document.getElementById('chat-messages');
+
+                container.innerHTML += `
+                    <div class="flex items-start justify-end space-x-2">
+                        <div class="bg-indigo-600 text-white p-3 rounded-2xl max-w-[80%]">${text}</div>
+                    </div>
+                `;
+                input.value = '';
+                container.scrollTop = container.scrollHeight;
+
+                setTimeout(() => {
+                    container.innerHTML += `
+                        <div class="flex items-start space-x-2">
+                            <div class="w-7 h-7 rounded-lg bg-cyan-600 flex items-center justify-center text-white font-bold text-xs shrink-0">AI</div>
+                            <div class="glass-panel p-3 rounded-2xl text-slate-200 max-w-[80%]">
+                                I've processed your query regarding "${text}". AIM OS v3.8 neural core confirms optimal execution pathways.
+                            </div>
+                        </div>
+                    `;
+                    container.scrollTop = container.scrollHeight;
+                }, 600);
+            }
+        };
+    </script>
+</body>
+</html>
