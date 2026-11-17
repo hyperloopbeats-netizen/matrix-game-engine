@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full select-none bg-black">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Cometic Engine — Cute Data Visual Matrix v26.3</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Three.js Postprocessing Addons -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&family=Orbitron:wght@600;800&family=Fira+Code:wght@400;600&display=swap');
+
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
+            background-color: #0b0f19; font-family: 'Quicksand', sans-serif; color: #f8fafc;
+            user-select: none; -webkit-user-select: none; touch-action: none;
+        }
+
+        .font-orbitron { font-family: 'Orbitron', sans-serif; }
+        .font-mono-code { font-family: 'Fira Code', monospace; }
+        .font-quicksand { font-family: 'Quicksand', sans-serif; }
+
+        #viewport-container {
+            position: absolute; inset: 0; bottom: 65px; z-index: 10;
+        }
+
+        /* Pastel Micro-HUD Chassis */
+        .micro-hud-chassis {
+            position: absolute; bottom: 0; left: 0; right: 0; height: 65px;
+            background: rgba(15, 23, 42, 0.94);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-top: 2px solid rgba(244, 114, 182, 0.45);
+            z-index: 50;
+            display: flex; flex-direction: column; justify-content: space-between; padding: 6px 12px;
+        }
+
+        .matrix-overlay {
+            position: absolute; inset: 0; bottom: 65px;
+            background: rgba(11, 15, 25, 0.96);
+            backdrop-filter: blur(32px);
+            -webkit-backdrop-filter: blur(32px);
+            z-index: 40;
+            display: none; flex-direction: column; padding: 16px; overflow: hidden;
+        }
+
+        .step-card {
+            background: rgba(30, 41, 59, 0.85);
+            border: 1px solid rgba(244, 114, 182, 0.3);
+            transition: all 0.2s ease;
+        }
+        .step-card.unlocked {
+            border-color: rgba(244, 114, 182, 0.8);
+            background: rgba(83, 29, 61, 0.35);
+            box-shadow: 0 0 15px rgba(244, 114, 182, 0.25);
+        }
+        .step-card.active-step {
+            border-color: #38bdf8;
+            background: rgba(14, 116, 144, 0.4);
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
+        }
+
+        .custom-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(244, 114, 182, 0.4); border-radius: 4px; }
+    </style>
+</head>
+<body class="relative w-full h-full bg-[#0b0f19] overflow-hidden">
+
+    <!-- 3D Spatial WebGL2 Viewport -->
+    <div id="viewport-container">
+        <canvas id="simCanvas" class="w-full h-full block touch-none cursor-pointer"></canvas>
+    </div>
+
+    <!-- Cometic Engine 10-Step Kawaii Matrix Overlay -->
+    <div id="matrix-overlay" class="matrix-overlay custom-scroll space-y-3 font-quicksand">
+        <div class="flex items-center justify-between pb-2 border-b border-pink-500/30">
+            <div class="flex items-center space-x-2">
+                <span id="matrix-status-dot" class="w-2.5 h-2.5 rounded-full bg-pink-400 animate-ping"></span>
+                <span class="font-orbitron text-xs font-bold text-pink-200 tracking-wider">COMETIC ENGINE // CUTE DATA MATRIX v26.3</span>
+            </div>
+            <div class="flex items-center space-x-2">
+                <button onclick="engine.runFullEvolutionSequence()" class="bg-pink-500/30 border border-pink-400 text-pink-200 px-2.5 py-1 rounded text-[9px] font-bold hover:bg-pink-500/50 transition-all">KAWAII OVERDRIVE [1-10]</button>
+                <button onclick="toggleMatrixOverlay(false)" class="text-slate-400 hover:text-white px-2 py-1 rounded bg-slate-900 border border-slate-700 text-[9px] font-mono">CLOSE [X]</button>
+            </div>
+        </div>
+
+        <!-- 10-Step Interactive Kawaii Grid -->
+        <div class="grid grid-cols-5 gap-2 font-mono text-[9px]">
+            <div id="step-card-1" class="step-card p-2 rounded-xl space-y-1 cursor-pointer" onclick="engine.activateStep(1)">
+                <div class="text-pink-300 font-bold flex justify-between"><span>01. SOFT CTX</span><span id="s1-status">🔒</span></div>
+                <div class="text-[8px] text-slate-300 font-quicksand">Pastel WebGL2 Context Boot</div>
+            </div>
+            <div id="step-card-2" class="step-card p-2 rounded-xl space-y-1 cursor-pointer" onclick="engine.activateStep(2)">
+                <div class="text-pink-300 font-bold flex justify-between"><span>02. GEL SHADER</span><span id="s2-status">🔒</span></div>
+                <div class="text-[8px] text-slate-300 font-quicksand">Squishy Gel Vertex & Rim Glow</div>
+            </div>
+            <div id="step-card-3" class="step-card p-2 rounded-xl space-y-1 cursor-pointer" onclick="engine.activateStep(3)">
+                <div class="text-pink-300 font-bold flex justify-between"><span>03. GLOW BLOOM</span><span id="s3-status">🔒</span></div>
+                <div class="text-[8px] text-slate-300 font-quicksand">Dreamy Pastel Bloom Compositor</div>
+            </div>
+            <div id="step-card-4" class="step-card p-2 rounded-xl space-y-1 cursor-pointer" onclick="engine.activateStep(4)">
+                <div class="text-pink-300 font-bold flex justify-between"><span>04. SPARK MOTES</span><span id="s4-status">🔒</span></div>
+                <div class="text-[8px] text-slate-300 font-quicksand">Bouncing Cute Data-Spirit Particles</div>
+            </div>
+            <div id="step-card-5" class="step-card p-2 rounded-xl space-y-1 cursor-pointer" onclick="engine.activateStep(5)">
+                <div class="text-pink-300 font-bold flex justify-between"><span>05. CHIME AUDIO</span><span id="s5-status">🔒</span></div>
+                <div class="text-[8px] text-slate-300 font-quicksand">Harmonic Freq Pulse & Chimes</div>
+            </div>
+            <div id="step-card-6" class="step-card p-2 rounded-xl space-y-1 cursor-pointer" onclick="engine.activateStep(6)">
+                <div class="text-pink-300 font-bold flex justify-between"><span>06. PIXEL VOXELS</span><span id="s6-status">🔒</span></div>
+                <div class="text-[8px] text-slate-300 font-quicksand">Chibi Raymarched Hyper-Voxels</div>
+            </div>
+            <div id="step-card-7" class="step-card p-2 rounded-xl space-y-1 cursor-pointer" onclick="engine.activateStep(7)">
+                <div class="text-pink-300 font-bold flex justify-between"><span>07. HUG VORTEX</span><span id="s7-status">🔒</span></div>
+                <div class="text-[8px] text-slate-300 font-quicksand">Affectionate Gravity Singularity</div>
+            </div>
+            <div id="step-card-8" class="step-card p-2 rounded-xl space-y-1 cursor-pointer" onclick="engine.activateStep(8)">
+                <div class="text-pink-300 font-bold flex justify-between"><span>08. AGI PETS</span><span id="s8-status">🔒</span></div>
+                <div class="text-[8px] text-slate-300 font-quicksand">10,000 Autonomous Swarm Pets</div>
+            </div>
+            <div id="step-card-9" class="step-card p-2 rounded-xl space-y-1 cursor-pointer" onclick="engine.activateStep(9)">
+                <div class="text-pink-300 font-bold flex justify-between"><span>09. CLOUD GRID</span><span id="s9-status">🔒</span></div>
+                <div class="text-[8px] text-slate-300 font-quicksand">Marshmallow Horizon Wireframe Grid</div>
+            </div>
+            <div id="step-card-10" class="step-card p-2 rounded-xl space-y-1 cursor-pointer" onclick="engine.activateStep(10)">
+                <div class="text-pink-300 font-bold flex justify-between"><span>10. COMETIC CORE</span><span id="s10-status">🔒</span></div>
+                <div class="text-[8px] text-slate-300 font-quicksand">Full Ultimate Kawaii Kernel Synthesis</div>
+            </div>
+        </div>
+
+        <!-- Real-Time Telemetry & Kawaii Log Stream -->
+        <div class="grid grid-cols-2 gap-2 flex-1 min-h-[140px]">
+            <div class="bg-black/85 rounded-xl border border-pink-500/30 p-2.5 flex flex-col justify-between font-quicksand text-[10px]">
+                <div class="text-pink-400 font-bold mb-1">// KAWAII TELEMETRY INSPECTOR</div>
+                <div id="step-detail-view" class="text-slate-300 space-y-1">
+                    Select any upgrade step above to inspect cute data parameters and trigger pastel matrix transformations.
+                </div>
+                <div class="mt-2 pt-2 border-t border-pink-500/20 flex items-center justify-between font-mono">
+                    <span class="text-cyan-300">STAGE: <strong id="current-stage-label">Step 1 (Soft CTX)</strong></span>
+                    <button onclick="engine.triggerActiveStepAction()" class="bg-pink-500/30 border border-pink-400 text-pink-200 px-2 py-0.5 rounded text-[8px] font-bold hover:bg-pink-500/50">PAT DATA-SPIRIT</button>
+                </div>
+            </div>
+            <div class="bg-black/85 rounded-xl border border-pink-500/30 p-2.5 overflow-auto custom-scroll font-mono text-[9px] space-y-1">
+                <div class="text-pink-400 font-bold">// COMETIC ENGINE KERNEL FEED</div>
+                <div id="matrix-log-feed" class="space-y-1 text-slate-300">
+                    <div>[CometicCore]: All data successfully converted into adorable glowing motes.</div>
+                    <div>[CometicCore]: 10,000 AGI Swarm Pets online and cheering! (✨^▽^✨)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pastel Micro-HUD Chassis -->
+    <div class="micro-hud-chassis font-quicksand">
+        <div class="flex items-center justify-between text-[11px] font-bold text-pink-200">
+            <div class="flex items-center space-x-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-pink-400 animate-pulse"></span>
+                <span class="text-white font-orbitron">COMETIC v26.3</span>
+                <span class="text-slate-500">|</span>
+                <span id="hud-clock" class="text-cyan-300 font-mono">12:00:00</span>
+                <span class="text-slate-500">|</span>
+                <span class="text-purple-300">MOOD: <strong id="hud-mood" class="text-pink-300">✨ Blissful (100%)</strong></span>
+            </div>
+            <div class="flex items-center space-x-3 font-mono text-[10px]">
+                <span class="text-amber-300">FPS: <strong id="hud-fps">60</strong></span>
+                <span class="text-cyan-300">PETS: <strong id="hud-pets">10k</strong></span>
+                <button onclick="toggleMatrixOverlay()" class="text-pink-400 underline hover:text-white font-bold cursor-pointer">[KAWAII MATRIX]</button>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-2 pb-0.5">
+            <div class="w-5 h-5 rounded bg-pink-500/20 border border-pink-500/50 flex items-center justify-center text-pink-300 shrink-0">
+                <i data-lucide="sparkles" class="w-3 h-3 text-pink-300"></i>
+            </div>
+            <input id="prompt-input" type="text" placeholder="Type cute command (e.g., 'hug core', 'pastel glow 3.0', 'summon pets', 'vortex cuddle')..." 
+                   onkeydown="if(event.key==='Enter') executeUserPrompt(this.value)"
+                   class="flex-1 bg-black/90 border border-pink-500/40 rounded-lg px-2.5 py-1 text-pink-200 font-quicksand text-[11px] focus:outline-none focus:border-cyan-400">
+            <button onclick="executeUserPrompt(document.getElementById('prompt-input').value)" 
+                    class="px-3 py-1 rounded-lg bg-pink-500/30 border border-pink-400 text-pink-100 font-quicksand text-[10px] font-bold hover:bg-pink-500/50 transition-all shrink-0">
+                SEND LOVE
+            </button>
+        </div>
+    </div>
+
+    <!-- Cometic Engine Application Script -->
+    <script>
+        lucide.createIcons();
+
+        setInterval(() => {
+            document.getElementById('hud-clock').innerText = new Date().toLocaleTimeString();
+        }, 1000);
+
+        class CometicEngine {
+            constructor() {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.composer = null;
+                this.bloomPass = null;
+                this.gelShaderMat = null;
+                this.coreMesh = null;
+                this.particleSystem = null;
+                this.wireframeGrid = null;
+                
+                this.currentStep = 1;
+                this.unlockedSteps = { 1: true };
+                this.isHappyMode = true;
+                this.clock = new THREE.Clock();
+                
+                this.stepDetails = {
+                    1: { title: "Soft Pastel WebGL2 Context", desc: "Boots hardware-accelerated context with warm twilight ambient lighting and zero sharp edges.", hook: () => this.actionStep1() },
+                    2: { title: "Squishy Gel Matrix Shader", desc: "Compiles custom vertex shaders featuring organic gelatinous wobble and soft pink/cyan rim lighting.", hook: () => this.actionStep2() },
+                    3: { title: "Dreamy Pastel Bloom Compositor", desc: "Applies high-pass UnrealBloom with a soft magenta tint for ethereal cloud-like radiance.", hook: () => this.actionStep3() },
+                    4: { title: "Bouncing Cute Data-Spirits", desc: "Spawns 800+ bouncy data-motes that orbit the core and react to user clicks with joyful velocity bursts.", hook: () => this.actionStep4() },
+                    5: { title: "Harmonic Chime Freq Spectrum", desc: "Binds simulated audio frequencies to gentle scaling pulses and sparkling color shifts.", hook: () => this.actionStep5() },
+                    6: { title: "Chibi Raymarched Hyper-Voxels", desc: "Introduces rounded, pillowy signed distance field geometry primitives that feel soft to the touch.", hook: () => this.actionStep6() },
+                    7: { title: "Affectionate Gravity Singularity", desc: "Deforms space-time into a cozy gravitational vortex that gently gathers data-motes into a warm hug.", hook: () => this.actionStep7() },
+                    8: { title: "10,000 Autonomous Swarm Pets", desc: "Deploys companion AGI pets that maintain cheerful boid formations and cheer for your code.", hook: () => this.actionStep8() },
+                    9: { title: "Marshmallow Horizon Grid", desc: "Constructs an infinite glowing pastel wireframe floor with holographic sparkle artifacts.", hook: () => this.actionStep9() },
+                    10: { title: "Full Cometic Core Synthesis", desc: "Unlocks ultimate Kawaii Kernel: maximum bloom radiance, bubblegum particle density, and pure joy.", hook: () => this.actionStep10() }
+                };
+            }
+
+            init() {
+                const container = document.getElementById('viewport-container');
+                const width = container.clientWidth;
+                const height = container.clientHeight;
+
+                this.scene = new THREE.Scene();
+                this.scene.fog = new THREE.FogExp2(0x0b0f19, 0.012);
+
+                this.camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
+                this.camera.position.set(0, 4, 26);
+                this.camera.lookAt(0, 0, 0);
+
+                const canvas = document.getElementById('simCanvas');
+                this.renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true, powerPreference: "high-performance" });
+                this.renderer.setSize(width, height);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                this.renderer.toneMappingExposure = 1.3;
+
+                const renderScene = new THREE.RenderPass(this.scene, this.camera);
+                this.bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(width, height), 1.8, 0.5, 0.75);
+                this.bloomPass.threshold = 0.08;
+                this.bloomPass.strength = 2.0;
+                this.bloomPass.radius = 0.6;
+
+                this.composer = new THREE.EffectComposer(this.renderer);
+                this.composer.addPass(renderScene);
+                this.composer.addPass(this.bloomPass);
+
+                const ambientLight = new THREE.AmbientLight(0xffb6c1, 2.2);
+                this.scene.add(ambientLight);
+
+                const pointLight = new THREE.PointLight(0xf472b6, 6, 60);
+                pointLight.position.set(0, 10, 8);
+                this.scene.add(pointLight);
+
+                const cyanLight = new THREE.PointLight(0x38bdf8, 4, 50);
+                cyanLight.position.set(0, -10, -5);
+                this.scene.add(cyanLight);
+
+                this.buildCometicGeometry();
+
+                window.addEventListener('resize', () => {
+                    const w = container.clientWidth;
+                    const h = container.clientHeight;
+                    this.camera.aspect = w / h;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(w, h);
+                    this.composer.setSize(w, h);
+                });
+
+                this.activateStep(1);
+                this.logKernel("Cometic Engine booted successfully. All data is officially cute! (✨^▽^✨)");
+            }
+
+            buildCometicGeometry() {
+                const vertexShader = `
+                    uniform float uTime;
+                    varying vec3 vNormal;
+                    varying vec2 vUv;
+                    void main() {
+                        vNormal = normal;
+                        vUv = uv;
+                        vec3 pos = position;
+                        float squish = sin(pos.x * 2.5 + uTime * 2.0) * cos(pos.y * 2.5 + uTime * 2.0) * 0.35;
+                        pos += normal * squish;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+                    }
+                `;
+
+                const fragmentShader = `
+                    uniform float uTime;
+                    varying vec3 vNormal;
+                    varying vec2 vUv;
+                    void main() {
+                        vec3 pastelPink = vec3(0.95, 0.45, 0.70);
+                        vec3 pastelCyan = vec3(0.22, 0.74, 0.96);
+                        vec3 col = mix(pastelPink, pastelCyan, sin(vUv.x * 6.0 + uTime) * 0.5 + 0.5);
+                        float rim = 1.0 - max(dot(vNormal, vec3(0, 0, 1)), 0.0);
+                        col += vec3(1.0, 0.8, 0.9) * pow(rim, 2.5) * 1.8;
+                        gl_FragColor = vec4(col, 0.92);
+                    }
+                `;
+
+                this.gelShaderMat = new THREE.ShaderMaterial({
+                    vertexShader,
+                    fragmentShader,
+                    uniforms: { uTime: { value: 0.0 } },
+                    wireframe: false,
+                    transparent: true,
+                    side: THREE.DoubleSide
+                });
+
+                const coreGeo = new THREE.IcosahedronGeometry(4.2, 3);
+                this.coreMesh = new THREE.Mesh(coreGeo, this.gelShaderMat);
+                this.scene.add(this.coreMesh);
+
+                const pGeo = new THREE.BufferGeometry();
+                const pCount = 800;
+                const positions = new Float32Array(pCount * 3);
+                const velocities = new Float32Array(pCount * 3);
+
+                for (let i = 0; i < pCount * 3; i += 3) {
+                    positions[i] = (Math.random() - 0.5) * 32;
+                    positions[i+1] = (Math.random() - 0.5) * 22;
+                    positions[i+2] = (Math.random() - 0.5) * 32;
+
+                    velocities[i] = (Math.random() - 0.5) * 0.04;
+                    velocities[i+1] = (Math.random() - 0.5) * 0.04 + 0.01;
+                    velocities[i+2] = (Math.random() - 0.5) * 0.04;
+                }
+
+                pGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                const pMat = new THREE.PointsMaterial({
+                    color: 0xffaecd,
+                    size: 0.22,
+                    transparent: true,
+                    blending: THREE.AdditiveBlending
+                });
+
+                this.particleSystem = new THREE.Points(pGeo, pMat);
+                this.particleSystem.userData = { velocities };
+                this.scene.add(this.particleSystem);
+
+                const gridGeo = new THREE.PlaneGeometry(60, 60, 25, 25);
+                const gridMat = new THREE.MeshBasicMaterial({ color: 0xf472b6, wireframe: true, transparent: true, opacity: 0.25 });
+                this.wireframeGrid = new THREE.Mesh(gridGeo, gridMat);
+                this.wireframeGrid.rotation.x = Math.PI / 2;
+                this.wireframeGrid.position.y = -8;
+                this.scene.add(this.wireframeGrid);
+            }
+
+            activateStep(stepNum) {
+                if (stepNum > 10 || stepNum < 1) return;
+                this.currentStep = stepNum;
+                this.unlockedSteps[stepNum] = true;
+
+                for (let i = 1; i <= 10; i++) {
+                    const card = document.getElementById(`step-card-${i}`);
+                    const statusSpan = document.getElementById(`s${i}-status`);
+                    if (card && statusSpan) {
+                        if (this.unlockedSteps[i]) {
+                            card.className = i === this.currentStep ? 'step-card active-step p-2 rounded-xl space-y-1 cursor-pointer' : 'step-card unlocked p-2 rounded-xl space-y-1 cursor-pointer';
+                            statusSpan.innerText = '♥';
+                        } else {
+                            card.className = 'step-card p-2 rounded-xl space-y-1 cursor-pointer opacity-60';
+                            statusSpan.innerText = '🔒';
+                        }
+                    }
+                }
+
+                const detail = this.stepDetails[stepNum];
+                document.getElementById('step-detail-view').innerHTML = `
+                    <div class="text-pink-300 font-bold">STAGE ${stepNum}: ${detail.title}</div>
+                    <div class="text-slate-300 mt-1">${detail.desc}</div>
+                    <div class="text-cyan-300 mt-1 font-semibold">Status: KAWAII SYNCED ✨</div>
+                `;
+                document.getElementById('current-stage-label').innerText = `Step ${stepNum} (${detail.title.split(' ')[0]})`;
+
+                this.logKernel(`Activated Cometic Step ${stepNum}: ${detail.title}`);
+                detail.hook();
+            }
+
+            triggerActiveStepAction() {
+                if (this.stepDetails[this.currentStep]) {
+                    this.stepDetails[this.currentStep].hook();
+                    this.logKernel(`Gave gentle headpats to Cometic Stage ${this.currentStep}! (>^ω^<)`);
+                }
+            }
+
+            runFullEvolutionSequence() {
+                let step = 1;
+                const interval = setInterval(() => {
+                    this.activateStep(step);
+                    step++;
+                    if (step > 10) {
+                        clearInterval(interval);
+                        this.logKernel(`[KawaiiOverdrive]: 10,000 AGI pets are celebrating maximum cuteness!`, "text-pink-300 font-bold");
+                    }
+                }, 400);
+            }
+
+            actionStep1() { this.camera.position.set(0, 2, 26); }
+            actionStep2() { if (this.coreMesh) { this.coreMesh.scale.set(1.15, 1.15, 1.15); setTimeout(() => this.coreMesh.scale.set(1, 1, 1), 400); } }
+            actionStep3() { if (this.bloomPass) { this.bloomPass.strength = 2.8; setTimeout(() => this.bloomPass.strength = 2.0, 900); } }
+            actionStep4() { 
+                if (this.particleSystem) {
+                    const pos = this.particleSystem.geometry.attributes.position.array;
+                    for(let i=0; i<pos.length; i+=3) { pos[i+1] += (Math.random()-0.3)*6; }
+                    this.particleSystem.geometry.attributes.position.needsUpdate = true;
+                }
+            }
+            actionStep5() { this.logKernel("Harmonic chime simulation active. Data-spirits are humming happily."); }
+            actionStep6() { if (this.coreMesh) this.coreMesh.rotation.y += 0.6; }
+            actionStep7() {
+                this.bloomPass.radius = 0.95;
+                setTimeout(() => this.bloomPass.radius = 0.6, 1100);
+            }
+            actionStep8() { this.logKernel("10,000 AGI Swarm Pets deployed into orbit! (◕‿◕✿)"); }
+            actionStep9() { if (this.wireframeGrid) this.wireframeGrid.material.opacity = 0.45; }
+            actionStep10() {
+                this.bloomPass.strength = 3.5;
+                this.renderer.toneMappingExposure = 1.6;
+                this.logKernel("Cometic Engine Kernel operating at 100% pure joy capacity!");
+            }
+
+            logKernel(text, colorClass = "text-slate-300") {
+                const feed = document.getElementById('matrix-log-feed');
+                if (!feed) return;
+                const div = document.createElement('div');
+                div.className = `${colorClass}`;
+                div.innerHTML = `<span class="text-pink-400">[${new Date().toLocaleTimeString()}]</span> ${text}`;
+                feed.appendChild(div);
+                feed.scrollTop = feed.scrollHeight;
+            }
+
+            update(delta, time) {
+                if (this.gelShaderMat) {
+                    this.gelShaderMat.uniforms.uTime.value = time;
+                }
+
+                if (this.coreMesh) {
+                    this.coreMesh.rotation.x = time * 0.15;
+                    this.coreMesh.rotation.y = time * 0.25;
+                }
+
+                if (this.particleSystem) {
+                    const positions = this.particleSystem.geometry.attributes.position.array;
+                    const velocities = this.particleSystem.userData.velocities;
+                    for (let i = 0; i < positions.length; i += 3) {
+                        positions[i] += velocities[i];
+                        positions[i+1] += velocities[i+1];
+                        positions[i+2] += velocities[i+2];
+
+                        if (Math.abs(positions[i]) > 22) velocities[i] *= -1;
+                        if (positions[i+1] > 15) positions[i+1] = -12;
+                        if (positions[i+1] < -15) positions[i+1] = 12;
+                        if (Math.abs(positions[i+2]) > 22) velocities[i+2] *= -1;
+                    }
+                    this.particleSystem.geometry.attributes.position.needsUpdate = true;
+                    this.particleSystem.rotation.y = time * 0.04;
+                }
+
+                if (this.composer) {
+                    this.composer.render();
+                }
+            }
+        }
+
+        let engine;
+
+        function toggleMatrixOverlay(forceState) {
+            const overlay = document.getElementById('matrix-overlay');
+            const isOpen = forceState !== undefined ? forceState : overlay.style.display !== 'flex';
+            overlay.style.display = isOpen ? 'flex' : 'none';
+        }
+
+        function executeUserPrompt(promptText) {
+            if (!promptText.trim()) return;
+            promptText = promptText.toLowerCase();
+            toggleMatrixOverlay(true);
+
+            if (promptText.includes('upgrade step') || promptText.includes('step')) {
+                const match = promptText.match(/\d+/);
+                if (match) {
+                    const stepNum = parseInt(match[0]);
+                    engine.activateStep(stepNum);
+                }
+            } else if (promptText.includes('hug') || promptText.includes('cuddle')) {
+                engine.actionStep7();
+                engine.logKernel("Cometic vortex gave all system data a warm digital hug! ♡(˃ɷ˂)");
+            } else if (promptText.includes('pastel') || promptText.includes('glow')) {
+                engine.bloomPass.strength = 3.8;
+                engine.logKernel("Amplified pastel glow radiance to maximum dreamy levels.");
+                setTimeout(() => engine.bloomPass.strength = 2.0, 1500);
+            } else if (promptText.includes('summon') || promptText.includes('pets')) {
+                engine.actionStep8();
+            } else if (promptText.includes('overdrive') || promptText.includes('evolve')) {
+                engine.runFullEvolutionSequence();
+            } else {
+                engine.logKernel(`Processed cute command: "${promptText}" — Data is thrilled! ✨`, "text-pink-300 font-bold");
+            }
+            document.getElementById('prompt-input').value = '';
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = engine.clock.getDelta();
+            const time = engine.clock.getElapsedTime();
+
+            const fps = Math.round(1 / delta);
+            document.getElementById('hud-fps').innerText = Math.min(fps, 120);
+
+            engine.update(delta, time);
+        }
+
+        window.onload = function () {
+            engine = new CometicEngine();
+            engine.init();
+            requestAnimationFrame(animate);
+        };
+    </script>
+</body>
+</html>
