@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cometic Engine - 3D Ballistic Studio v12 (Advanced Trauma & Fluid Dynamics)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #030712; font-family: ui-monospace, monospace; user-select: none; touch-action: none; }
+        canvas { display: block; width: 100vw; height: 100vh; }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.94);
+            backdrop-filter: blur(22px);
+            -webkit-backdrop-filter: blur(22px);
+            border: 1px solid rgba(56, 189, 248, 0.45);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.95);
+        }
+        #fireBtn:active, #fireBtn.firing {
+            transform: scale(0.92);
+            background: rgba(225, 29, 72, 0.55);
+            border-color: #fb7185;
+            box-shadow: 0 0 45px rgba(225, 29, 72, 0.95);
+        }
+    </style>
+</head>
+<body class="text-slate-100 overflow-hidden">
+
+    <!-- 3D Viewport Canvas -->
+    <canvas id="simCanvas"></canvas>
+
+    <!-- Hidden Photo Upload -->
+    <input type="file" id="photoInput" accept="image/*" class="hidden">
+
+    <!-- Restore HUD Button -->
+    <button id="btnRestoreHud" onclick="toggleHud(true)" class="absolute top-4 left-4 glass-panel text-cyan-300 px-3.5 py-2 rounded-xl text-xs font-bold border border-cyan-500/40 hidden z-30 cursor-pointer">
+        📂 Studio Controls
+    </button>
+
+    <!-- Movable & Collapsible Control Panel -->
+    <div id="hudPanel" class="absolute top-4 left-4 flex flex-col gap-3 max-w-xs w-[88vw] z-20">
+        <div class="glass-panel p-4 rounded-2xl flex flex-col gap-3">
+            <!-- Header -->
+            <div id="hudHeader" class="flex items-center justify-between border-b border-slate-800 pb-2 cursor-move">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
+                    <h1 class="text-cyan-400 font-bold tracking-wider text-xs">BALLISTIC STUDIO v12.0</h1>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <button onclick="resetSubject()" class="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded hover:bg-emerald-500/30 cursor-pointer">Heal</button>
+                    <button onclick="toggleHud(false)" class="text-slate-400 hover:text-cyan-300 text-xs px-2 py-0.5 rounded bg-slate-800 border border-slate-700 cursor-pointer">[ - ]</button>
+                </div>
+            </div>
+
+            <!-- Mode Selector: Combat Aim vs 3D Orbit -->
+            <div class="grid grid-cols-2 gap-1.5 bg-slate-900/80 p-1 rounded-xl border border-slate-800 text-[11px]">
+                <button onclick="setMode('combat')" id="modeCombatBtn" class="py-1.5 rounded-lg bg-cyan-500/25 text-cyan-300 font-bold transition cursor-pointer">🎯 Combat Mode</button>
+                <button onclick="setMode('orbit')" id="modeOrbitBtn" class="py-1.5 rounded-lg text-slate-400 hover:text-slate-200 transition cursor-pointer">🔄 3D Rotate</button>
+            </div>
+
+            <!-- Custom Photo & Orientation -->
+            <div class="flex flex-col gap-1.5">
+                <button onclick="document.getElementById('photoInput').click()" class="w-full bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer">
+                    <span>📁 Map Custom Face Photo</span>
+                </button>
+                <div class="grid grid-cols-2 gap-1.5">
+                    <button onclick="flipPhotoVertical()" class="py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 text-[10px] font-semibold cursor-pointer">↕ Flip Vertical</button>
+                    <button onclick="rotatePhoto90()" class="py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 text-[10px] font-semibold cursor-pointer">↻ Rotate 90°</button>
+                </div>
+            </div>
+
+            <!-- Weapon Systems -->
+            <div class="grid grid-cols-2 gap-1.5">
+                <button onclick="setWeapon('pistol')" id="btn-pistol" class="py-2 rounded-xl bg-cyan-500/25 text-cyan-300 border border-cyan-400 text-[11px] font-bold cursor-pointer">Pistol (9mm)</button>
+                <button onclick="setWeapon('smg')" id="btn-smg" class="py-2 rounded-xl bg-slate-900 text-slate-400 border border-slate-800 text-[11px] font-semibold cursor-pointer">SMG (Auto)</button>
+                <button onclick="setWeapon('shotgun')" id="btn-shotgun" class="py-2 rounded-xl bg-slate-900 text-slate-400 border border-slate-800 text-[11px] font-semibold cursor-pointer">Shotgun (Buck)</button>
+                <button onclick="setWeapon('cannon')" id="btn-cannon" class="py-2 rounded-xl bg-slate-900 text-slate-400 border border-slate-800 text-[11px] font-semibold cursor-pointer">Cannon (.50 BMG)</button>
+            </div>
+
+            <!-- Sliders -->
+            <div class="flex flex-col gap-1.5 pt-1 border-t border-slate-800 text-xs">
+                <div class="flex justify-between text-[10px] text-slate-400">
+                    <span>Dermal Tensile Strength</span>
+                    <span id="val-tear" class="text-cyan-300">2.0x</span>
+                </div>
+                <input type="range" id="sliderTear" min="1.2" max="4.0" step="0.1" value="2.0" class="accent-cyan-400 cursor-pointer">
+
+                <div class="flex justify-between text-[10px] text-slate-400 mt-1">
+                    <span>Liquid Blood Flow</span>
+                    <span id="val-blood" class="text-rose-400">1.2x</span>
+                </div>
+                <input type="range" id="sliderBlood" min="0.2" max="3.0" step="0.1" value="1.2" class="accent-rose-500 cursor-pointer">
+            </div>
+
+            <!-- Telemetry -->
+            <div class="grid grid-cols-3 gap-1.5 pt-1 border-t border-slate-800 text-center">
+                <div class="bg-slate-900/70 p-1.5 rounded-lg border border-slate-800">
+                    <span class="text-slate-500 block text-[8px]">FPS</span>
+                    <span id="hud-fps" class="text-cyan-300 font-bold text-xs">60</span>
+                </div>
+                <div class="bg-slate-900/70 p-1.5 rounded-lg border border-slate-800">
+                    <span class="text-slate-500 block text-[8px]">BLOOD DROPS</span>
+                    <span id="hud-blood" class="text-rose-400 font-bold text-xs">0</span>
+                </div>
+                <div class="bg-slate-900/70 p-1.5 rounded-lg border border-slate-800">
+                    <span class="text-slate-500 block text-[8px]">LACERATIONS</span>
+                    <span id="hud-tears" class="text-amber-400 font-bold text-xs">0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Combat Mode Controls -->
+    <div id="combatControls">
+        <div id="joystickZone" class="absolute bottom-8 left-8 w-32 h-32 rounded-full glass-panel border-2 border-cyan-500/40 flex items-center justify-center z-20 cursor-pointer">
+            <div class="absolute inset-3 rounded-full border border-dashed border-cyan-400/25 pointer-events-none"></div>
+            <span class="absolute top-1.5 text-[8px] text-cyan-400/60 font-bold tracking-widest pointer-events-none">AIM</span>
+            <div id="joystickKnob" class="w-12 h-12 rounded-full bg-cyan-400/30 border-2 border-cyan-300 shadow-[0_0_20px_rgba(56,189,248,0.6)] pointer-events-none transition-transform duration-75"></div>
+        </div>
+
+        <button id="fireBtn" class="absolute bottom-8 right-8 w-28 h-28 rounded-full glass-panel border-2 border-rose-500/70 bg-rose-500/20 flex flex-col items-center justify-center z-20 cursor-pointer shadow-[0_0_30px_rgba(244,63,94,0.35)]">
+            <span class="text-rose-300 font-black tracking-widest text-sm">FIRE</span>
+            <span id="fireWeaponLabel" class="text-[9px] text-rose-200/70 mt-0.5 uppercase">PISTOL</span>
+        </button>
+    </div>
+
+    <script>
+        // --- HUD DRAG & COLLAPSE ---
+        const hudPanel = document.getElementById('hudPanel');
+        const hudHeader = document.getElementById('hudHeader');
+        let isDraggingHud = false, dragOffX = 0, dragOffY = 0;
+
+        hudHeader.addEventListener('pointerdown', (e) => {
+            if (e.target.tagName === 'BUTTON') return;
+            isDraggingHud = true;
+            dragOffX = e.clientX - hudPanel.offsetLeft;
+            dragOffY = e.clientY - hudPanel.offsetTop;
+        });
+        window.addEventListener('pointermove', (e) => {
+            if (!isDraggingHud) return;
+            hudPanel.style.left = Math.max(0, Math.min(window.innerWidth - 260, e.clientX - dragOffX)) + 'px';
+            hudPanel.style.top = Math.max(0, Math.min(window.innerHeight - 200, e.clientY - dragOffY)) + 'px';
+        });
+        window.addEventListener('pointerup', () => { isDraggingHud = false; });
+
+        window.toggleHud = function(show) {
+            hudPanel.style.display = show ? 'flex' : 'none';
+            document.getElementById('btnRestoreHud').style.display = show ? 'none' : 'block';
+        };
+
+        // --- APP MODES ---
+        let appMode = 'combat'; // 'combat' or 'orbit'
+        let headRotationY = 0;
+        let headRotationX = 0;
+
+        window.setMode = function(mode) {
+            appMode = mode;
+            const combatCtrls = document.getElementById('combatControls');
+            if (mode === 'orbit') {
+                combatCtrls.style.display = 'none';
+                document.getElementById('modeOrbitBtn').className = "py-1.5 rounded-lg bg-cyan-500/25 text-cyan-300 font-bold transition cursor-pointer";
+                document.getElementById('modeCombatBtn').className = "py-1.5 rounded-lg text-slate-400 hover:text-slate-200 transition cursor-pointer";
+                reticleGroup.visible = false;
+                laserLine.visible = false;
+            } else {
+                combatCtrls.style.display = 'block';
+                document.getElementById('modeCombatBtn').className = "py-1.5 rounded-lg bg-cyan-500/25 text-cyan-300 font-bold transition cursor-pointer";
+                document.getElementById('modeOrbitBtn').className = "py-1.5 rounded-lg text-slate-400 hover:text-slate-200 transition cursor-pointer";
+                reticleGroup.visible = true;
+                laserLine.visible = true;
+            }
+        };
+
+        // --- THREE.JS SCENE SETUP ---
+        const canvas = document.getElementById('simCanvas');
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.outputEncoding = THREE.sRGBEncoding;
+
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x030712, 0.009);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 0.5, 14.0);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 1.15));
+        const keyLight = new THREE.DirectionalLight(0xffffff, 1.35);
+        keyLight.position.set(10, 16, 22);
+        scene.add(keyLight);
+
+        const rimLight = new THREE.DirectionalLight(0xf43f5e, 0.75);
+        rimLight.position.set(-16, 4, -14);
+        scene.add(rimLight);
+
+        const floorGrid = new THREE.GridHelper(100, 35, 0x1e293b, 0x0f172a);
+        floorGrid.position.y = -14.0;
+        scene.add(floorGrid);
+
+        // --- PHOTOREALISTIC HUMAN FACE HEIGHTFIELD & ANATOMY ---
+        const HEAD_CENTER = new THREE.Vector3(0, 0.5, 0);
+        const FACE_HALF_W = 3.6;
+        const FACE_HALF_H = 4.8;
+
+        function evaluateHumanFaceSurface(x, y) {
+            const nx = (x - HEAD_CENTER.x) / FACE_HALF_W;
+            const ny = (y - HEAD_CENTER.y) / FACE_HALF_H;
+
+            const jawTaper = ny < 0 ? 1.0 - 0.28 * Math.pow(-ny, 1.5) : 1.0 - 0.08 * Math.pow(ny, 2.0);
+            const r2 = Math.pow(nx / jawTaper, 2) + Math.pow(ny, 2);
+
+            if (r2 >= 1.0) {
+                return { inside: false, z: HEAD_CENTER.z - 2.2, nx, ny };
+            }
+
+            let zOffset = Math.sqrt(Math.max(0, 1.0 - r2)) * 3.2;
+
+            // Brow ridge
+            const brow = Math.exp(-Math.pow((ny - 0.22) / 0.08, 2)) * Math.exp(-Math.pow(nx / 0.58, 2)) * 0.48;
+            zOffset += brow;
+
+            // Deep orbital eye sockets
+            const eyeL = Math.exp(-(Math.pow((nx + 0.28) / 0.13, 2) + Math.pow((ny - 0.08) / 0.07, 2))) * 0.52;
+            const eyeR = Math.exp(-(Math.pow((nx - 0.28) / 0.13, 2) + Math.pow((ny - 0.08) / 0.07, 2))) * 0.52;
+            zOffset -= (eyeL + eyeR);
+
+            // Nose bridge & tip
+            const noseBridge = Math.exp(-(Math.pow(nx / 0.08, 2) + Math.pow((ny - 0.02) / 0.20, 2))) * 0.95;
+            const noseTip = Math.exp(-(Math.pow(nx / 0.11, 2) + Math.pow((ny + 0.14) / 0.08, 2))) * 1.18;
+            zOffset += (noseBridge + noseTip);
+
+            // Cheekbones
+            const cheekL = Math.exp(-(Math.pow((nx + 0.38) / 0.2, 2) + Math.pow((ny + 0.05) / 0.16, 2))) * 0.45;
+            const cheekR = Math.exp(-(Math.pow((nx - 0.38) / 0.2, 2) + Math.pow((ny + 0.05) / 0.16, 2))) * 0.45;
+            zOffset += (cheekL + cheekR);
+
+            // Lips & Mouth
+            const upperLip = Math.exp(-(Math.pow(nx / 0.21, 2) + Math.pow((ny + 0.36) / 0.045, 2))) * 0.42;
+            const lowerLip = Math.exp(-(Math.pow(nx / 0.18, 2) + Math.pow((ny + 0.44) / 0.05, 2))) * 0.38;
+            zOffset += (upperLip + lowerLip);
+
+            // Chin
+            const chin = Math.exp(-(Math.pow(nx / 0.19, 2) + Math.pow((ny + 0.70) / 0.12, 2))) * 0.52;
+            zOffset += chin;
+
+            return { inside: true, z: HEAD_CENTER.z + zOffset, nx, ny };
+        }
+
+        const headGroup = new THREE.Group();
+        scene.add(headGroup);
+
+        function buildHeadAnatomy() {
+            // Subdermal Soft Tissue Layer (Muscle/Flesh core exposed during tearing)
+            const tissueGeo = new THREE.BufferGeometry();
+            const positions = [];
+            const indices = [];
+            const W_S = 48, H_S = 56;
+            const cols = W_S + 1;
+            const width = FACE_HALF_W * 2.04;
+            const height = FACE_HALF_H * 2.04;
+            const insideFlags = new Uint8Array((W_S + 1) * (H_S + 1));
+
+            for (let y = 0; y <= H_S; y++) {
+                for (let x = 0; x <= W_S; x++) {
+                    const px = HEAD_CENTER.x + (x / W_S - 0.5) * width;
+                    const py = HEAD_CENTER.y + (y / H_S - 0.5) * height;
+                    const surf = evaluateHumanFaceSurface(px, py);
+                    positions.push(px, py, surf.z - 0.28);
+                    if (surf.inside) insideFlags[x + y * cols] = 1;
+                }
+            }
+            for (let y = 0; y < H_S; y++) {
+                for (let x = 0; x < W_S; x++) {
+                    const a = x + y * cols;
+                    const b = a + 1;
+                    const c = a + cols;
+                    const d = c + 1;
+                    if (insideFlags[a] || insideFlags[b] || insideFlags[c] || insideFlags[d]) {
+                        indices.push(a, b, c, b, d, c);
+                    }
+                }
+            }
+            tissueGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            tissueGeo.setIndex(indices);
+            tissueGeo.computeVertexNormals();
+            headGroup.add(new THREE.Mesh(tissueGeo, new THREE.MeshStandardMaterial({ color: 0x7f1d1d, roughness: 0.45, metalness: 0.15, side: THREE.DoubleSide })));
+
+            // Fractal Skull / Bone Structure inside
+            const skullGeo = new THREE.IcosahedronGeometry(2.5, 3);
+            const skullMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.35, metalness: 0.2, wireframe: true });
+            const skull = new THREE.Mesh(skullGeo, skullMat);
+            skull.position.set(HEAD_CENTER.x, HEAD_CENTER.y + 0.2, HEAD_CENTER.z - 1.2);
+            headGroup.add(skull);
+
+            // Cranium Shell
+            const cranium = new THREE.Mesh(
+                new THREE.SphereGeometry(3.4, 24, 24),
+                new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.5 })
+            );
+            cranium.scale.set(0.92, 1.2, 1.02);
+            cranium.position.copy(skull.position);
+            headGroup.add(cranium);
+
+            // 3D Eyeballs inside sockets
+            function createEyeball() {
+                const eg = new THREE.Group();
+                const sclera = new THREE.Mesh(new THREE.SphereGeometry(0.45, 20, 20), new THREE.MeshStandardMaterial({ color: 0xf8fafc }));
+                const iris = new THREE.Mesh(new THREE.CircleGeometry(0.22, 20), new THREE.MeshBasicMaterial({ color: 0x1d4ed8 }));
+                iris.position.z = 0.42;
+                const pupil = new THREE.Mesh(new THREE.CircleGeometry(0.1, 20), new THREE.MeshBasicMaterial({ color: 0x020617 }));
+                pupil.position.z = 0.43;
+                eg.add(sclera, iris, pupil);
+                return eg;
+            }
+            const eyeL = createEyeball();
+            eyeL.position.set(HEAD_CENTER.x - 1.02, HEAD_CENTER.y + 0.35, HEAD_CENTER.z + 1.6);
+            const eyeR = createEyeball();
+            eyeR.position.set(HEAD_CENTER.x + 1.02, HEAD_CENTER.y + 0.35, HEAD_CENTER.z + 1.6);
+            headGroup.add(eyeL, eyeR);
+        }
+        buildHeadAnatomy();
+
+        // --- ADVANCED ELASTIC SKIN SOLVER WITH GAPING LACERATIONS ---
+        const W_SEG = 56;
+        const H_SEG = 64;
+
+        class HumanSkinSolver {
+            constructor(wSeg, hSeg) {
+                this.wSeg = wSeg;
+                this.hSeg = hSeg;
+                this.damping = 0.92;
+                this.tearMultiplier = 1.9; // Lowered threshold for more responsive, dramatic tearing
+                this.skinTension = 0.065;
+                this.tornCount = 0;
+                this.needsIndexRebuild = false;
+                this.painIntensity = 0;
+                this.init();
+            }
+
+            init() {
+                this.particles = [];
+                this.constraints = [];
+                this.tornCount = 0;
+                this.needsIndexRebuild = true;
+
+                const cols = this.wSeg + 1;
+                const width = FACE_HALF_W * 2.04;
+                const height = FACE_HALF_H * 2.04;
+
+                for (let y = 0; y <= this.hSeg; y++) {
+                    for (let x = 0; x <= this.wSeg; x++) {
+                        const u = x / this.wSeg;
+                        const v = y / this.hSeg;
+                        const px = HEAD_CENTER.x + (u - 0.5) * width;
+                        const py = HEAD_CENTER.y + (v - 0.5) * height;
+
+                        const surf = evaluateHumanFaceSurface(px, py);
+                        const pz = surf.inside ? surf.z + 0.08 : HEAD_CENTER.z - 0.5;
+
+                        const isPerimeter = (x === 0 || x === this.wSeg || y === 0 || y === this.hSeg || !surf.inside);
+                        const pos = new THREE.Vector3(px, py, pz);
+
+                        this.particles.push({
+                            pos: pos.clone(),
+                            prev: pos.clone(),
+                            anchor: pos.clone(),
+                            pinned: isPerimeter,
+                            insideFace: surf.inside,
+                            u, v, nx: surf.nx, ny: surf.ny,
+                            velocity: new THREE.Vector3(0,0,0)
+                        });
+                    }
+                }
+
+                for (let y = 0; y <= this.hSeg; y++) {
+                    for (let x = 0; x <= this.wSeg; x++) {
+                        const i = x + y * cols;
+                        if (x < this.wSeg) {
+                            const p1 = this.particles[i], p2 = this.particles[i + 1];
+                            this.constraints.push({ i1: i, i2: i + 1, p1, p2, len: p1.pos.distanceTo(p2.pos), intact: true, stretch: 1.0 });
+                        }
+                        if (y < this.hSeg) {
+                            const p1 = this.particles[i], p2 = this.particles[i + cols];
+                            this.constraints.push({ i1: i, i2: i + cols, p1, p2, len: p1.pos.distanceTo(p2.pos), intact: true, stretch: 1.0 });
+                        }
+                    }
+                }
+            }
+
+            triggerPainReaction() {
+                this.painIntensity = 1.0;
+            }
+
+            update(delta) {
+                if (this.painIntensity > 0) {
+                    this.painIntensity = Math.max(0, this.painIntensity - delta * 2.0);
+                }
+
+                for (let p of this.particles) {
+                    if (p.pinned) continue;
+                    const vel = p.pos.clone().sub(p.prev).multiplyScalar(this.damping);
+                    p.prev.copy(p.pos);
+                    p.pos.add(vel);
+
+                    let painOffset = new THREE.Vector3(0, 0, 0);
+                    if (this.painIntensity > 0) {
+                        if (Math.abs(p.ny - 0.22) < 0.15) {
+                            painOffset.y -= this.painIntensity * 0.15 * (p.nx > 0 ? 1 : -1);
+                            painOffset.z -= this.painIntensity * 0.1;
+                        }
+                        if (Math.abs(p.ny - (-0.38)) < 0.16) {
+                            painOffset.y += this.painIntensity * 0.18;
+                            painOffset.z += this.painIntensity * 0.12;
+                        }
+                    }
+
+                    const targetAnchor = p.anchor.clone().add(painOffset);
+                    const pull = targetAnchor.sub(p.pos).multiplyScalar(this.skinTension);
+                    p.pos.add(pull);
+                }
+
+                // Relaxation & Gaping Laceration Solver Iterations
+                for (let iter = 0; iter < 6; iter++) {
+                    for (let c of this.constraints) {
+                        if (!c.intact) continue;
+                        const dir = c.p2.pos.clone().sub(c.p1.pos);
+                        const dist = dir.length();
+                        if (dist === 0) continue;
+
+                        if (dist > c.len * this.tearMultiplier) {
+                            c.intact = false;
+                            this.tornCount++;
+                            this.needsIndexRebuild = true;
+                            // Spring snap recoil on newly severed edges for gaping wound flap effect
+                            if (!c.p1.pinned) c.p1.pos.addScaledVector(dir, -0.25);
+                            if (!c.p2.pinned) c.p2.pos.addScaledVector(dir, 0.25);
+                            continue;
+                        }
+
+                        const diff = (dist - c.len) / dist * 0.55;
+                        const correction = dir.multiplyScalar(diff);
+                        if (!c.p1.pinned) c.p1.pos.add(correction);
+                        if (!c.p2.pinned) c.p2.pos.sub(correction);
+                    }
+                }
+
+                for (let p of this.particles) {
+                    if (p.pinned) continue;
+                    const surf = evaluateHumanFaceSurface(p.pos.x, p.pos.y);
+                    if (surf.inside && p.pos.z < surf.z + 0.05) {
+                        p.pos.z = surf.z + 0.05;
+                    }
+                }
+            }
+
+            tearRadius(center, radius, forceVec) {
+                let hitUV = null;
+                let closestD = Infinity;
+
+                for (let c of this.constraints) {
+                    if (!c.intact) continue;
+                    const mid = c.p1.pos.clone().add(c.p2.pos).multiplyScalar(0.5);
+                    if (mid.distanceTo(center) < radius * 1.3) {
+                        c.intact = false;
+                        this.tornCount++;
+                        this.needsIndexRebuild = true;
+                    }
+                }
+                for (let p of this.particles) {
+                    const d = p.pos.distanceTo(center);
+                    if (d < closestD && p.insideFace) {
+                        closestD = d;
+                        hitUV = { u: p.u, v: p.v };
+                    }
+                    if (p.pinned) continue;
+                    if (d < radius * 3.0) {
+                        const falloff = 1 - d / (radius * 3.0);
+                        const radial = p.pos.clone().sub(center).setZ(0).normalize().multiplyScalar(forceVec.length() * 0.65);
+                        p.pos.addScaledVector(forceVec.clone().add(radial), falloff);
+                    }
+                }
+                this.triggerPainReaction();
+                return hitUV;
+            }
+
+            syncGeometry(geo) {
+                const pos = geo.attributes.position;
+                for (let i = 0; i < this.particles.length; i++) {
+                    pos.setXYZ(i, this.particles[i].pos.x, this.particles[i].pos.y, this.particles[i].pos.z);
+                }
+                pos.needsUpdate = true;
+
+                if (this.needsIndexRebuild) {
+                    const cols = this.wSeg + 1;
+                    const horizIntact = new Uint8Array((this.wSeg + 1) * (this.hSeg + 1));
+                    const vertIntact = new Uint8Array((this.wSeg + 1) * (this.hSeg + 1));
+
+                    for (let c of this.constraints) {
+                        if (!c.intact) continue;
+                        if (c.i2 === c.i1 + 1) horizIntact[c.i1] = 1;
+                        else if (c.i2 === c.i1 + cols) vertIntact[c.i1] = 1;
+                    }
+
+                    const indices = [];
+                    for (let y = 0; y < this.hSeg; y++) {
+                        for (let x = 0; x < this.wSeg; x++) {
+                            const a = x + y * cols;
+                            const b = a + 1;
+                            const c = a + cols;
+                            const d = c + 1;
+
+                            if (!this.particles[a].insideFace || !this.particles[b].insideFace || !this.particles[c].insideFace || !this.particles[d].insideFace) {
+                                continue;
+                            }
+
+                            if (horizIntact[a] && vertIntact[a]) indices.push(a, b, c);
+                            if (vertIntact[b] && horizIntact[c]) indices.push(b, d, c);
+                        }
+                    }
+                    geo.setIndex(indices);
+                    this.needsIndexRebuild = false;
+                    document.getElementById('hud-tears').innerText = this.tornCount;
+                }
+                geo.computeVertexNormals();
+            }
+        }
+
+        // --- PHOTOREALISTIC PROCEDURAL SKIN & BLOOD TEXTURE GENERATOR ---
+        const skinCanvas = document.createElement('canvas');
+        skinCanvas.width = 768; skinCanvas.height = 960;
+        const skinCtx = skinCanvas.getContext('2d');
+
+        const bloodCanvas = document.createElement('canvas');
+        bloodCanvas.width = 768; bloodCanvas.height = 960;
+        const bloodCtx = bloodCanvas.getContext('2d');
+
+        const compositeTexture = new THREE.CanvasTexture(skinCanvas);
+        compositeTexture.encoding = THREE.sRGBEncoding;
+
+        const baseFaceCanvas = document.createElement('canvas');
+        baseFaceCanvas.width = 768; baseFaceCanvas.height = 960;
+
+        function paintPhotorealisticSkinBase() {
+            const ctx = baseFaceCanvas.getContext('2d');
+            const w = baseFaceCanvas.width, h = baseFaceCanvas.height;
+
+            const grad = ctx.createRadialGradient(w * 0.5, h * 0.45, 50, w * 0.5, h * 0.5, w * 0.7);
+            grad.addColorStop(0, '#f5d0b1');
+            grad.addColorStop(0.5, '#e3ac84');
+            grad.addColorStop(1, '#b57450');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, w, h);
+
+            for (let i = 0; i < 5000; i++) {
+                ctx.fillStyle = i % 2 === 0 ? 'rgba(120, 55, 35, 0.05)' : 'rgba(255, 240, 225, 0.05)';
+                ctx.fillRect(Math.random() * w, Math.random() * h, 2, 2);
+            }
+
+            const blushL = ctx.createRadialGradient(w * 0.32, h * 0.52, 10, w * 0.32, h * 0.52, 90);
+            blushL.addColorStop(0, 'rgba(210, 85, 75, 0.28)');
+            blushL.addColorStop(1, 'rgba(210, 85, 75, 0)');
+            ctx.fillStyle = blushL;
+            ctx.fillRect(0, 0, w, h);
+
+            const blushR = ctx.createRadialGradient(w * 0.68, h * 0.52, 10, w * 0.68, h * 0.52, 90);
+            blushR.addColorStop(0, 'rgba(210, 85, 75, 0.28)');
+            blushR.addColorStop(1, 'rgba(210, 85, 75, 0)');
+            ctx.fillStyle = blushR;
+            ctx.fillRect(0, 0, w, h);
+
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath();
+            ctx.ellipse(w * 0.35, h * 0.40, 32, 16, -0.05, 0, Math.PI*2);
+            ctx.ellipse(w * 0.65, h * 0.40, 32, 16, 0.05, 0, Math.PI*2);
+            ctx.fill();
+
+            ctx.fillStyle = '#1e3a8a';
+            ctx.beginPath();
+            ctx.arc(w * 0.35, h * 0.40, 16, 0, Math.PI*2);
+            ctx.arc(w * 0.65, h * 0.40, 16, 0, Math.PI*2);
+            ctx.fill();
+
+            ctx.fillStyle = '#020617';
+            ctx.beginPath();
+            ctx.arc(w * 0.35, h * 0.40, 7, 0, Math.PI*2);
+            ctx.arc(w * 0.65, h * 0.40, 7, 0, Math.PI*2);
+            ctx.fill();
+
+            ctx.fillStyle = '#291811';
+            ctx.beginPath();
+            ctx.ellipse(w * 0.35, h * 0.33, 62, 12, -0.08, 0, Math.PI * 2);
+            ctx.ellipse(w * 0.65, h * 0.33, 62, 12, 0.08, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = 'rgba(60, 20, 15, 0.7)';
+            ctx.beginPath();
+            ctx.ellipse(w * 0.45, h * 0.60, 14, 8, -0.2, 0, Math.PI*2);
+            ctx.ellipse(w * 0.55, h * 0.60, 14, 8, 0.2, 0, Math.PI*2);
+            ctx.fill();
+
+            ctx.fillStyle = '#a84c4a';
+            ctx.beginPath();
+            ctx.ellipse(w * 0.5, h * 0.70, 72, 18, 0, 0, Math.PI * 2);
+            ctx.ellipse(w * 0.5, h * 0.73, 65, 20, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function refreshCompositeSkinTexture() {
+            skinCtx.clearRect(0, 0, skinCanvas.width, skinCanvas.height);
+            skinCtx.drawImage(baseFaceCanvas, 0, 0, skinCanvas.width, skinCanvas.height);
+            skinCtx.drawImage(bloodCanvas, 0, 0, bloodCanvas.width, bloodCanvas.height);
+            compositeTexture.needsUpdate = true;
+        }
+
+        paintPhotorealisticSkinBase();
+        refreshCompositeSkinTexture();
+
+        const skinGeo = new THREE.BufferGeometry();
+        const skinPositions = new Float32Array((W_SEG + 1) * (H_SEG + 1) * 3);
+        const skinUVs = new Float32Array((W_SEG + 1) * (H_SEG + 1) * 2);
+
+        let uvIdx = 0;
+        for (let y = 0; y <= H_SEG; y++) {
+            for (let x = 0; x <= W_SEG; x++) {
+                skinUVs[uvIdx++] = x / W_SEG;
+                skinUVs[uvIdx++] = y / H_SEG;
+            }
+        }
+        skinGeo.setAttribute('position', new THREE.BufferAttribute(skinPositions, 3));
+        skinGeo.setAttribute('uv', new THREE.BufferAttribute(skinUVs, 2));
+
+        const skinSolver = new HumanSkinSolver(W_SEG, H_SEG);
+        const skinMesh = new THREE.Mesh(skinGeo, new THREE.MeshStandardMaterial({
+            map: compositeTexture,
+            roughness: 0.38,
+            metalness: 0.05,
+            side: THREE.DoubleSide
+        }));
+        headGroup.add(skinMesh);
+
+        // Custom Photo Upload
+        let currentSourceImage = null;
+        let flipVerticalState = false;
+        let rotationQuarterTurns = 0;
+
+        function applyTransformedPhotoToBase() {
+            if (!currentSourceImage) return;
+            const img = currentSourceImage;
+            const ctx = baseFaceCanvas.getContext('2d');
+            const w = baseFaceCanvas.width, h = baseFaceCanvas.height;
+            ctx.save();
+            ctx.clearRect(0, 0, w, h);
+            ctx.translate(w / 2, h / 2);
+            ctx.rotate((rotationQuarterTurns * Math.PI) / 2);
+            if (flipVerticalState) ctx.scale(1, -1);
+            const drawW = (rotationQuarterTurns % 2 !== 0) ? h : w;
+            const drawH = (rotationQuarterTurns % 2 !== 0) ? w : h;
+            ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
+            ctx.restore();
+            refreshCompositeSkinTexture();
+        }
+
+        document.getElementById('photoInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const img = new Image();
+                img.onload = () => {
+                    currentSourceImage = img;
+                    flipVerticalState = false;
+                    rotationQuarterTurns = 0;
+                    applyTransformedPhotoToBase();
+                };
+                img.src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+            e.target.value = '';
+        });
+
+        window.flipPhotoVertical = function() {
+            flipVerticalState = !flipVerticalState;
+            applyTransformedPhotoToBase();
+        };
+
+        window.rotatePhoto90 = function() {
+            rotationQuarterTurns = (rotationQuarterTurns + 1) % 4;
+            applyTransformedPhotoToBase();
+        };
+
+        // --- MULTI-STAGE ARTERIAL BLOOD & DYNAMIC FLUID SYSTEM ---
+        class LiquidBloodSystem {
+            constructor(scene) {
+                this.scene = scene;
+                this.droplets = [];
+                this.surfaceDrips = [];
+                this.flowMultiplier = 1.2;
+                this.dropGeo = new THREE.SphereGeometry(0.13, 8, 8);
+                this.brightBloodMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.1, metalness: 0.1, emissive: 0x450a0a });
+                this.darkBloodMat = new THREE.MeshStandardMaterial({ color: 0x7f1d1d, roughness: 0.15, emissive: 0x2a0404 });
+            }
+
+            paintWoundSplatter(uv, radiusPx) {
+                if (!uv) return;
+                const cx = uv.u * bloodCanvas.width;
+                const cy = (1.0 - uv.v) * bloodCanvas.height;
+
+                // Coagulated dark wound center & bruising ring
+                const grad = bloodCtx.createRadialGradient(cx, cy, 2, cx, cy, radiusPx * 1.6);
+                grad.addColorStop(0, 'rgba(50, 4, 8, 0.98)');
+                grad.addColorStop(0.35, 'rgba(130, 10, 18, 0.90)');
+                grad.addColorStop(0.75, 'rgba(180, 25, 35, 0.70)');
+                grad.addColorStop(1, 'rgba(0,0,0,0)');
+                bloodCtx.fillStyle = grad;
+                bloodCtx.beginPath();
+                bloodCtx.arc(cx, cy, radiusPx * 1.6, 0, Math.PI * 2);
+                bloodCtx.fill();
+
+                // High-velocity arterial micro-spatters
+                for (let i = 0; i < 22; i++) {
+                    const ang = Math.random() * Math.PI * 2;
+                    const dist = radiusPx * (0.4 + Math.random() * 2.2);
+                    const r = 1.0 + Math.random() * 5.0;
+                    bloodCtx.fillStyle = i % 2 === 0 ? 'rgba(165, 12, 22, 0.88)' : 'rgba(95, 6, 12, 0.92)';
+                    bloodCtx.beginPath();
+                    bloodCtx.arc(cx + Math.cos(ang) * dist, cy + Math.sin(ang) * dist, r, 0, Math.PI * 2);
+                    bloodCtx.fill();
+                }
+
+                // Heavy viscous surface drips running downward
+                const dripCount = Math.ceil(5 * this.flowMultiplier);
+                for (let d = 0; d < dripCount; d++) {
+                    this.surfaceDrips.push({
+                        x: cx + (Math.random() - 0.5) * radiusPx * 0.9,
+                        y: cy + Math.random() * radiusPx * 0.3,
+                        vy: (35 + Math.random() * 55) * this.flowMultiplier,
+                        width: 3.0 + Math.random() * 5.0,
+                        life: (2.2 + Math.random() * 2.5) * this.flowMultiplier
+                    });
+                }
+                refreshCompositeSkinTexture();
+            }
+
+            spawnBloodBurst(origin, impactDir, count, power) {
+                const total = Math.ceil(count * this.flowMultiplier);
+                for (let i = 0; i < total; i++) {
+                    const mat = (i % 4 === 0) ? this.darkBloodMat : this.brightBloodMat;
+                    const mesh = new THREE.Mesh(this.dropGeo, mat);
+                    mesh.position.copy(origin);
+                    const scale = 0.5 + Math.random() * 1.4;
+                    mesh.scale.set(scale, scale, scale);
+                    this.scene.add(mesh);
+
+                    const sprayDir = impactDir.clone().negate().multiplyScalar(0.7);
+                    sprayDir.x += (Math.random() - 0.5) * 2.2;
+                    sprayDir.y += (Math.random() - 0.25) * 2.2;
+                    sprayDir.z += Math.random() * 1.5;
+                    sprayDir.normalize();
+
+                    this.droplets.push({
+                        mesh,
+                        vel: sprayDir.multiplyScalar(power * (0.5 + Math.random() * 0.9)),
+                        baseScale: scale,
+                        life: 2.0 + Math.random() * 1.5
+                    });
+                }
+            }
+
+            update(delta) {
+                for (let d of this.droplets) {
+                    d.life -= delta;
+                    d.vel.y -= 34.0 * delta; // Gravity
+                    d.mesh.position.addScaledVector(d.vel, delta);
+
+                    const speed = d.vel.length();
+                    if (speed > 0.6) {
+                        d.mesh.lookAt(d.mesh.position.clone().add(d.vel));
+                        d.mesh.scale.set(d.baseScale * 0.7, d.baseScale * 0.7, d.baseScale * Math.min(3.5, 1.0 + speed * 0.09));
+                    }
+
+                    if (d.mesh.position.y <= -13.8) {
+                        d.mesh.position.y = -13.8;
+                        d.vel.set(0, 0, 0);
+                        d.mesh.scale.set(d.baseScale * 2.4, 0.1, d.baseScale * 2.4); // Puddle spread on floor
+                    }
+                    if (d.life <= 0) this.scene.remove(d.mesh);
+                }
+                this.droplets = this.droplets.filter(d => d.life > 0);
+                document.getElementById('hud-blood').innerText = this.droplets.length;
+
+                if (this.surfaceDrips.length > 0) {
+                    for (let drip of this.surfaceDrips) {
+                        drip.life -= delta;
+                        const prevX = drip.x, prevY = drip.y;
+                        drip.y += drip.vy * delta;
+                        drip.x += Math.sin(drip.y * 0.05) * 12 * delta; // Contour curving
+                        drip.vy *= 0.99;
+
+                        bloodCtx.strokeStyle = 'rgba(110, 5, 12, 0.92)';
+                        bloodCtx.lineWidth = drip.width * Math.min(1.0, drip.life);
+                        bloodCtx.lineCap = 'round';
+                        bloodCtx.beginPath();
+                        bloodCtx.moveTo(prevX, prevY);
+                        bloodCtx.lineTo(drip.x, drip.y);
+                        bloodCtx.stroke();
+                    }
+                    this.surfaceDrips = this.surfaceDrips.filter(d => d.life > 0 && d.y < bloodCanvas.height);
+                    refreshCompositeSkinTexture();
+                }
+            }
+
+            clear() {
+                for (let d of this.droplets) this.scene.remove(d.mesh);
+                this.droplets = [];
+                this.surfaceDrips = [];
+                bloodCtx.clearRect(0, 0, bloodCanvas.width, bloodCanvas.height);
+                refreshCompositeSkinTexture();
+                document.getElementById('hud-blood').innerText = '0';
+            }
+        }
+
+        const bloodSystem = new LiquidBloodSystem(scene);
+
+        // --- RETICLE & BALLISTIC ENGINE ---
+        const reticleGroup = new THREE.Group();
+        const ringMat = new THREE.MeshBasicMaterial({ color: 0xf43f5e, side: THREE.DoubleSide });
+        const reticleRing = new THREE.Mesh(new THREE.RingGeometry(0.35, 0.5, 32), ringMat);
+        reticleGroup.add(reticleRing);
+        reticleGroup.add(new THREE.Mesh(new THREE.CircleGeometry(0.1, 16), ringMat));
+        reticleGroup.position.set(0, 0.5, 6.0);
+        scene.add(reticleGroup);
+
+        const laserLine = new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 12), reticleGroup.position]),
+            new THREE.LineBasicMaterial({ color: 0xf43f5e, transparent: true, opacity: 0.5 })
+        );
+        scene.add(laserLine);
+
+        class BallisticSystem {
+            constructor(scene) {
+                this.scene = scene;
+                this.rounds = [];
+            }
+
+            fire(origin, targetPos, weapon) {
+                const configs = {
+                    pistol:  { speed: 110, count: 1,  spread: 0.003, radius: 0.75, impulse: 3.2, tearRad: 0.62, color: 0x38bdf8, size: 0.14, bloodDrops: 28, stainRad: 26, power: 16 },
+                    smg:     { speed: 120, count: 1,  spread: 0.022, radius: 0.70, impulse: 2.4, tearRad: 0.52, color: 0xfacc15, size: 0.12, bloodDrops: 18, stainRad: 20, power: 14 },
+                    shotgun: { speed: 95,  count: 10, spread: 0.060, radius: 0.90, impulse: 2.8, tearRad: 0.75, color: 0xfb923c, size: 0.13, bloodDrops: 12, stainRad: 18, power: 17 },
+                    cannon:  { speed: 80,  count: 1,  spread: 0.001, radius: 2.40, impulse: 9.5, tearRad: 2.30, color: 0xf43f5e, size: 0.38, bloodDrops: 90, stainRad: 65, power: 26 }
+                };
+
+                const cfg = configs[weapon];
+                const baseDir = targetPos.clone().sub(origin).normalize();
+
+                for (let i = 0; i < cfg.count; i++) {
+                    const dir = baseDir.clone();
+                    dir.x += (Math.random() - 0.5) * cfg.spread;
+                    dir.y += (Math.random() - 0.5) * cfg.spread;
+                    dir.z += (Math.random() - 0.5) * cfg.spread;
+                    dir.normalize();
+
+                    const mesh = new THREE.Mesh(
+                        new THREE.SphereGeometry(cfg.size, 8, 8),
+                        new THREE.MeshBasicMaterial({ color: cfg.color })
+                    );
+                    mesh.position.copy(origin);
+                    this.scene.add(mesh);
+
+                    this.rounds.push({ mesh, vel: dir.multiplyScalar(cfg.speed), cfg, active: true });
+                }
+            }
+
+            update(delta, solver) {
+                for (let r of this.rounds) {
+                    if (!r.active) continue;
+                    r.vel.z -= 9.81 * delta * 0.05;
+                    r.mesh.position.addScaledVector(r.vel, delta);
+
+                    let hit = false;
+                    for (let p of solver.particles) {
+                        if (!p.insideFace) continue;
+                        if (r.mesh.position.distanceTo(p.pos) < r.cfg.radius) {
+                            hit = true;
+                            break;
+                        }
+                    }
+
+                    if (hit) {
+                        const impactDir = r.vel.clone().normalize();
+                        const impulseVec = impactDir.clone().multiplyScalar(r.cfg.impulse);
+                        const hitUV = solver.tearRadius(r.mesh.position, r.cfg.tearRad, impulseVec);
+
+                        bloodSystem.spawnBloodBurst(r.mesh.position, impactDir, r.cfg.bloodDrops, r.cfg.power);
+                        bloodSystem.paintWoundSplatter(hitUV, r.cfg.stainRad);
+
+                        r.active = false;
+                        this.scene.remove(r.mesh);
+                    } else if (r.mesh.position.z < -25 || r.mesh.position.length() > 60) {
+                        r.active = false;
+                        this.scene.remove(r.mesh);
+                    }
+                }
+                this.rounds = this.rounds.filter(r => r.active);
+            }
+        }
+
+        const ballistics = new BallisticSystem(scene);
+
+        // --- CONTROLS & AIMING ---
+        const joystickZone = document.getElementById('joystickZone');
+        const joystickKnob = document.getElementById('joystickKnob');
+        let aimInput = { x: 0, y: 0 };
+        let aimTarget = new THREE.Vector2(0, 0.5);
+        let stickPointerId = null;
+
+        function handleStickMove(clientX, clientY) {
+            const rect = joystickZone.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            const maxR = rect.width / 2 - 20;
+
+            let dx = clientX - cx;
+            let dy = clientY - cy;
+            const dist = Math.hypot(dx, dy);
+            if (dist > maxR) {
+                dx = (dx / dist) * maxR;
+                dy = (dy / dist) * maxR;
+            }
+            joystickKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+            aimInput.x = dx / maxR;
+            aimInput.y = -dy / maxR;
+        }
+
+        joystickZone.addEventListener('pointerdown', (e) => {
+            if (appMode !== 'combat') return;
+            stickPointerId = e.pointerId;
+            joystickZone.setPointerCapture(e.pointerId);
+            handleStickMove(e.clientX, e.clientY);
+        });
+        joystickZone.addEventListener('pointermove', (e) => {
+            if (e.pointerId !== stickPointerId) return;
+            handleStickMove(e.clientX, e.clientY);
+        });
+        const resetStick = (e) => {
+            if (e.pointerId !== stickPointerId) return;
+            stickPointerId = null;
+            aimInput.x = 0; aimInput.y = 0;
+            joystickKnob.style.transform = `translate(0px, 0px)`;
+        };
+        joystickZone.addEventListener('pointerup', resetStick);
+        joystickZone.addEventListener('pointercancel', resetStick);
+
+        let currentWeapon = 'pistol';
+        let isFiring = false;
+        let fireCooldown = 0;
+        const fireRates = { pistol: 0.18, smg: 0.05, shotgun: 0.45, cannon: 0.65 };
+
+        window.setWeapon = function(w) {
+            currentWeapon = w;
+            document.getElementById('fireWeaponLabel').innerText = w.toUpperCase();
+            ['pistol', 'smg', 'shotgun', 'cannon'].forEach(id => {
+                const btn = document.getElementById(`btn-${id}`);
+                btn.className = id === w
+                    ? "py-2 rounded-xl bg-cyan-500/25 text-cyan-300 border border-cyan-400 text-[11px] font-bold cursor-pointer"
+                    : "py-2 rounded-xl bg-slate-900 text-slate-400 border border-slate-800 text-[11px] font-semibold cursor-pointer";
+            });
+        };
+
+        window.resetSubject = function() {
+            skinSolver.init();
+            bloodSystem.clear();
+            document.getElementById('hud-tears').innerText = '0';
+        };
+
+        const fireBtn = document.getElementById('fireBtn');
+        const triggerShot = () => {
+            if (appMode !== 'combat') return;
+            const muzzlePos = new THREE.Vector3(0, 0, 12.0);
+            const surf = evaluateHumanFaceSurface(aimTarget.x, aimTarget.y);
+            const target3D = new THREE.Vector3(aimTarget.x, aimTarget.y, surf.inside ? surf.z : HEAD_CENTER.z);
+            ballistics.fire(muzzlePos, target3D, currentWeapon);
+            fireCooldown = fireRates[currentWeapon];
+            headGroup.position.z = -0.22; // Stronger recoil flinch
+        };
+
+        fireBtn.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            isFiring = true;
+            fireBtn.classList.add('firing');
+            if (fireCooldown <= 0) triggerShot();
+        });
+        const stopFiring = () => { isFiring = false; fireBtn.classList.remove('firing'); };
+        fireBtn.addEventListener('pointerup', stopFiring);
+        fireBtn.addEventListener('pointerleave', stopFiring);
+        fireBtn.addEventListener('pointercancel', stopFiring);
+
+        // 3D Orbit Drag Rotation in Rotate Mode
+        let isOrbiting = false, prevMousePos = { x: 0, y: 0 };
+        window.addEventListener('pointerdown', (e) => {
+            if (appMode === 'orbit') { isOrbiting = true; prevMousePos = { x: e.clientX, y: e.clientY }; }
+        });
+        window.addEventListener('pointermove', (e) => {
+            if (appMode === 'orbit' && isOrbiting) {
+                headRotationY += (e.clientX - prevMousePos.x) * 0.008;
+                headRotationX += (e.clientY - prevMousePos.y) * 0.008;
+                prevMousePos = { x: e.clientX, y: e.clientY };
+            }
+        });
+        window.addEventListener('pointerup', () => { isOrbiting = false; });
+
+        document.getElementById('sliderTear').addEventListener('input', (e) => {
+            skinSolver.tearMultiplier = parseFloat(e.target.value);
+            document.getElementById('val-tear').innerText = e.target.value + 'x';
+        });
+
+        document.getElementById('sliderBlood').addEventListener('input', (e) => {
+            bloodSystem.flowMultiplier = parseFloat(e.target.value);
+            document.getElementById('val-blood').innerText = e.target.value + 'x';
+        });
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // --- MAIN SIMULATION LOOP ---
+        const clock = new THREE.Clock();
+        let frames = 0, lastFpsTime = performance.now();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = Math.min(clock.getDelta(), 0.05);
+
+            frames++;
+            if (performance.now() - lastFpsTime >= 1000) {
+                document.getElementById('hud-fps').innerText = frames;
+                frames = 0; lastFpsTime = performance.now();
+            }
+
+            if (appMode === 'combat') {
+                aimTarget.x = THREE.MathUtils.clamp(aimTarget.x + aimInput.x * 14 * delta, -3.2, 3.2);
+                aimTarget.y = THREE.MathUtils.clamp(aimTarget.y + aimInput.y * 16 * delta, -4.2, 4.8);
+
+                const surf = evaluateHumanFaceSurface(aimTarget.x, aimTarget.y);
+                const reticleZ = (surf.inside ? surf.z : HEAD_CENTER.z) + 0.35;
+                reticleGroup.position.set(aimTarget.x, aimTarget.y, reticleZ);
+                reticleRing.rotation.z += delta * 3.0;
+
+                const positions = laserLine.geometry.attributes.position.array;
+                positions[3] = reticleGroup.position.x;
+                positions[4] = reticleGroup.position.y;
+                positions[5] = reticleGroup.position.z;
+                laserLine.geometry.attributes.position.needsUpdate = true;
+
+                if (fireCooldown > 0) fireCooldown -= delta;
+                if (isFiring && fireCooldown <= 0) triggerShot();
+            }
+
+            // Head recoil recovery
+            headGroup.position.z += (0 - headGroup.position.z) * 12 * delta;
+
+            // Apply rotation in 3D orbit mode
+            headGroup.rotation.y = headRotationY;
+            headGroup.rotation.x = headRotationX;
+
+            skinSolver.update(delta);
+            ballistics.update(delta, skinSolver);
+            bloodSystem.update(delta);
+            skinSolver.syncGeometry(skinGeo);
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
