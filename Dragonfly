@@ -1,0 +1,1838 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full select-none bg-black">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>AIM OS v12.0 — Quantum Dragonfly AGI & Sovereign Liquid EQ Workspace</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Three.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Orbitron:wght@400;600;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+            orbitron: ['Orbitron', 'sans-serif'],
+            cinzel: ['Cinzel', 'serif'],
+            'mono-code': ['Fira Code', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    :root {
+      --glass-blur: 24px;
+      --glass-bg: rgba(15, 23, 42, 0.85);
+      --glass-bg-elevated: rgba(15, 23, 42, 0.95);
+      --glass-border: rgba(56, 189, 248, 0.35);
+      --glass-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.75);
+      --text-primary: #f8fafc;
+      --panel-inner: rgba(2, 6, 23, 0.7);
+    }
+
+    * { box-sizing: border-box; user-select: none; }
+    input, textarea, pre, code, .selectable { user-select: text; }
+
+    body {
+      margin: 0; padding: 0; overflow: hidden; width: 100vw; height: 100vh;
+      font-family: 'Inter', sans-serif; color: var(--text-primary); background-color: #020617;
+      touch-action: pan-y;
+    }
+
+    #wallpaper-canvas {
+      position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none;
+    }
+
+    .glass-surface {
+      background: var(--glass-bg);
+      backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+      -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--glass-shadow);
+    }
+    .glass-bar {
+      background: var(--glass-bg-elevated);
+      backdrop-filter: blur(28px) saturate(190%);
+      -webkit-backdrop-filter: blur(28px) saturate(190%);
+      border-bottom: 1px solid var(--glass-border);
+    }
+    .glass-inner { background: var(--panel-inner); border: 1px solid rgba(255, 255, 255, 0.12); }
+
+    .window-frame { transition: opacity 0.2s ease, transform 0.22s cubic-bezier(0.16, 1, 0.3, 1); }
+    .window-frame.dragging { transition: none !important; }
+    .window-minimized { opacity: 0; transform: scale(0.86) translateY(60px); pointer-events: none; }
+
+    .glass-dock {
+      background: var(--glass-bg-elevated);
+      backdrop-filter: blur(32px) saturate(195%);
+      -webkit-backdrop-filter: blur(32px) saturate(195%);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    }
+    .dock-item {
+      transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), margin 0.22s ease;
+    }
+    .dock-item:hover {
+      transform: translateY(-12px) scale(1.25);
+      margin-left: 8px;
+      margin-right: 8px;
+    }
+
+    .swarm-pill {
+      background: linear-gradient(135deg, rgba(14, 165, 233, 0.22) 0%, rgba(3, 105, 161, 0.6) 100%);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(56, 189, 248, 0.55);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .swarm-pill:active { transform: scale(0.95); }
+    .swarm-pill.active-pill {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.35) 0%, rgba(6, 95, 70, 0.85) 100%);
+      border-color: rgba(52, 211, 153, 0.85);
+      box-shadow: 0 0 18px rgba(16, 185, 129, 0.4);
+    }
+
+    input[type=range] {
+      -webkit-appearance: none; background: rgba(255, 255, 255, 0.12); height: 5px; border-radius: 3px;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%;
+      background: #bae6fd; box-shadow: 0 0 12px #38bdf8; cursor: pointer; transition: transform 0.1s;
+    }
+    input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.35); border-radius: 9999px; }
+
+    @keyframes scanline {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(1000%); }
+    }
+    .animate-scanline { animation: scanline 3s linear infinite; }
+  </style>
+</head>
+<body class="select-none">
+
+  <!-- Live Biomorphic Wing-Membrane Shader Wallpaper -->
+  <canvas id="wallpaper-canvas"></canvas>
+
+  <!-- Top Status Bar -->
+  <header class="glass-bar fixed top-0 left-0 right-0 h-9 px-4 flex items-center justify-between z-[1000] text-xs font-medium">
+    <div class="flex items-center gap-3">
+      <button onclick="toggleMenu('system-menu')" class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-white/15 transition cursor-pointer">
+        <svg class="w-4 h-4 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+        <span class="font-semibold font-orbitron tracking-wider">AIM OS • QUANTUM DRAGONFLY & SOVEREIGN EQ v12.0</span>
+      </button>
+      <div id="system-menu" class="hidden absolute left-0 mt-2.5 w-80 rounded-2xl glass-surface p-1.5 shadow-2xl z-[1100] text-xs max-h-[85vh] overflow-y-auto">
+        <div class="px-3 py-1 text-[10px] uppercase tracking-wider text-cyan-300 font-bold">Dynamic Module Registry & Sandbox</div>
+        <div id="registry-menu-list" class="space-y-1"></div>
+      </div>
+      <span class="opacity-30">|</span>
+      <span id="active-app-label" class="font-semibold truncate max-w-[280px]">System Ready</span>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-cyan-500/20 border border-cyan-400/30 text-[10px] text-cyan-300 font-mono">
+        <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+        <span>AGI SYNTH & KINETIC AUDIO ACTIVE</span>
+      </div>
+      <button id="top-clock" class="px-2 py-1 rounded-lg hover:bg-white/15 transition font-mono tabular-nums text-xs cursor-pointer">18:18</button>
+    </div>
+  </header>
+
+  <!-- Main Desktop Area -->
+  <main id="desktop-area" class="relative w-full h-full pt-12 pb-24 px-4 overflow-hidden">
+    <div id="desktop-icons" class="grid grid-flow-col grid-rows-4 gap-3 w-fit absolute z-10"></div>
+    <div id="windows-layer" class="absolute inset-0 pointer-events-none"></div>
+  </main>
+
+  <!-- Bottom Floating Glass Dock -->
+  <nav aria-label="Application Dock" class="fixed bottom-3 left-1/2 -translate-x-1/2 z-[1500] max-w-[96vw]">
+    <div id="dock-bar" class="glass-dock px-3.5 py-2.5 rounded-3xl flex items-end gap-2.5 sm:gap-3"></div>
+  </nav>
+
+  <!-- Hidden File Input for Audio Loading -->
+  <input type="file" id="audioFileInput" accept="audio/*" class="hidden">
+
+  <!-- Master Script & Integrated Engine Modules -->
+  <script>
+    lucide.createIcons();
+
+    function toggleMenu(id) {
+      const el = document.getElementById(id);
+      if (el) el.classList.toggle('hidden');
+    }
+    window.addEventListener('click', e => {
+      const menu = document.getElementById('system-menu');
+      if (menu && !menu.contains(e.target) && !e.target.closest('button[onclick*="system-menu"]')) {
+        menu.classList.add('hidden');
+      }
+    });
+
+    // Clock update
+    setInterval(() => {
+      const now = new Date();
+      const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
+      const clockBtn = document.getElementById('top-clock');
+      if (clockBtn) clockBtn.textContent = timeStr;
+    }, 1000);
+
+    // --- Sandboxed IPC Bus & Telemetry Ledger ---
+    const AIM_BRAIN = {
+      events: [
+        { time: '18:18:00', source: 'KERNEL', topic: 'BOOT', summary: 'AIM OS Quantum Dragonfly AGI & Sovereign Liquid EQ IPC Proxy initialized.' }
+      ],
+      listeners: new Map(),
+      publish(moduleId, topic, summary, payload = null) {
+        const time = new Date().toTimeString().split(' ')[0];
+        this.events.unshift({ time, source: moduleId.toUpperCase(), topic, summary, payload });
+        if (this.events.length > 80) this.events.pop();
+        updateNeuralLedgerUI();
+        if (this.listeners.has(topic)) {
+          this.listeners.get(topic).forEach(cb => cb({ moduleId, topic, summary, payload }));
+        }
+      },
+      subscribe(topic, cb) {
+        if (!this.listeners.has(topic)) this.listeners.set(topic, []);
+        this.listeners.get(topic).push(cb);
+      },
+      dispatchCue(directorId, cueName, payload = {}) {
+        this.publish(directorId, `CINEMATIC_${cueName}`, `Director cue executed: [${cueName}]`, payload);
+      }
+    };
+
+    function updateNeuralLedgerUI() {
+      const listEl = document.getElementById('aim-brain-events-list');
+      if (!listEl) return;
+      listEl.innerHTML = AIM_BRAIN.events.map(ev => `
+        <div class="p-2.5 rounded-xl bg-white/5 border-l-2 border-cyan-400 space-y-1 text-[11px] font-mono">
+          <div class="flex justify-between opacity-75 text-[10px]">
+            <span>${ev.time} • <strong class="text-cyan-300">[${ev.source}]</strong></span>
+            <span class="text-emerald-300">${ev.topic}</span>
+          </div>
+          <div class="text-slate-200">${ev.summary}</div>
+        </div>
+      `).join('');
+    }
+
+    // --- Cybernetic Web Audio SFX Engine ---
+    class CyberAudioEngine {
+      constructor() { this.ctx = null; this.enabled = true; }
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContext();
+        }
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+      }
+      playChirp(freq = 600, type = 'sine', duration = 0.04) {
+        if (!this.enabled) return;
+        try {
+          this.init();
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(freq * 1.3, this.ctx.currentTime + duration);
+          gain.gain.setValueAtTime(0.03, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + duration);
+        } catch(e) {}
+      }
+      playSuccessChime() {
+        if (!this.enabled) return;
+        try {
+          this.init();
+          [523.25, 659.25, 783.99, 1046.50].forEach((f, i) => {
+            setTimeout(() => this.playChirp(f, 'triangle', 0.12), i * 70);
+          });
+        } catch(e) {}
+      }
+    }
+    const sfx = new CyberAudioEngine();
+
+    // --- Dynamic Module Registry ---
+    const ModuleRegistry = {
+      registry: new Map(),
+      register(manifest) { this.registry.set(manifest.id, manifest); renderDock(); renderSystemMenu(); renderDesktopIcons(); },
+      get(id) { return this.registry.get(id); },
+      getAll() { return Array.from(this.registry.values()); }
+    };
+
+    // --- Dragonfly Kinematic Rig ---
+    class DragonflyRig {
+      constructor(scene) {
+        this.rootGroup = new THREE.Group();
+        scene.add(this.rootGroup);
+
+        this.chitinMaterial = new THREE.MeshPhysicalMaterial({ color: 0x0a2333, roughness: 0.2, metalness: 0.8, clearcoat: 1.0 });
+        this.wingMaterial = new THREE.MeshPhysicalMaterial({ color: 0xc8f0ff, roughness: 0.1, transmission: 0.85, transparent: true, opacity: 0.75, side: THREE.DoubleSide });
+
+        this.buildAnatomy();
+        this.flightTime = 0;
+      }
+
+      buildAnatomy() {
+        const thoraxGeo = new THREE.CapsuleGeometry(0.8, 2.2, 16, 16);
+        thoraxGeo.rotateX(Math.PI / 2);
+        this.thorax = new THREE.Mesh(thoraxGeo, this.chitinMaterial);
+        this.rootGroup.add(this.thorax);
+
+        const headGroup = new THREE.Group();
+        headGroup.position.set(0, 0, 1.6);
+        headGroup.add(new THREE.Mesh(new THREE.SphereGeometry(0.7, 32, 32), this.chitinMaterial));
+
+        const eyeGeo = new THREE.SphereGeometry(0.35, 16, 16);
+        const eyeMat = new THREE.MeshPhysicalMaterial({ color: 0x00f3ff, roughness: 0.1, emissive: 0x004455 });
+        const leftEye = new THREE.Mesh(eyeGeo, eyeMat); leftEye.position.set(0.45, 0.1, 0.3); headGroup.add(leftEye);
+        const rightEye = new THREE.Mesh(eyeGeo, eyeMat); rightEye.position.set(-0.45, 0.1, 0.3); headGroup.add(rightEye);
+        this.thorax.add(headGroup);
+
+        this.abdomenSegments = [];
+        let parentSegment = this.thorax;
+        for (let i = 0; i < 7; i++) {
+          const segGeo = new THREE.CylinderGeometry(0.5 - (i * 0.05), 0.5 - ((i + 1) * 0.05), 0.9, 12);
+          segGeo.rotateX(Math.PI / 2);
+          const segMesh = new THREE.Mesh(segGeo, this.chitinMaterial);
+          const connector = new THREE.Group();
+          connector.position.set(0, 0, -0.9);
+          connector.add(segMesh);
+          parentSegment.add(connector);
+          this.abdomenSegments.push(connector);
+          parentSegment = connector;
+        }
+
+        const wingShape = new THREE.Shape();
+        wingShape.moveTo(0, 0);
+        wingShape.bezierCurveTo(0.5, 1.5, 1.0, 3.5, 0.2, 5.0);
+        wingShape.bezierCurveTo(-0.2, 4.0, -0.6, 2.0, 0, 0);
+        const wingGeo = new THREE.ExtrudeGeometry(wingShape, { depth: 0.02, bevelEnabled: true });
+        wingGeo.center();
+
+        this.wings = {
+          leftFore: this.createWingPivot(wingGeo, 0.8, 0.3, 0.5, 1),
+          rightFore: this.createWingPivot(wingGeo, -0.8, 0.3, 0.5, -1),
+          leftHind: this.createWingPivot(wingGeo, 0.9, 0.1, -0.4, 1),
+          rightHind: this.createWingPivot(wingGeo, -0.9, 0.1, -0.4, -1)
+        };
+      }
+
+      createWingPivot(geometry, x, y, z, mirror) {
+        const pivot = new THREE.Group();
+        pivot.position.set(x, y, z);
+        const mesh = new THREE.Mesh(geometry, this.wingMaterial);
+        mesh.scale.set(mirror, 1, 1);
+        mesh.position.set(mirror * 1.5, 0, 2.5);
+        pivot.add(mesh);
+        this.thorax.add(pivot);
+        return pivot;
+      }
+
+      update(delta, speed = 25.0) {
+        this.flightTime += delta * speed;
+        const flapFore = Math.sin(this.flightTime) * 0.75;
+        const flapHind = Math.sin(this.flightTime - 0.4) * 0.75;
+
+        this.wings.leftFore.rotation.z = flapFore;
+        this.wings.rightFore.rotation.z = -flapFore;
+        this.wings.leftHind.rotation.z = flapHind;
+        this.wings.rightHind.rotation.z = -flapHind;
+
+        this.abdomenSegments.forEach((seg, index) => {
+          seg.rotation.y = Math.sin(this.flightTime * 0.5 - index * 0.3) * 0.08;
+        });
+      }
+    }
+
+    // --- Kinetic Flight Controller ---
+    class DragonflyFlightController {
+      constructor(dragonflyRig) {
+        this.rig = dragonflyRig;
+        this.position = new THREE.Vector3(0, 8, 0);
+        this.velocity = new THREE.Vector3(0, 0, 0);
+        this.acceleration = new THREE.Vector3(0, 0, 0);
+        this.heading = 0;
+        this.pitch = 0;
+        this.bank = 0;
+
+        this.mass = 0.12;
+        this.maxThrust = 16.0;
+        this.dragCoefficient = 0.04;
+        this.liftCoefficient = 0.85;
+        this.gravity = new THREE.Vector3(0, -9.81, 0);
+
+        this.controls = { throttle: 0.7, pitchInput: 0, yawInput: 0 };
+        this.rig.rootGroup.position.copy(this.position);
+      }
+
+      update(delta) {
+        const forwardVector = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.heading);
+        const thrust = forwardVector.clone().multiplyScalar(this.controls.throttle * this.maxThrust);
+        const speed = this.velocity.length();
+        const lift = new THREE.Vector3(0, 1, 0).multiplyScalar(speed * speed * this.liftCoefficient * this.controls.throttle);
+        const drag = this.velocity.clone().multiplyScalar(-this.dragCoefficient * speed);
+
+        const totalForce = new THREE.Vector3()
+          .add(this.gravity.clone().multiplyScalar(this.mass))
+          .add(thrust).add(lift).add(drag);
+
+        this.acceleration.copy(totalForce).divideScalar(this.mass);
+        this.velocity.add(this.acceleration.clone().multiplyScalar(delta));
+        if (this.velocity.length() > 22.0) this.velocity.clampLength(0, 22.0);
+        this.position.add(this.velocity.clone().multiplyScalar(delta));
+
+        if (this.position.y < 3.0) { this.position.y = 3.0; this.velocity.y = Math.max(0, this.velocity.y); }
+
+        this.heading += this.controls.yawInput * delta * 2.2;
+        this.bank += (-this.controls.yawInput * 0.5 - this.bank) * (delta * 5.0);
+
+        this.rig.rootGroup.position.copy(this.position);
+        this.rig.rootGroup.rotation.set(0, 0, 0);
+        this.rig.rootGroup.rotation.y = this.heading;
+        this.rig.rootGroup.rotation.z = this.bank;
+
+        const flapFreq = 18.0 + (this.controls.throttle * 22.0);
+        this.rig.update(delta, flapFreq);
+
+        this.controls.yawInput *= 0.88;
+        this.controls.pitchInput *= 0.88;
+      }
+    }
+
+    // --- Sovereign Audio Engine ---
+    class SovereignAudioEngine {
+      constructor() {
+        this.ctx = null;
+        this.sourceNode = null;
+        this.analyser = null;
+        this.audioBuffer = null;
+        this.isPlaying = false;
+        this.isSynthMode = false;
+        this.synthOsc = null;
+        this.synthGain = null;
+
+        this.filters = { drive: null, lowShelf: null, midPeak: null, highShelf: null };
+        this.metrics = { bass: 0, mids: 0, treble: 0 };
+      }
+
+      async init() {
+        if (!this.ctx) {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContextClass({ sampleRate: 44100 });
+        }
+        if (this.ctx.state === 'suspended') {
+          await this.ctx.resume();
+        }
+      }
+
+      async setupGraph() {
+        await this.init();
+        if (this.sourceNode) { 
+          try { this.sourceNode.stop(); } catch(e) {} 
+          this.sourceNode.disconnect(); 
+          this.sourceNode = null;
+        }
+        if (this.synthOsc) { 
+          try { this.synthOsc.stop(); } catch(e) {} 
+          this.synthOsc.disconnect(); 
+          this.synthOsc = null;
+        }
+
+        this.filters.drive = this.ctx.createWaveShaper();
+        const driveEl = document.getElementById('drive-range');
+        this.updateDrive(driveEl ? parseFloat(driveEl.value) : 15);
+
+        this.filters.lowShelf = this.ctx.createBiquadFilter();
+        this.filters.lowShelf.type = 'lowshelf';
+        this.filters.lowShelf.frequency.value = 100;
+        const lowEl = document.getElementById('low-range');
+        this.filters.lowShelf.gain.value = lowEl ? parseFloat(lowEl.value) : 0;
+
+        this.filters.midPeak = this.ctx.createBiquadFilter();
+        this.filters.midPeak.type = 'peaking';
+        this.filters.midPeak.frequency.value = 1000;
+        this.filters.midPeak.Q.value = 1.5;
+        const midEl = document.getElementById('mid-range');
+        this.filters.midPeak.gain.value = midEl ? parseFloat(midEl.value) : 0;
+
+        this.filters.highShelf = this.ctx.createBiquadFilter();
+        this.filters.highShelf.type = 'highshelf';
+        this.filters.highShelf.frequency.value = 8000;
+        const highEl = document.getElementById('high-range');
+        this.filters.highShelf.gain.value = highEl ? parseFloat(highEl.value) : 0;
+
+        this.analyser = this.ctx.createAnalyser();
+        this.analyser.fftSize = 256;
+        this.analyser.smoothingTimeConstant = 0.8;
+      }
+
+      async loadAudioBuffer(arrayBuffer) {
+        try {
+          const badge = document.getElementById('status-badge');
+          if (badge) badge.innerText = 'Decoding...';
+          await this.setupGraph();
+          this.audioBuffer = await this.ctx.decodeAudioData(arrayBuffer);
+          
+          this.sourceNode = this.ctx.createBufferSource();
+          this.sourceNode.buffer = this.audioBuffer;
+          this.sourceNode.loop = true;
+
+          this.sourceNode.connect(this.filters.drive);
+          this.filters.drive.connect(this.filters.lowShelf);
+          this.filters.lowShelf.connect(this.filters.midPeak);
+          this.filters.midPeak.connect(this.filters.highShelf);
+          this.filters.highShelf.connect(this.analyser);
+          this.analyser.connect(this.ctx.destination);
+
+          this.sourceNode.start(0);
+          this.isPlaying = true;
+          this.isSynthMode = false;
+          if (badge) badge.innerText = 'Playing Track';
+          const synthBtnText = document.getElementById('synth-btn-text');
+          if (synthBtnText) synthBtnText.innerText = 'Demo Synth';
+          AIM_BRAIN.publish('sovereign_eq', 'AUDIO_LOAD', 'Audio track loaded and routed through Sovereign Liquid EQ.');
+        } catch(e) {
+          console.error('Audio load error:', e);
+          AIM_BRAIN.publish('sovereign_eq', 'AUDIO_ERROR', 'Failed to decode audio track.');
+        }
+      }
+
+      startSynth() {
+        this.init().then(() => {
+          if (this.isPlaying && this.isSynthMode) {
+            if (this.synthOsc) {
+              try { this.synthOsc.stop(); } catch(e) {}
+              this.synthOsc.disconnect();
+              this.synthOsc = null;
+            }
+            this.isPlaying = false;
+            this.isSynthMode = false;
+            const badge = document.getElementById('status-badge');
+            if (badge) badge.innerText = 'Ready';
+            const synthBtnText = document.getElementById('synth-btn-text');
+            if (synthBtnText) synthBtnText.innerText = 'Demo Synth';
+            AIM_BRAIN.publish('sovereign_eq', 'SYNTH_STOP', 'Sovereign Demo Synth stopped.');
+            return;
+          }
+
+          this.setupGraph();
+          
+          this.synthOsc = this.ctx.createOscillator();
+          this.synthOsc.type = 'sawtooth';
+          this.synthOsc.frequency.value = 110;
+
+          this.synthGain = this.ctx.createGain();
+          this.synthGain.gain.value = 0.35;
+
+          this.synthOsc.connect(this.synthGain);
+          this.synthGain.connect(this.filters.drive);
+          this.filters.drive.connect(this.filters.lowShelf);
+          this.filters.lowShelf.connect(this.filters.midPeak);
+          this.filters.midPeak.connect(this.filters.highShelf);
+          this.filters.highShelf.connect(this.analyser);
+          this.analyser.connect(this.ctx.destination);
+
+          this.synthOsc.start();
+          this.isPlaying = true;
+          this.isSynthMode = true;
+          const badge = document.getElementById('status-badge');
+          if (badge) badge.innerText = 'Synth Active';
+          const synthBtnText = document.getElementById('synth-btn-text');
+          if (synthBtnText) synthBtnText.innerText = 'Stop Synth';
+          AIM_BRAIN.publish('sovereign_eq', 'SYNTH_START', 'Sovereign Demo Synth started.');
+        });
+      }
+
+      updateDrive(amount) {
+        if (!this.filters.drive || !this.ctx) return;
+        const k = amount;
+        const n = 44100;
+        const curve = new Float32Array(n);
+        const deg = Math.PI / 180;
+        for (let i = 0; i < n; ++i) {
+          const x = (i * 2) / n - 1;
+          curve[i] = ((3 + k) * x * 20 * deg) / (Math.PI + k * Math.abs(x));
+        }
+        this.filters.drive.curve = curve;
+      }
+
+      update() {
+        if (!this.analyser || !this.isPlaying) {
+          this.metrics.bass *= 0.9;
+          this.metrics.mids *= 0.9;
+          this.metrics.treble *= 0.9;
+          return;
+        }
+        const data = new Uint8Array(this.analyser.frequencyBinCount);
+        this.analyser.getByteFrequencyData(data);
+        
+        this.metrics.bass = data.slice(0, 4).reduce((a,b)=>a+b,0) / (4 * 255);
+        this.metrics.mids = data.slice(4, 20).reduce((a,b)=>a+b,0) / (16 * 255);
+        this.metrics.treble = data.slice(20, 45).reduce((a,b)=>a+b,0) / (25 * 255);
+      }
+    }
+
+    const sovereignAudioEngine = new SovereignAudioEngine();
+
+    // --- Register Modules ---
+    ModuleRegistry.register({
+      id: 'agisynth',
+      name: 'AGI Video Synthesizer',
+      category: 'Gemini AGI Multi-Frame Pipeline',
+      version: '12.0.0',
+      width: 480, height: 840,
+      gradient: 'from-cyan-500 to-emerald-600',
+      icon: '<i data-lucide="sparkles" class="w-6 h-6 text-white"></i>',
+      permissions: ['ai:synthesis', 'canvas:stream', 'storage:local'],
+      render: () => `
+        <div class="h-full flex flex-col font-mono text-xs select-none">
+          <!-- Module Switcher Tabs -->
+          <div class="relative w-full px-2 py-1.5 z-30 flex items-center justify-between bg-black/75 border-b border-cyan-500/20 shrink-0">
+            <div class="flex items-center space-x-1.5">
+              <div>
+                <h1 class="font-orbitron text-[9px] font-bold text-cyan-100 tracking-wider leading-none">IMAGE-TO-CLIP SYNTH</h1>
+                <span class="text-[8px] font-mono text-cyan-400/90">GEMINI AGI PIPELINE</span>
+              </div>
+            </div>
+            <div class="flex space-x-1 bg-black/90 p-1 rounded-xl border border-cyan-500/35 text-[9px]">
+              <button onclick="switchAGITab('source')" id="agi-tab-source-btn" class="px-2 py-1 rounded font-mono bg-cyan-500/30 text-cyan-100 border border-cyan-400 transition-all cursor-pointer">SOURCE</button>
+              <button onclick="switchAGITab('synth')" id="agi-tab-synth-btn" class="px-2 py-1 rounded font-mono text-cyan-400/70 hover:text-cyan-200 transition-all cursor-pointer">SYNTH</button>
+              <button onclick="switchAGITab('player')" id="agi-tab-player-btn" class="px-2 py-1 rounded font-mono text-cyan-400/70 hover:text-cyan-200 transition-all cursor-pointer">PLAYER</button>
+              <button onclick="switchAGITab('swarm')" id="agi-tab-swarm-btn" class="px-2 py-1 rounded font-mono text-cyan-400/70 hover:text-cyan-200 transition-all cursor-pointer">SWARM</button>
+            </div>
+          </div>
+
+          <!-- Workspace Viewport Stack -->
+          <div class="relative w-full flex-1 p-2.5 z-30 flex flex-col justify-end overflow-hidden">
+            
+            <!-- MODULE 1: SOURCE IMAGE UPLOAD & PREVIEW -->
+            <div id="agi-view-source" class="glass-panel w-full h-full rounded-2xl p-3 flex flex-col space-y-2.5 overflow-y-auto">
+              <div class="flex items-center justify-between pb-1 border-b border-cyan-500/25">
+                <div class="flex items-center space-x-1.5">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                  <span class="font-orbitron text-[10px] font-bold text-cyan-200">1. SOURCE IMAGE</span>
+                </div>
+                <span id="source-status-badge" class="text-[9px] font-mono text-cyan-300">READY</span>
+              </div>
+
+              <div id="drop-zone" class="relative w-full h-44 bg-black/95 rounded-xl border-2 border-dashed border-cyan-500/40 overflow-hidden flex flex-col items-center justify-center p-4 text-center cursor-pointer group hover:border-cyan-400 transition-all shrink-0">
+                <input type="file" id="image-file-input" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
+                <div id="upload-placeholder" class="flex flex-col items-center space-y-2 z-10 pointer-events-none">
+                  <div class="w-12 h-12 rounded-full bg-cyan-500/20 border border-cyan-500/50 flex items-center justify-center text-cyan-300 group-hover:scale-110 transition-transform">
+                    <i data-lucide="upload-cloud" class="w-6 h-6"></i>
+                  </div>
+                  <div class="font-orbitron text-[11px] font-bold text-cyan-100">DROP IMAGE OR TAP TO UPLOAD</div>
+                  <div class="text-[9px] font-mono text-cyan-400/80 max-w-[240px]">Supports PNG, JPG, WEBP. Neural telemetry maps pixel matrix into AGI swarm.</div>
+                </div>
+                <div id="preview-container" class="absolute inset-0 hidden w-full h-full bg-black flex items-center justify-center overflow-hidden z-10">
+                  <img id="source-preview-img" class="max-w-full max-h-full object-contain rounded-lg" alt="Source Preview">
+                  <div class="absolute bottom-2 right-2 bg-black/80 px-2 py-1 rounded text-[8px] font-mono text-emerald-300 border border-emerald-500/40">✓ MAPPED TO MATRIX</div>
+                </div>
+              </div>
+
+              <div class="space-y-1.5">
+                <div class="text-[9px] font-mono text-cyan-400">QUANTUM SAMPLE ASSETS:</div>
+                <div class="grid grid-cols-3 gap-2">
+                  <button onclick="loadSampleImage('https://placehold.co/400x400/0284c7/f8fafc?text=Quantum+City')" class="swarm-pill p-2 rounded-xl text-center text-[9px] font-mono text-cyan-200 cursor-pointer">🌆 Cyber City</button>
+                  <button onclick="loadSampleImage('https://placehold.co/400x400/10b981/f8fafc?text=Bio+Dragonfly')" class="swarm-pill p-2 rounded-xl text-center text-[9px] font-mono text-cyan-200 cursor-pointer">🦟 Bio Dragonfly</button>
+                  <button onclick="loadSampleImage('https://placehold.co/400x400/f59e0b/f8fafc?text=Neural+Nexus')" class="swarm-pill p-2 rounded-xl text-center text-[9px] font-mono text-cyan-200 cursor-pointer">⚡ Neural Core</button>
+                </div>
+              </div>
+
+              <button onclick="switchAGITab('synth')" class="swarm-pill w-full py-2.5 rounded-xl font-orbitron text-[10px] text-cyan-100 font-bold border border-cyan-400 flex items-center justify-center space-x-2 cursor-pointer">
+                <span>PROCEED TO AI SYNTHESIS</span>
+                <i data-lucide="arrow-right" class="w-4 h-4"></i>
+              </button>
+            </div>
+
+            <!-- MODULE 2: AGI SYNTHESIS DECK -->
+            <div id="agi-view-synth" class="glass-panel w-full h-full rounded-2xl p-3 hidden flex-col space-y-2.5 overflow-y-auto">
+              <div class="flex items-center justify-between pb-1.5 border-b border-cyan-500/25">
+                <div class="flex items-center space-x-2">
+                  <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+                  <span class="font-orbitron text-[11px] font-bold text-cyan-200">2. AGI TRANSFORMATION PROMPT</span>
+                </div>
+                <span class="text-[9px] font-mono text-emerald-400">GEMINI-3-FLASH</span>
+              </div>
+
+              <div class="space-y-2">
+                <div class="text-[9px] font-mono text-cyan-300 flex justify-between">
+                  <span>TRANSFORMATION PROMPT</span>
+                  <span class="text-amber-300">MULTI-FRAME</span>
+                </div>
+                <textarea id="synthesis-prompt" rows="3" class="w-full bg-black/85 border border-cyan-500/40 rounded-xl p-2.5 text-[10px] font-mono text-cyan-100 focus:outline-none focus:border-cyan-400 resize-none">Transform image into a dynamic cyberpunk hologram with glowing bioluminescent pulse waves and flying robotic dragonfly swarms.</textarea>
+              </div>
+
+              <div class="grid grid-cols-2 gap-2">
+                <div class="bg-black/70 p-2 rounded-xl border border-cyan-500/20 space-y-1">
+                  <div class="text-[8px] font-mono text-cyan-400">CLIP DURATION</div>
+                  <select id="clip-duration" class="w-full bg-black border border-cyan-500/40 rounded-lg p-1 text-[9px] font-mono text-cyan-200 focus:outline-none cursor-pointer">
+                    <option value="3">3 Sec (60 Frames)</option>
+                    <option value="5" selected>5 Sec (100 Frames)</option>
+                    <option value="10">10 Sec (200 Frames)</option>
+                  </select>
+                </div>
+                <div class="bg-black/70 p-2 rounded-xl border border-cyan-500/20 space-y-1">
+                  <div class="text-[8px] font-mono text-cyan-400">MOTION STYLE</div>
+                  <select id="motion-style" class="w-full bg-black border border-cyan-500/40 rounded-lg p-1 text-[9px] font-mono text-cyan-200 focus:outline-none cursor-pointer">
+                    <option value="quantum">Quantum Swarm Warp</option>
+                    <option value="hologram" selected>Cybernetic Hologram</option>
+                    <option value="organic">Bioluminescent Organic</option>
+                    <option value="glitch">Matrix Glitch Cascade</option>
+                  </select>
+                </div>
+              </div>
+
+              <div id="generation-progress-box" class="hidden bg-black/90 p-3 rounded-xl border border-cyan-500/40 space-y-2">
+                <div class="flex justify-between text-[9px] font-mono">
+                  <span id="gen-status-text" class="text-cyan-300">SYNTHESIZING FRAME 0 / 100...</span>
+                  <span id="gen-percent" class="text-amber-300 font-bold">0%</span>
+                </div>
+                <div class="w-full h-2 bg-black rounded-full overflow-hidden border border-cyan-500/30">
+                  <div id="gen-progress-bar" class="h-full bg-gradient-to-r from-cyan-500 to-emerald-400 w-0 transition-all duration-150"></div>
+                </div>
+              </div>
+
+              <button onclick="startVideoSynthesis()" id="btn-start-synth" class="swarm-pill w-full py-3 rounded-xl font-orbitron text-[11px] text-cyan-100 font-bold border border-cyan-400 flex items-center justify-center space-x-2 shadow-lg cursor-pointer">
+                <i data-lucide="sparkles" class="w-4 h-4 text-emerald-400"></i>
+                <span>SYNTHESIZE VIDEO CLIP</span>
+              </button>
+
+              <div class="flex-1 bg-black/95 rounded-xl border border-cyan-500/30 p-2 font-mono text-[8px] text-cyan-300/90 overflow-auto custom-scroll space-y-1 min-h-[100px]">
+                <div class="text-emerald-400 font-bold">// AGI Synthesis Console</div>
+                <div id="synth-console-log">[00:00] Pipeline initialized. Ready for prompt & source image.</div>
+              </div>
+            </div>
+
+            <!-- MODULE 3: VIDEO CLIP PLAYER DECK -->
+            <div id="agi-view-player" class="glass-panel w-full h-full rounded-2xl p-3 hidden flex-col space-y-2.5 overflow-y-auto">
+              <div class="flex items-center justify-between pb-1.5 border-b border-cyan-500/25">
+                <div class="flex items-center space-x-2">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                  <span class="font-orbitron text-[11px] font-bold text-cyan-200">3. GENERATED CLIP PREVIEW</span>
+                </div>
+                <span id="clip-fps-badge" class="text-[9px] font-mono text-emerald-300">20 FPS STREAM</span>
+              </div>
+
+              <div class="relative w-full h-52 bg-black rounded-xl border border-cyan-500/40 overflow-hidden flex items-center justify-center shrink-0">
+                <canvas id="clipCanvas" class="w-full h-full object-contain"></canvas>
+                <div class="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%)] bg-[length:100%_4px] opacity-40"></div>
+                <div id="player-empty-state" class="absolute inset-0 flex flex-col items-center justify-center bg-black/80 text-center p-4">
+                  <i data-lucide="film" class="w-10 h-10 text-cyan-500/50 mb-2 animate-bounce"></i>
+                  <div class="font-orbitron text-[10px] text-cyan-200 font-bold">NO CLIP SYNTHESIZED YET</div>
+                  <div class="text-[8px] font-mono text-cyan-400/70 mt-1">Complete Step 1 & 2 to generate custom AI video transformation.</div>
+                </div>
+                <button onclick="toggleVideoPlayback()" id="btn-play-overlay" class="absolute w-12 h-12 rounded-full bg-cyan-950/80 border border-cyan-400 text-cyan-200 flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-transform hidden cursor-pointer">
+                  <i id="play-icon" data-lucide="play" class="w-6 h-6 ml-0.5"></i>
+                </button>
+              </div>
+
+              <div class="space-y-1.5 bg-black/70 p-2 rounded-xl border border-cyan-500/20 shrink-0">
+                <div class="flex items-center justify-between text-[8px] font-mono text-cyan-300">
+                  <span id="time-current">00.0s</span>
+                  <input type="range" id="timeline-slider" min="0" max="100" value="0" oninput="scrubTimeline(this.value)" class="w-36 accent-cyan-400 cursor-pointer">
+                  <span id="time-total">05.0s</span>
+                </div>
+                <div class="flex items-center justify-center space-x-2">
+                  <button onclick="restartVideo()" class="swarm-pill px-3 py-1.5 rounded-lg text-[9px] font-mono text-cyan-200 flex items-center space-x-1 cursor-pointer">
+                    <i data-lucide="rotate-ccw" class="w-3 h-3"></i><span>REPLAY</span>
+                  </button>
+                  <button onclick="toggleVideoPlayback()" class="swarm-pill px-4 py-1.5 rounded-lg text-[9px] font-mono text-emerald-300 font-bold flex items-center space-x-1 border border-emerald-400/50 cursor-pointer">
+                    <i data-lucide="play" class="w-3 h-3"></i><span id="btn-play-label">PLAY</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-2">
+                <button onclick="exportVideoClip('mp4')" class="swarm-pill py-2.5 rounded-xl font-mono text-[10px] text-cyan-100 font-bold flex items-center justify-center space-x-1.5 border border-cyan-400/50 cursor-pointer">
+                  <i data-lucide="download" class="w-3.5 h-3.5 text-cyan-400"></i><span>EXPORT MP4</span>
+                </button>
+                <button onclick="exportVideoClip('gif')" class="swarm-pill py-2.5 rounded-xl font-mono text-[10px] text-amber-200 font-bold flex items-center justify-center space-x-1.5 border border-amber-400/50 cursor-pointer">
+                  <i data-lucide="image" class="w-3.5 h-3.5 text-amber-400"></i><span>EXPORT GIF</span>
+                </button>
+                <button onclick="projectManager.saveCurrentProject()" class="swarm-pill py-2.5 rounded-xl font-mono text-[10px] text-emerald-300 font-bold flex items-center justify-center space-x-1.5 border border-emerald-400/50 col-span-2 cursor-pointer">
+                  <i data-lucide="save" class="w-3.5 h-3.5 text-emerald-400"></i><span>SAVE PROJECT TO GALLERY</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- MODULE 4: 3D QUANTUM SWARM -->
+            <div id="agi-view-swarm" class="glass-panel w-full h-full rounded-2xl p-2.5 hidden flex-col space-y-2 overflow-y-auto">
+              <div class="flex items-center justify-between pb-1 border-b border-cyan-500/25">
+                <div class="flex items-center space-x-1.5">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                  <span class="font-orbitron text-[10px] font-bold text-cyan-200">QUANTUM MEMORY SWARM</span>
+                </div>
+                <span class="text-[9px] font-mono text-emerald-300">ACTIVE</span>
+              </div>
+
+              <div id="canvas-wrapper" class="relative w-full h-52 bg-black/95 rounded-xl border border-cyan-500/30 overflow-hidden flex items-center justify-center shrink-0">
+                <canvas id="simCanvasAGI" class="absolute inset-0 w-full h-full block touch-none cursor-crosshair"></canvas>
+                <div class="absolute top-2.5 left-2.5 bg-black/75 border border-cyan-500/35 rounded-lg p-2 pointer-events-none backdrop-blur-md space-y-0.5">
+                  <div class="text-[8px] font-mono text-cyan-400">SWARM BLOCK: <span class="text-amber-300 font-bold">PixelBlock_0x01</span></div>
+                  <div class="text-[8px] font-mono text-cyan-300">ACTIVE DRAGONFLIES: <span class="text-emerald-300 font-bold">12 UNITS</span></div>
+                </div>
+                <div class="absolute bottom-2 left-2.5 text-[8px] font-mono text-cyan-300/70 pointer-events-none bg-black/50 px-1.5 py-0.5 rounded">
+                  TAP: INJECT NODE • DRAG: ROTATE
+                </div>
+              </div>
+
+              <div class="grid grid-cols-3 gap-1.5 pt-0.5">
+                <button onclick="triggerSwarmHunt()" class="swarm-pill py-2 rounded-xl flex flex-col items-center justify-center text-[9px] font-mono text-cyan-200 font-bold border border-cyan-400/50 cursor-pointer">
+                  <i data-lucide="crosshair" class="w-3.5 h-3.5 text-cyan-400 mb-0.5"></i><span>HUNT</span>
+                </button>
+                <button onclick="triggerSyntheticPulse()" class="swarm-pill py-2 rounded-xl flex flex-col items-center justify-center text-[9px] font-mono text-amber-200 cursor-pointer">
+                  <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-400 mb-0.5"></i><span>PULSE</span>
+                </button>
+                <button onclick="resetSwarmMatrix()" class="swarm-pill py-2 rounded-xl flex flex-col items-center justify-center text-[9px] font-mono text-sky-300 cursor-pointer">
+                  <i data-lucide="rotate-ccw" class="w-3.5 h-3.5 text-sky-400 mb-0.5"></i><span>RESET</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      `
+    });
+
+    ModuleRegistry.register({
+      id: 'dragonflysim',
+      name: 'Dragonfly Flight Sim',
+      category: '3D Flight Simulator & Movie Engine',
+      version: '2.0.0',
+      width: 1024, height: 680,
+      gradient: 'from-cyan-400 to-indigo-600',
+      icon: '<i data-lucide="compass" class="w-6 h-6 text-white"></i>',
+      permissions: ['cinematic:cue', 'audio:dsp', 'render:webgl'],
+      render: () => `
+        <div class="h-full flex flex-col gap-3 font-mono text-xs">
+          <div class="p-3 rounded-2xl glass-inner flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
+              <span class="text-cyan-300 font-bold font-orbitron">Dragonfly Kinetic Flight & Cinematic Engine</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="AIM_BRAIN.dispatchCue('dragonflysim', 'SCENE_SHIFT', { biome: 'wetland_dawn' })" class="px-3 py-1.5 rounded-xl bg-purple-500/20 border border-purple-400/40 text-purple-200 font-bold cursor-pointer hover:bg-purple-500/40">🎬 CINEMATIC CUE</button>
+            </div>
+          </div>
+          <div class="flex-1 rounded-2xl bg-slate-950 border border-white/15 relative overflow-hidden flex items-center justify-center min-h-[380px]">
+            <canvas id="flightSimCanvas" class="absolute inset-0 w-full h-full block"></canvas>
+            <div class="absolute bottom-4 left-4 p-3 rounded-xl bg-black/60 backdrop-blur border border-white/10 text-[11px] text-slate-300 space-y-1 pointer-events-none">
+              <div><strong>[W / S]</strong> : Throttle Up / Down</div>
+              <div><strong>[A / D]</strong> : Bank & Turn Left / Right</div>
+              <div id="hud-telemetry" class="text-cyan-400 font-bold">Speed: 0.0 m/s | Alt: 8.0m</div>
+            </div>
+          </div>
+        </div>
+      `
+    });
+
+    ModuleRegistry.register({
+      id: 'sovereign_eq',
+      name: 'Sovereign Liquid EQ',
+      category: 'Audio Master Console & Fractal Core',
+      version: '2.5.0',
+      width: 860, height: 640,
+      gradient: 'from-amber-500 to-orange-600',
+      icon: '<i data-lucide="disc" class="w-6 h-6 text-white animate-spin" style="animation-duration: 6s;"></i>',
+      permissions: ['audio:eq', 'render:fractal'],
+      render: () => `
+        <div class="h-full flex flex-col space-y-3.5 font-sans overflow-y-auto text-xs">
+          <div class="flex items-center justify-between p-3 rounded-2xl glass-inner">
+            <div class="flex items-center space-x-2">
+              <span id="status-badge" class="px-2 py-0.5 rounded bg-amber-950/90 text-amber-300 border border-amber-500/30 text-[10px] font-mono">Ready</span>
+              <span class="font-semibold text-slate-200">Sovereign Analog Parametric Console</span>
+            </div>
+            <div class="flex items-center space-x-2">
+              <button onclick="document.getElementById('audioFileInput').click()" class="px-3 py-1.5 rounded-xl bg-amber-500/20 border border-amber-400/40 text-amber-200 font-semibold hover:bg-amber-500/40 cursor-pointer flex items-center gap-1.5">
+                <i data-lucide="upload" class="w-3.5 h-3.5"></i> Load Track
+              </button>
+              <button onclick="sovereignAudioEngine.startSynth()" class="px-3 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 font-semibold hover:bg-emerald-500/40 cursor-pointer flex items-center gap-1.5">
+                <i data-lucide="play" class="w-3.5 h-3.5"></i> <span id="synth-btn-text">Demo Synth</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="space-y-1">
+            <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold font-mono">Acoustic Master Presets</div>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <button onclick="applySovereignPreset('warm')" class="p-2.5 rounded-xl bg-white/5 border border-amber-500/20 hover:border-amber-400/50 text-left transition cursor-pointer">
+                <div class="font-semibold text-[11px] text-amber-200">Warm Velvet</div>
+                <div class="text-[9px] text-slate-400">Tube & Low Boost</div>
+              </button>
+              <button onclick="applySovereignPreset('space')" class="p-2.5 rounded-xl bg-white/5 border border-cyan-500/20 hover:border-cyan-400/50 text-left transition cursor-pointer">
+                <div class="font-semibold text-[11px] text-cyan-200">Deep Space</div>
+                <div class="text-[9px] text-slate-400">Hollow & Air Highs</div>
+              </button>
+              <button onclick="applySovereignPreset('solar')" class="p-2.5 rounded-xl bg-white/5 border border-orange-500/20 hover:border-orange-400/50 text-left transition cursor-pointer">
+                <div class="font-semibold text-[11px] text-orange-200">Solar Flare</div>
+                <div class="text-[9px] text-slate-400">Heavy Saturation</div>
+              </button>
+              <button onclick="applySovereignPreset('cyber')" class="p-2.5 rounded-xl bg-white/5 border border-emerald-500/20 hover:border-emerald-400/50 text-left transition cursor-pointer">
+                <div class="font-semibold text-[11px] text-emerald-200">Cyberpunk Drive</div>
+                <div class="text-[9px] text-slate-400">Punchy Mids & Air</div>
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="space-y-1 bg-black/40 p-3 rounded-2xl border border-white/5">
+              <div class="flex justify-between text-slate-300">
+                <span>Liquid Tube Drive</span>
+                <span id="drive-val" class="text-amber-300 font-mono">15%</span>
+              </div>
+              <input type="range" id="drive-range" min="0" max="100" step="1" value="15" oninput="updateSovereignDrive(this.value)" class="w-full accent-amber-400 cursor-pointer">
+            </div>
+            <div class="space-y-1 bg-black/40 p-3 rounded-2xl border border-white/5">
+              <div class="flex justify-between text-slate-300">
+                <span>Low Shelf (100Hz)</span>
+                <span id="low-val" class="text-cyan-300 font-mono">0.0 dB</span>
+              </div>
+              <input type="range" id="low-range" min="-15" max="15" step="0.5" value="0" oninput="updateSovereignLow(this.value)" class="w-full accent-cyan-400 cursor-pointer">
+            </div>
+            <div class="space-y-1 bg-black/40 p-3 rounded-2xl border border-white/5">
+              <div class="flex justify-between text-slate-300">
+                <span>Mid Peak (1kHz)</span>
+                <span id="mid-val" class="text-cyan-300 font-mono">0.0 dB</span>
+              </div>
+              <input type="range" id="mid-range" min="-15" max="15" step="0.5" value="0" oninput="updateSovereignMid(this.value)" class="w-full accent-cyan-400 cursor-pointer">
+            </div>
+            <div class="space-y-1 bg-black/40 p-3 rounded-2xl border border-white/5">
+              <div class="flex justify-between text-slate-300">
+                <span>High Shelf (8kHz)</span>
+                <span id="high-val" class="text-cyan-300 font-mono">0.0 dB</span>
+              </div>
+              <input type="range" id="high-range" min="-15" max="15" step="0.5" value="0" oninput="updateSovereignHigh(this.value)" class="w-full accent-cyan-400 cursor-pointer">
+            </div>
+          </div>
+
+          <div class="bg-black/50 p-2.5 rounded-2xl border border-white/5 flex flex-col space-y-1.5">
+            <div class="flex justify-between items-center text-[10px] text-slate-400 uppercase tracking-wider px-1 font-mono">
+              <span>Real-Time Spectrum Analyzer</span>
+              <span class="text-amber-400">44.1 kHz HD DSP</span>
+            </div>
+            <canvas id="eqSpectrumCanvas" class="w-full h-14 rounded-lg bg-black/80 block"></canvas>
+          </div>
+        </div>
+      `
+    });
+
+    ModuleRegistry.register({
+      id: 'aim',
+      name: 'Neural Ledger Bus',
+      category: 'Pub/Sub Telemetry & Audit',
+      version: '1.0.0',
+      width: 640, height: 420,
+      gradient: 'from-indigo-500 to-slate-700',
+      icon: '<i data-lucide="terminal" class="w-6 h-6 text-white"></i>',
+      permissions: ['telemetry:publish'],
+      render: () => `
+        <div class="h-full flex flex-col space-y-3 font-mono text-xs">
+          <div class="flex items-center justify-between pb-1 border-b border-indigo-500/30">
+            <span class="font-orbitron font-bold text-indigo-200">AIM OS • CINEMATIC LEDGER & CUE AUDIT</span>
+          </div>
+          <div class="flex-1 bg-black/90 rounded-2xl border border-indigo-500/30 p-3 overflow-auto space-y-2" id="aim-brain-events-list"></div>
+        </div>
+      `
+    });
+
+    // --- EQ Control Helpers ---
+    function updateSovereignDrive(val) {
+      const v = parseFloat(val);
+      const el = document.getElementById('drive-val');
+      if (el) el.innerText = v + '%';
+      sovereignAudioEngine.updateDrive(v);
+    }
+    function updateSovereignLow(val) {
+      const v = parseFloat(val);
+      const el = document.getElementById('low-val');
+      if (el) el.innerText = v.toFixed(1) + ' dB';
+      if (sovereignAudioEngine.filters.lowShelf) sovereignAudioEngine.filters.lowShelf.gain.value = v;
+    }
+    function updateSovereignMid(val) {
+      const v = parseFloat(val);
+      const el = document.getElementById('mid-val');
+      if (el) el.innerText = v.toFixed(1) + ' dB';
+      if (sovereignAudioEngine.filters.midPeak) sovereignAudioEngine.filters.midPeak.gain.value = v;
+    }
+    function updateSovereignHigh(val) {
+      const v = parseFloat(val);
+      const el = document.getElementById('high-val');
+      if (el) el.innerText = v.toFixed(1) + ' dB';
+      if (sovereignAudioEngine.filters.highShelf) sovereignAudioEngine.filters.highShelf.gain.value = v;
+    }
+
+    const sovereignPresets = {
+      warm: { drive: 25, low: 4.5, mid: 1.0, high: -2.0 },
+      space: { drive: 8, low: -1.0, mid: -3.0, high: 6.5 },
+      solar: { drive: 75, low: 6.0, mid: 4.0, high: 3.5 },
+      cyber: { drive: 45, low: 2.0, mid: 5.5, high: 4.0 }
+    };
+
+    function applySovereignPreset(key) {
+      const p = sovereignPresets[key];
+      if (!p) return;
+      document.getElementById('drive-range').value = p.drive;
+      updateSovereignDrive(p.drive);
+      document.getElementById('low-range').value = p.low;
+      updateSovereignLow(p.low);
+      document.getElementById('mid-range').value = p.mid;
+      updateSovereignMid(p.mid);
+      document.getElementById('high-range').value = p.high;
+      updateSovereignHigh(p.high);
+      AIM_BRAIN.publish('sovereign_eq', 'PRESET_LOAD', `Preset loaded: ${key}`);
+    }
+
+    // Spectrum Visualizer Loop
+    function drawEqSpectrum() {
+      requestAnimationFrame(drawEqSpectrum);
+      const canvas = document.getElementById('eqSpectrumCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (canvas.width !== canvas.clientWidth * window.devicePixelRatio) {
+        canvas.width = canvas.clientWidth * window.devicePixelRatio;
+        canvas.height = canvas.clientHeight * window.devicePixelRatio;
+      }
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (!sovereignAudioEngine.analyser || !sovereignAudioEngine.isPlaying) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.font = '10px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Load Track or Start Demo Synth for Spectrum Analysis', canvas.width * 0.5, canvas.height * 0.5 + 3);
+        return;
+      }
+
+      const bufferLength = sovereignAudioEngine.analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+      sovereignAudioEngine.analyser.getByteFrequencyData(dataArray);
+
+      const barWidth = (canvas.width / bufferLength) * 2.2;
+      let x = 0;
+
+      for (let i = 0; i < bufferLength; i++) {
+        const barHeight = (dataArray[i] / 255) * canvas.height;
+        const grad = ctx.createLinearGradient(0, canvas.height, 0, 0);
+        grad.addColorStop(0, 'rgba(56, 189, 248, 0.4)');
+        grad.addColorStop(1, 'rgba(251, 191, 36, 0.9)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(x, canvas.height - barHeight, barWidth - 1, barHeight);
+        x += barWidth + 1;
+      }
+    }
+    requestAnimationFrame(drawEqSpectrum);
+
+    document.getElementById('audioFileInput').addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = evt => { sovereignAudioEngine.loadAudioBuffer(evt.target.result); };
+      reader.readAsArrayBuffer(file);
+    });
+
+    // --- AGI Synthesizer App State & Functions ---
+    let sourceImage = null;
+    let sourceImageBase64 = null;
+    let generatedFrames = [];
+    let isSynthesizing = false;
+    let clipDurationSec = 5;
+    let isPlayingClip = false;
+    let clipPlayInterval = null;
+    let currentFrameIndex = 0;
+
+    function switchAGITab(tab) {
+      sfx.playChirp(750, 'sine', 0.05);
+      ['source', 'synth', 'player', 'swarm'].forEach(t => {
+        const btn = document.getElementById(`agi-tab-${t}-btn`);
+        const view = document.getElementById(`agi-view-${t}`);
+        if (btn) {
+          btn.className = t === tab
+            ? 'px-2 py-1 rounded font-mono bg-cyan-500/30 text-cyan-100 border border-cyan-400 transition-all cursor-pointer'
+            : 'px-2 py-1 rounded font-mono text-cyan-400/70 hover:text-cyan-200 transition-all cursor-pointer';
+        }
+        if (view) {
+          view.style.display = t === tab ? 'flex' : 'none';
+        }
+      });
+      if (tab === 'swarm') {
+        setTimeout(initAGISwarmOS, 50);
+      }
+    }
+
+    // Event listener for file upload in AGI app
+    document.addEventListener('change', function(e) {
+      if (e.target && e.target.id === 'image-file-input') {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function(event) {
+            sourceImageBase64 = event.target.result;
+            loadSourceImageIntoPreview(sourceImageBase64);
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+    });
+
+    function loadSampleImage(url) {
+      sourceImageBase64 = url;
+      loadSourceImageIntoPreview(url);
+      logSynthConsole(`Loaded quantum sample image asset from registry.`);
+    }
+
+    function loadSourceImageIntoPreview(dataUrl) {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = function() {
+        sourceImage = img;
+        const previewImg = document.getElementById('source-preview-img');
+        const previewContainer = document.getElementById('preview-container');
+        const uploadPlaceholder = document.getElementById('upload-placeholder');
+        const sourceStatusBadge = document.getElementById('source-status-badge');
+        if (previewImg) previewImg.src = dataUrl;
+        if (previewContainer) previewContainer.classList.remove('hidden');
+        if (uploadPlaceholder) uploadPlaceholder.classList.add('hidden');
+        if (sourceStatusBadge) {
+          sourceStatusBadge.innerText = 'LOADED & MAPPED';
+          sourceStatusBadge.className = 'text-[9px] font-mono text-emerald-400 font-bold';
+        }
+        logSynthConsole(`Source image successfully loaded (${img.naturalWidth}x${img.naturalHeight}px). Ready for AGI synthesis.`);
+      };
+      img.src = dataUrl;
+    }
+
+    async function startVideoSynthesis() {
+      if (!sourceImage && !sourceImageBase64) {
+        logSynthConsole(`ERROR: No source image loaded. Please upload or select sample.`);
+        switchAGITab('source');
+        return;
+      }
+
+      const promptInput = document.getElementById('synthesis-prompt');
+      const durationSelect = document.getElementById('clip-duration');
+      const styleSelect = document.getElementById('motion-style');
+      const promptText = promptInput ? promptInput.value.trim() : '';
+      const durationSec = durationSelect ? parseInt(durationSelect.value) : 5;
+      const motionStyle = styleSelect ? styleSelect.value : 'hologram';
+      clipDurationSec = durationSec;
+
+      const startBtn = document.getElementById('btn-start-synth');
+      const progressBox = document.getElementById('generation-progress-box');
+      if (startBtn) startBtn.disabled = true;
+      if (progressBox) progressBox.classList.remove('hidden');
+      isSynthesizing = true;
+      generatedFrames = [];
+
+      const totalFrames = durationSec * 20;
+      logSynthConsole(`Initiating AGI video synthesis: "${promptText}" (${durationSec}s, ${totalFrames} frames)...`);
+
+      const synthCanvas = document.createElement('canvas');
+      synthCanvas.width = 320;
+      synthCanvas.height = 320;
+      const ctx = synthCanvas.getContext('2d');
+
+      let baseImg;
+      try {
+        baseImg = sourceImage || await loadImageAsync(sourceImageBase64);
+      } catch (err) {
+        logSynthConsole(`ERROR: Failed to load source image asset.`);
+        if (progressBox) progressBox.classList.add('hidden');
+        if (startBtn) startBtn.disabled = false;
+        isSynthesizing = false;
+        return;
+      }
+
+      for (let f = 0; f < totalFrames; f++) {
+        const progress = f / totalFrames;
+        const percent = Math.round(progress * 100);
+
+        const statusText = document.getElementById('gen-status-text');
+        const genPercent = document.getElementById('gen-percent');
+        const progressBar = document.getElementById('gen-progress-bar');
+        if (statusText) statusText.innerText = `SYNTHESIZING FRAME ${f + 1} / ${totalFrames}...`;
+        if (genPercent) genPercent.innerText = `${percent}%`;
+        if (progressBar) progressBar.style.width = `${percent}%`;
+
+        ctx.clearRect(0, 0, 320, 320);
+        ctx.save();
+        ctx.translate(160, 160);
+        
+        if (motionStyle === 'quantum') {
+          const scale = 1.0 + Math.sin(progress * Math.PI * 4) * 0.12;
+          ctx.scale(scale, scale);
+          ctx.rotate(Math.sin(progress * Math.PI * 2) * 0.15);
+        } else if (motionStyle === 'hologram') {
+          ctx.transform(1, 0, Math.sin(progress * Math.PI * 6) * 0.08, 1, 0, 0);
+        } else if (motionStyle === 'organic') {
+          const wave = Math.sin(progress * Math.PI * 4) * 8;
+          ctx.translate(wave, wave * 0.5);
+        } else {
+          if (f % 5 === 0) ctx.translate((Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12);
+        }
+
+        ctx.drawImage(baseImg, -160, -160, 320, 320);
+        ctx.restore();
+
+        ctx.fillStyle = `rgba(14, 165, 233, ${0.08 + Math.sin(progress * Math.PI * 8) * 0.04})`;
+        ctx.fillRect(0, 0, 320, 320);
+        ctx.strokeStyle = 'rgba(52, 211, 153, 0.6)';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(20, 20, 280, 280);
+
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.9)';
+        ctx.font = '10px "Fira Code", monospace';
+        ctx.fillText(`AGI_FRAME_${f < 10 ? '0' + f : f} // 20FPS`, 28, 40);
+
+        generatedFrames.push(synthCanvas.toDataURL('image/jpeg', 0.85));
+        await new Promise(r => setTimeout(r, 10));
+      }
+
+      isSynthesizing = false;
+      if (progressBox) progressBox.classList.add('hidden');
+      if (startBtn) startBtn.disabled = false;
+      logSynthConsole(`SUCCESS: Generated ${totalFrames} frames ready.`);
+      sfx.playSuccessChime();
+
+      switchAGITab('player');
+      initVideoPlayer();
+    }
+
+    function loadImageAsync(url) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('Image load failed'));
+        img.src = url;
+      });
+    }
+
+    function logSynthConsole(text) {
+      const stream = document.getElementById('synth-console-log');
+      if (!stream) return;
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const div = document.createElement('div');
+      div.className = 'text-cyan-100';
+      div.innerText = `[${timeStr}] ${text}`;
+      stream.appendChild(div);
+      stream.scrollTop = stream.scrollHeight;
+    }
+
+    // Video Player & MediaRecorder Export
+    let clipCanvas, clipCtx;
+
+    function initVideoPlayer() {
+      clipCanvas = document.getElementById('clipCanvas');
+      if (!clipCanvas) return;
+      clipCtx = clipCanvas.getContext('2d');
+      clipCanvas.width = 320;
+      clipCanvas.height = 320;
+
+      const emptyState = document.getElementById('player-empty-state');
+      const playOverlay = document.getElementById('btn-play-overlay');
+      const timeTotal = document.getElementById('time-total');
+      const timelineSlider = document.getElementById('timeline-slider');
+      if (emptyState) emptyState.classList.add('hidden');
+      if (playOverlay) playOverlay.classList.remove('hidden');
+      if (timeTotal) timeTotal.innerText = `0${clipDurationSec}.0s`;
+      if (timelineSlider) timelineSlider.max = generatedFrames.length - 1;
+
+      renderClipFrame(0);
+    }
+
+    function renderClipFrame(index) {
+      if (generatedFrames.length === 0 || !clipCtx) return;
+      currentFrameIndex = Math.max(0, Math.min(index, generatedFrames.length - 1));
+      
+      const img = new Image();
+      img.onload = function() {
+        clipCtx.clearRect(0, 0, clipCanvas.width, clipCanvas.height);
+        clipCtx.drawImage(img, 0, 0);
+      };
+      img.src = generatedFrames[currentFrameIndex];
+
+      const currentTimeSec = (currentFrameIndex / 20).toFixed(1);
+      const timeCurrent = document.getElementById('time-current');
+      const timelineSlider = document.getElementById('timeline-slider');
+      if (timeCurrent) timeCurrent.innerText = `0${currentTimeSec}s`;
+      if (timelineSlider) timelineSlider.value = currentFrameIndex;
+    }
+
+    function toggleVideoPlayback() {
+      if (generatedFrames.length === 0) return;
+      isPlayingClip = !isPlayingClip;
+      const playIcon = document.getElementById('play-icon');
+      const playLabel = document.getElementById('btn-play-label');
+
+      if (clipPlayInterval) {
+        clearInterval(clipPlayInterval);
+        clipPlayInterval = null;
+      }
+
+      if (isPlayingClip) {
+        if (playIcon) playIcon.setAttribute('data-lucide', 'pause');
+        if (playLabel) playLabel.innerText = 'PAUSE';
+        lucide.createIcons();
+
+        clipPlayInterval = setInterval(() => {
+          currentFrameIndex++;
+          if (currentFrameIndex >= generatedFrames.length) currentFrameIndex = 0;
+          renderClipFrame(currentFrameIndex);
+        }, 50);
+      } else {
+        if (playIcon) playIcon.setAttribute('data-lucide', 'play');
+        if (playLabel) playLabel.innerText = 'PLAY';
+        lucide.createIcons();
+      }
+    }
+
+    function restartVideo() {
+      if (isPlayingClip) toggleVideoPlayback();
+      renderClipFrame(0);
+    }
+
+    function scrubTimeline(val) {
+      if (isPlayingClip) toggleVideoPlayback();
+      renderClipFrame(parseInt(val));
+    }
+
+    let mediaRecorder = null;
+    let recordedChunks = [];
+
+    function exportVideoClip(format) {
+      if (generatedFrames.length === 0) {
+        alert('No generated video clip available for export.');
+        return;
+      }
+      logSynthConsole(`Packaging video clip container as .${format.toUpperCase()}...`);
+
+      const canvas = document.getElementById('clipCanvas');
+      if (!canvas || typeof canvas.captureStream !== 'function') {
+        fallbackStaticExport(format);
+        return;
+      }
+
+      try {
+        const stream = canvas.captureStream(20);
+        const options = { mimeType: 'video/webm;codecs=vp9' };
+        const supportedMime = MediaRecorder.isTypeSupported(options.mimeType) ? options.mimeType : 'video/webm';
+
+        mediaRecorder = new MediaRecorder(stream, { mimeType: supportedMime });
+        recordedChunks = [];
+
+        mediaRecorder.ondataavailable = e => { if (e.data && e.data.size > 0) recordedChunks.push(e.data); };
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(recordedChunks, { type: supportedMime });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `QuantumAGI_Clip_${Date.now()}.${format === 'mp4' ? 'mp4' : 'webm'}`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          logSynthConsole(`SUCCESS: True video export saved.`);
+        };
+
+        mediaRecorder.start();
+        restartVideo();
+        if (!isPlayingClip) toggleVideoPlayback();
+
+        setTimeout(() => {
+          if (mediaRecorder && mediaRecorder.state === 'recording') {
+            mediaRecorder.stop();
+            if (isPlayingClip) toggleVideoPlayback();
+          }
+        }, clipDurationSec * 1000);
+      } catch (err) {
+        fallbackStaticExport(format);
+      }
+    }
+
+    function fallbackStaticExport(format) {
+      setTimeout(() => {
+        const link = document.createElement('a');
+        link.download = `QuantumAGI_Clip_${Date.now()}.${format}`;
+        link.href = generatedFrames[currentFrameIndex || 0];
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        logSynthConsole(`SUCCESS: Snapshot saved.`);
+      }, 400);
+    }
+
+    // Local Storage Project Manager
+    class ProjectGalleryManager {
+      constructor() { this.storageKey = 'quantum_agi_saved_projects_v1'; }
+      saveCurrentProject() {
+        if (!generatedFrames || generatedFrames.length === 0) {
+          alert('No synthesized video clip available to save.');
+          return;
+        }
+        const promptInput = document.getElementById('synthesis-prompt');
+        const durationSelect = document.getElementById('clip-duration');
+        const styleSelect = document.getElementById('motion-style');
+        const project = {
+          id: 'proj_' + Date.now(),
+          prompt: promptInput ? promptInput.value : '',
+          duration: durationSelect ? durationSelect.value : '5',
+          style: styleSelect ? styleSelect.value : 'hologram',
+          frames: generatedFrames
+        };
+        const data = localStorage.getItem(this.storageKey);
+        const projects = data ? JSON.parse(data) : [];
+        projects.unshift(project);
+        if (projects.length > 5) projects.pop();
+        try {
+          localStorage.setItem(this.storageKey, JSON.stringify(projects));
+          logSynthConsole(`PROJECT SAVED: Stored session to local registry.`);
+          sfx.playSuccessChime();
+          alert('Project successfully saved to local gallery!');
+        } catch (e) { alert('Storage quota exceeded.'); }
+      }
+    }
+    const projectManager = new ProjectGalleryManager();
+
+    // 3D Quantum Swarm in AGI App
+    let agiScene, agiCamera, agiRenderer;
+    let agiTissueMesh, agiTissueUniforms;
+    let agiDragonflies = [];
+    let agiSwarmInit = false;
+    let agiIsDragging = false;
+    let agiPrevMouse = { x: 0, y: 0 };
+    let agiTargetRot = { x: 0, y: 0 };
+
+    function initAGISwarmOS() {
+      const wrapper = document.getElementById('canvas-wrapper');
+      if (!wrapper) return;
+      const width = wrapper.clientWidth || 400;
+      const height = wrapper.clientHeight || 200;
+
+      if (!agiSwarmInit) {
+        agiSwarmInit = true;
+        agiScene = new THREE.Scene();
+        agiScene.fog = new THREE.FogExp2(0x020617, 0.022);
+
+        agiCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+        agiCamera.position.set(0, -18, 25);
+        agiCamera.lookAt(0, 0, 0);
+
+        const canvasEl = document.getElementById('simCanvasAGI');
+        if (!canvasEl) return;
+        agiRenderer = new THREE.WebGLRenderer({ canvas: canvasEl, antialias: true, alpha: true });
+        agiRenderer.setSize(width, height);
+        agiRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+        const tissueGeo = new THREE.PlaneGeometry(24, 24, 32, 32);
+        agiTissueUniforms = {
+          uTime: { value: 0 },
+          uTouchPos: { value: new THREE.Vector2(0.5, 0.5) },
+          uTouchTime: { value: -10.0 }
+        };
+
+        const tissueMat = new THREE.ShaderMaterial({
+          uniforms: agiTissueUniforms,
+          wireframe: false,
+          transparent: true,
+          side: THREE.DoubleSide,
+          vertexShader: `
+            uniform float uTime;
+            uniform vec2 uTouchPos;
+            uniform float uTouchTime;
+            varying vec2 vUv;
+            varying float vElevation;
+            void main() {
+              vUv = uv;
+              vec3 pos = position;
+              float wave1 = sin(pos.x * 0.35 + uTime * 1.5) * cos(pos.y * 0.35 + uTime * 1.3);
+              float dist = distance(vUv, uTouchPos);
+              float timeSinceTouch = uTime - uTouchTime;
+              if (timeSinceTouch > 0.0 && timeSinceTouch < 3.0) {
+                float ripple = sin(dist * 25.0 - timeSinceTouch * 8.0) * exp(-timeSinceTouch * 1.5) * exp(-dist * 3.0);
+                wave1 += ripple * 2.2;
+              }
+              pos.z += wave1 * 0.7;
+              vElevation = wave1;
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+            }
+          `,
+          fragmentShader: `
+            uniform float uTime;
+            varying vec2 vUv;
+            varying float vElevation;
+            void main() {
+              vec3 deepVoid = vec3(0.02, 0.06, 0.14);
+              vec3 bioEmerald = vec3(0.05, 0.65, 0.42);
+              float mixFactor = smoothstep(-1.2, 1.2, vElevation);
+              vec3 baseColor = mix(deepVoid, bioEmerald, mixFactor);
+              vec2 grid = abs(fract(vUv * 14.0 - 0.5) - 0.5) / fwidth(vUv * 14.0);
+              float line = min(grid.x, grid.y);
+              float cellBorder = 1.0 - min(line, 1.0);
+              vec3 finalColor = mix(baseColor, vec3(0.06, 0.85, 0.95) * 1.5, cellBorder * 0.4);
+              gl_FragColor = vec4(finalColor * (0.8 + 0.2 * sin(uTime * 4.0)), 0.9);
+            }
+          `
+        });
+
+        agiTissueMesh = new THREE.Mesh(tissueGeo, tissueMat);
+        agiScene.add(agiTissueMesh);
+
+        const dragonflyGeo = new THREE.ConeGeometry(0.25, 0.8, 6);
+        dragonflyGeo.rotateX(Math.PI / 2);
+
+        for (let i = 0; i < 12; i++) {
+          const mat = new THREE.MeshBasicMaterial({
+            color: i % 3 === 0 ? 0x38bdf8 : (i % 3 === 1 ? 0x10b981 : 0xf59e0b),
+            transparent: true, opacity: 0.9
+          });
+          const mesh = new THREE.Mesh(dragonflyGeo, mat);
+          agiScene.add(mesh);
+          agiDragonflies.push({ mesh: mesh, pos: new THREE.Vector3() });
+        }
+
+        canvasEl.addEventListener('pointerdown', (e) => {
+          agiIsDragging = true;
+          agiPrevMouse = { x: e.clientX, y: e.clientY };
+          const rect = canvasEl.getBoundingClientRect();
+          const x = (e.clientX - rect.left) / rect.width;
+          const y = 1.0 - ((e.clientY - rect.top) / rect.height);
+          if (agiTissueUniforms) {
+            agiTissueUniforms.uTouchPos.value.set(x, y);
+            agiTissueUniforms.uTouchTime.value = performance.now() * 0.001;
+          }
+          logSynthConsole(`Neural node injected at UV (${x.toFixed(2)}, ${y.toFixed(2)}).`);
+        });
+
+        canvasEl.addEventListener('pointermove', (e) => {
+          if (!agiIsDragging) return;
+          agiTargetRot.y += (e.clientX - agiPrevMouse.x) * 0.008;
+          agiTargetRot.x += (e.clientY - agiPrevMouse.y) * 0.008;
+          agiTargetRot.x = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, agiTargetRot.x));
+          agiPrevMouse = { x: e.clientX, y: e.clientY };
+        });
+
+        window.addEventListener('pointerup', () => { agiIsDragging = false; });
+        requestAnimationFrame(animateAGISwarm);
+      } else {
+        const w = wrapper.clientWidth || 400;
+        const h = wrapper.clientHeight || 200;
+        agiCamera.aspect = w / h;
+        agiCamera.updateProjectionMatrix();
+        agiRenderer.setSize(w, h);
+      }
+    }
+
+    function animateAGISwarm(now) {
+      requestAnimationFrame(animateAGISwarm);
+      const timeSec = now * 0.001;
+      if (agiTissueUniforms) agiTissueUniforms.uTime.value = timeSec;
+      if (agiTissueMesh) {
+        agiTissueMesh.rotation.y += (agiTargetRot.y - agiTissueMesh.rotation.y) * 0.1;
+        agiTissueMesh.rotation.x += (agiTargetRot.x - agiTissueMesh.rotation.x) * 0.1;
+      }
+      agiDragonflies.forEach((df, idx) => {
+        const angle = timeSec * 1.5 + idx * (Math.PI * 2 / agiDragonflies.length);
+        df.pos.set(Math.cos(angle) * 7.5, Math.sin(angle * 0.8) * 7.5, 1.5 + Math.sin(timeSec + idx) * 0.8);
+        df.mesh.position.copy(df.pos);
+        df.mesh.rotation.z = timeSec * 8 + idx;
+      });
+      if (agiRenderer && agiScene && agiCamera) agiRenderer.render(agiScene, agiCamera);
+    }
+
+    function triggerSwarmHunt() { logSynthConsole(`Swarm Hunt protocol synchronized.`); }
+    function triggerSyntheticPulse() { logSynthConsole(`Synthetic bio-resonance pulse emitted.`); }
+    function resetSwarmMatrix() { 
+      agiTargetRot.x = 0; agiTargetRot.y = 0;
+      logSynthConsole(`Swarm telemetry matrix reset.`); 
+    }
+
+    // --- OS Window Management ---
+    let openWindows = {};
+    let zIndexCounter = 100;
+    let activeAppId = null;
+
+    function renderDock() {
+      const dock = document.getElementById('dock-bar');
+      if (!dock) return;
+      dock.innerHTML = ModuleRegistry.getAll().map(mod => {
+        const isOpen = Boolean(openWindows[mod.id]);
+        return `
+          <button onclick="handleDockClick('${mod.id}')" title="${mod.name}" class="dock-item relative group flex flex-col items-center cursor-pointer">
+            <span class="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-10 px-2.5 py-1 rounded-xl glass-surface text-[11px] font-medium whitespace-nowrap pointer-events-none shadow-lg">${mod.name}</span>
+            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br ${mod.gradient} flex items-center justify-center shadow-lg border border-white/25">${mod.icon}</div>
+            <span class="w-1.5 h-1.5 rounded-full mt-1.5 transition-all ${isOpen ? 'bg-white opacity-100' : 'opacity-0'}"></span>
+          </button>
+        `;
+      }).join('');
+      lucide.createIcons();
+    }
+
+    function renderSystemMenu() {
+      const menu = document.getElementById('registry-menu-list');
+      if (!menu) return;
+      menu.innerHTML = ModuleRegistry.getAll().map(mod => `
+        <button onclick="openApp('${mod.id}'); closeMenus();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-white/15 flex justify-between cursor-pointer text-slate-200 font-bold">
+          <span>${mod.name}</span>
+          <span class="font-mono text-[10px] text-cyan-300">v${mod.version}</span>
+        </button>
+      `).join('');
+    }
+
+    function closeMenus() { document.getElementById('system-menu')?.classList.add('hidden'); }
+
+    function renderDesktopIcons() {
+      const grid = document.getElementById('desktop-icons');
+      if (!grid) return;
+      grid.innerHTML = ModuleRegistry.getAll().map(mod => `
+        <button ondblclick="openApp('${mod.id}')" class="desktop-icon group w-28 p-2.5 rounded-2xl hover:bg-white/15 transition flex flex-col items-center gap-1.5 text-center cursor-pointer">
+          <div class="w-12 h-12 rounded-2xl bg-gradient-to-br ${mod.gradient} flex items-center justify-center shadow-lg">${mod.icon}</div>
+          <span class="text-xs font-medium drop-shadow leading-tight">${mod.name}</span>
+        </button>
+      `).join('');
+      lucide.createIcons();
+    }
+
+    function handleDockClick(appId) {
+      if (!openWindows[appId]) openApp(appId);
+      else if (openWindows[appId].minimized) restoreWindow(appId);
+      else if (activeAppId === appId) minimizeWindow(appId);
+      else focusWindow(appId);
+    }
+
+    function openApp(appId) {
+      const mod = ModuleRegistry.get(appId);
+      if (!mod) return;
+      if (openWindows[appId]) { restoreWindow(appId); focusWindow(appId); return; }
+
+      const layer = document.getElementById('windows-layer');
+      const w = Math.min(window.innerWidth - 40, mod.width);
+      const h = Math.min(window.innerHeight - 100, mod.height);
+      const left = Math.max(20, (window.innerWidth - w) / 2);
+      const top = Math.max(45, (window.innerHeight - h) / 2);
+
+      const winEl = document.createElement('div');
+      winEl.id = `win-${appId}`;
+      winEl.className = 'window-frame glass-surface rounded-3xl flex flex-col overflow-hidden pointer-events-auto absolute shadow-2xl';
+      winEl.style.width = `${w}px`; winEl.style.height = `${h}px`;
+      winEl.style.left = `${left}px`; winEl.style.top = `${top}px`;
+      winEl.style.zIndex = ++zIndexCounter;
+      winEl.addEventListener('mousedown', () => focusWindow(appId));
+
+      winEl.innerHTML = `
+        <div class="win-header h-11 px-4 flex items-center justify-between border-b border-white/15 bg-white/5 cursor-grab shrink-0">
+          <div class="flex items-center gap-2">
+            <button onclick="closeWindow('${appId}')" class="w-3.5 h-3.5 rounded-full bg-rose-500 hover:bg-rose-400 cursor-pointer"></button>
+            <button onclick="minimizeWindow('${appId}')" class="w-3.5 h-3.5 rounded-full bg-amber-400 hover:bg-amber-300 cursor-pointer"></button>
+            <button onclick="toggleMaximizeWindow('${appId}')" class="w-3.5 h-3.5 rounded-full bg-emerald-400 hover:bg-emerald-300 cursor-pointer"></button>
+          </div>
+          <div class="text-xs font-semibold">${mod.name} <span class="opacity-60 font-mono text-[10px]">(${mod.category})</span></div>
+          <div></div>
+        </div>
+        <div class="flex-1 overflow-auto p-4 text-xs">${mod.render()}</div>
+      `;
+
+      layer.appendChild(winEl);
+      openWindows[appId] = { id: appId, minimized: false };
+      makeWindowDraggable(winEl);
+      focusWindow(appId);
+      renderDock();
+      
+      if (appId === 'dragonflysim') initFlightSimulation('flightSimCanvas');
+    }
+
+    function focusWindow(appId) {
+      const win = document.getElementById(`win-${appId}`);
+      if (!win) return;
+      win.style.zIndex = ++zIndexCounter;
+      activeAppId = appId;
+      const mod = ModuleRegistry.get(appId);
+      if (mod) {
+        document.getElementById('active-app-label').textContent = `${mod.name} • Active`;
+      }
+    }
+
+    function closeWindow(appId) { document.getElementById(`win-${appId}`)?.remove(); delete openWindows[appId]; renderDock(); }
+    function minimizeWindow(appId) { document.getElementById(`win-${appId}`)?.classList.add('window-minimized'); openWindows[appId].minimized = true; renderDock(); }
+    function restoreWindow(appId) { document.getElementById(`win-${appId}`)?.classList.remove('window-minimized'); openWindows[appId].minimized = false; focusWindow(appId); renderDock(); }
+    function toggleMaximizeWindow(appId) {
+      const win = document.getElementById(`win-${appId}`);
+      if (!win) return;
+      if (!win.dataset.maximized) {
+        win.dataset.prev = JSON.stringify({ left: win.style.left, top: win.style.top, width: win.style.width, height: win.style.height });
+        win.style.left = '10px'; win.style.top = '44px';
+        win.style.width = `${window.innerWidth - 20}px`; win.style.height = `${window.innerHeight - 110}px`;
+        win.dataset.maximized = 'true';
+      } else {
+        const prev = JSON.parse(win.dataset.prev);
+        win.style.left = prev.left; win.style.top = prev.top; win.style.width = prev.width; win.style.height = prev.height;
+        delete win.dataset.maximized;
+      }
+    }
+
+    function makeWindowDraggable(winEl) {
+      const header = winEl.querySelector('.win-header');
+      header.addEventListener('mousedown', e => {
+        if (e.target.tagName === 'BUTTON') return;
+        const startX = e.clientX, startY = e.clientY;
+        const startLeft = winEl.offsetLeft, startTop = winEl.offsetTop;
+        winEl.classList.add('dragging');
+        const onMove = ev => {
+          winEl.style.left = `${Math.max(0, startLeft + (ev.clientX - startX))}px`;
+          winEl.style.top = `${Math.max(40, startTop + (ev.clientY - startY))}px`;
+        };
+        const onUp = () => { winEl.classList.remove('dragging'); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+        window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp);
+      });
+    }
+
+    // --- Wallpaper Biomorphic Fractal Shader ---
+    const wallpaperVS = `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position, 1.0); }`;
+    const wallpaperFS = `
+      uniform float u_time;
+      uniform vec2 u_resolution;
+      uniform float u_bass;
+      uniform float u_mids;
+      uniform float u_treble;
+      varying vec2 vUv;
+      #define PI 3.14159265359
+
+      vec2 complexMul(vec2 a, vec2 b) {
+        return vec2(a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x);
+      }
+
+      void main() {
+        vec2 st = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y);
+        float time = u_time * 0.1;
+        float r = length(st);
+        
+        vec2 z = st;
+        float accum = 0.0;
+        float scale = 1.0;
+        for (int i = 0; i < 4; i++) {
+          float angle = atan(z.y, z.x);
+          float rad = length(z);
+          angle = mod(angle + PI / 3.0 + time * 0.2, 2.0 * PI / 3.0) - PI / 3.0;
+          z = vec2(cos(angle), sin(angle)) * rad;
+          z = abs(z) - vec2(0.28, 0.14) * (1.0 + u_mids * 0.25);
+          z = complexMul(z, z) - vec2(0.38, 0.08);
+          accum += sin(z.x * 4.0 + time) * cos(z.y * 4.0 - time) / scale;
+          scale *= 1.25;
+        }
+
+        vec3 colTeal = vec3(0.01, 0.06, 0.18);
+        vec3 colOrange = vec3(0.12, 0.52, 0.95);
+        vec3 color = mix(colTeal, colOrange, clamp(abs(accum) * 1.3 + r * 0.3, 0.0, 1.0));
+        color += vec3(0.0, 0.8, 1.0) * (0.05 / (r + 0.02 + u_bass * 0.2));
+
+        gl_FragColor = vec4(color * (1.0 - r * 0.25), 1.0);
+      }
+    `;
+
+    function initWallpaperShader() {
+      const canvas = document.getElementById('wallpaper-canvas');
+      if (!canvas) return;
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      const scene = new THREE.Scene();
+      const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+      const uniforms = {
+        u_time: { value: 0.0 },
+        u_resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+        u_bass: { value: 0.0 },
+        u_mids: { value: 0.0 },
+        u_treble: { value: 0.0 }
+      };
+      const material = new THREE.ShaderMaterial({ vertexShader: wallpaperVS, fragmentShader: wallpaperFS, uniforms });
+      scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
+      window.addEventListener('resize', () => { renderer.setSize(window.innerWidth, window.innerHeight); uniforms.u_resolution.value.set(window.innerWidth, window.innerHeight); });
+      const clock = new THREE.Clock();
+      (function animate() {
+        requestAnimationFrame(animate);
+        uniforms.u_time.value = clock.getElapsedTime();
+        sovereignAudioEngine.update();
+        uniforms.u_bass.value = sovereignAudioEngine.metrics.bass;
+        uniforms.u_mids.value = sovereignAudioEngine.metrics.mids;
+        uniforms.u_treble.value = sovereignAudioEngine.metrics.treble;
+        renderer.render(scene, camera);
+      })();
+    }
+
+    // --- Initialize 3D Flight Simulation ---
+    function initFlightSimulation(canvasId) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      const container = canvas.parentElement;
+
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+      renderer.setSize(container.clientWidth, container.clientHeight);
+
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x020617);
+      scene.fog = new THREE.FogExp2(0x020617, 0.018);
+
+      const camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
+
+      scene.add(new THREE.AmbientLight(0xd9f6ff, 0.8));
+      const sun = new THREE.DirectionalLight(0x00f3ff, 1.2);
+      sun.position.set(20, 40, 20);
+      scene.add(sun);
+
+      const waterGeo = new THREE.PlaneGeometry(250, 250, 32, 32);
+      const waterMat = new THREE.MeshStandardMaterial({ color: 0x041525, roughness: 0.1, metalness: 0.8 });
+      const water = new THREE.Mesh(waterGeo, waterMat);
+      water.rotation.x = -Math.PI / 2;
+      scene.add(water);
+
+      const dragonflyRig = new DragonflyRig(scene);
+      const flightController = new DragonflyFlightController(dragonflyRig);
+
+      window.addEventListener('keydown', e => {
+        if (e.key === 'w' || e.key === 'ArrowUp') flightController.controls.throttle = Math.min(1.0, flightController.controls.throttle + 0.15);
+        if (e.key === 's' || e.key === 'ArrowDown') flightController.controls.throttle = Math.max(0.1, flightController.controls.throttle - 0.15);
+        if (e.key === 'a' || e.key === 'ArrowLeft') flightController.controls.yawInput = 1.4;
+        if (e.key === 'd' || e.key === 'ArrowRight') flightController.controls.yawInput = -1.4;
+      });
+
+      const clock = new THREE.Clock();
+      (function animateSim() {
+        requestAnimationFrame(animateSim);
+        const delta = Math.min(clock.getDelta(), 0.1);
+        flightController.update(delta);
+
+        const targetCamPos = flightController.position.clone().sub(new THREE.Vector3(0, 0, 10).applyAxisAngle(new THREE.Vector3(0,1,0), flightController.heading)).add(new THREE.Vector3(0, 3, 0));
+        camera.position.lerp(targetCamPos, 0.1);
+        camera.lookAt(flightController.position.clone().add(new THREE.Vector3(0, 1, 0)));
+
+        const hud = document.getElementById('hud-telemetry');
+        if (hud) {
+          hud.textContent = `Speed: ${flightController.velocity.length().toFixed(1)} m/s | Alt: ${flightController.position.y.toFixed(1)}m`;
+        }
+
+        renderer.render(scene, camera);
+      })();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      renderDock();
+      renderSystemMenu();
+      renderDesktopIcons();
+      initWallpaperShader();
+      setTimeout(() => openApp('agisynth'), 300);
+      setTimeout(() => openApp('sovereign_eq'), 600);
+    });
+  </script>
+</body>
+</html>
